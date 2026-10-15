@@ -5089,13 +5089,151 @@ function toggleMobileSidebar() {
     if (sidebar) sidebar.classList.toggle('mobile-open');
 }
 
+// ============================================================================
+// PWA MOBİL KURULUM, BANNER VE OTOMATİK UYARI MOTORU
+// ============================================================================
 window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
     deferredPwaPrompt = e;
+    console.log('[Dizsan Toplantı] Native beforeinstallprompt yakalandı.');
+    checkPwaInstallState();
 });
 
+window.addEventListener('appinstalled', () => {
+    deferredPwaPrompt = null;
+    hideAllPwaInstallElements();
+    console.log('[Dizsan Toplantı] Uygulama başarıyla cihaza yüklendi.');
+    showToastNotification('🎉 DİZSAN Toplantı uygulaması cihazınıza başarıyla yüklendi!');
+});
+
+function isAppRunningStandalone() {
+    return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
+           (window.navigator.standalone === true) ||
+           document.referrer.includes('android-app://');
+}
+
+function isMobileDevice() {
+    return window.innerWidth <= 768 || /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+}
+
+function checkPwaInstallState() {
+    if (isAppRunningStandalone()) {
+        hideAllPwaInstallElements();
+        return;
+    }
+
+    if (!isMobileDevice()) {
+        const banner = document.getElementById('mobile-pwa-install-banner');
+        if (banner) banner.style.display = 'none';
+        const topbarChip = document.getElementById('mobile-topbar-install-btn');
+        if (topbarChip) topbarChip.style.display = 'none';
+        return;
+    }
+
+    // Mobil cihazda ve standalone değilse:
+    const topbarChip = document.getElementById('mobile-topbar-install-btn');
+    if (topbarChip) topbarChip.style.display = 'inline-flex';
+
+    const bannerDismissed = sessionStorage.getItem('dizsan_toplanti_pwa_banner_dismissed') === '1';
+    const banner = document.getElementById('mobile-pwa-install-banner');
+    if (banner && !bannerDismissed) {
+        banner.style.display = 'block';
+    }
+
+    const popupDismissed = sessionStorage.getItem('dizsan_toplanti_pwa_popup_dismissed') === '1';
+    if (!popupDismissed) {
+        setTimeout(() => {
+            if (!isAppRunningStandalone() && sessionStorage.getItem('dizsan_toplanti_pwa_popup_dismissed') !== '1') {
+                openPwaPromptModal();
+            }
+        }, 1200);
+    }
+}
+
+function openPwaPromptModal() {
+    const modal = document.getElementById('mobile-pwa-prompt-modal');
+    if (modal) {
+        modal.classList.add('open');
+        modal.style.display = 'flex';
+    }
+}
+
+function closePwaPromptModal() {
+    sessionStorage.setItem('dizsan_toplanti_pwa_popup_dismissed', '1');
+    const modal = document.getElementById('mobile-pwa-prompt-modal');
+    if (modal) {
+        modal.classList.remove('open');
+        modal.style.display = 'none';
+    }
+}
+
+function dismissPwaBanner() {
+    sessionStorage.setItem('dizsan_toplanti_pwa_banner_dismissed', '1');
+    const banner = document.getElementById('mobile-pwa-install-banner');
+    if (banner) banner.style.display = 'none';
+}
+
+function hideAllPwaInstallElements() {
+    const banner = document.getElementById('mobile-pwa-install-banner');
+    if (banner) banner.style.display = 'none';
+    const modal = document.getElementById('mobile-pwa-prompt-modal');
+    if (modal) {
+        modal.classList.remove('open');
+        modal.style.display = 'none';
+    }
+    const topbarChip = document.getElementById('mobile-topbar-install-btn');
+    if (topbarChip) topbarChip.style.display = 'none';
+    const iosPrompt = document.getElementById('ios-safari-install-prompt');
+    if (iosPrompt) iosPrompt.style.display = 'none';
+}
+
+async function handlePwaInstallClick() {
+    closePwaPromptModal();
+    dismissPwaBanner();
+
+    const ua = navigator.userAgent || '';
+    const isIOS = /iPhone|iPad|iPod/i.test(ua);
+
+    if (isIOS) {
+        showIosSafariInstallGuide();
+        return;
+    }
+
+    if (deferredPwaPrompt) {
+        deferredPwaPrompt.prompt();
+        try {
+            const choiceResult = await deferredPwaPrompt.userChoice;
+            if (choiceResult && choiceResult.outcome === 'accepted') {
+                console.log('[Dizsan Toplantı] Kullanıcı kurulumu onayladı.');
+                hideAllPwaInstallElements();
+            }
+        } catch (err) {
+            console.warn('[Dizsan Toplantı] PWA prompt hatası:', err);
+        }
+        deferredPwaPrompt = null;
+    } else {
+        openInstallGuideModal('android');
+    }
+}
+
+function showIosSafariInstallGuide() {
+    const iosPointer = document.getElementById('ios-safari-install-prompt');
+    if (iosPointer) {
+        iosPointer.style.display = 'flex';
+        setTimeout(() => {
+            if (iosPointer) iosPointer.style.display = 'none';
+        }, 12000);
+    }
+    openInstallGuideModal('ios');
+}
+
+function closeIosInstallPrompt() {
+    const iosPointer = document.getElementById('ios-safari-install-prompt');
+    if (iosPointer) iosPointer.style.display = 'none';
+}
+
 function installPWA() {
-    openInstallGuideModal();
+    handlePwaInstallClick();
 }
 
 function getLivePreferredUrl() {
@@ -5104,7 +5242,7 @@ function getLivePreferredUrl() {
     return 'https://dizsan.github.io/toplanti/';
 }
 
-function openInstallGuideModal() {
+function openInstallGuideModal(prefPlatform) {
     const modal = document.getElementById('install-guide-modal');
     if (!modal) return;
 
@@ -5116,22 +5254,37 @@ function openInstallGuideModal() {
 
     // Aktif cihaz türünü vurgula
     const ua = navigator.userAgent || '';
-    const isIOS = /iPhone|iPad|iPod/i.test(ua);
-    const isAndroid = /Android/i.test(ua);
+    const isIOS = prefPlatform === 'ios' || /iPhone|iPad|iPod/i.test(ua);
+    const isAndroid = prefPlatform === 'android' || /Android/i.test(ua);
     const iosCard = document.getElementById('guide-card-ios');
     const andCard = document.getElementById('guide-card-android');
     const pcCard = document.getElementById('guide-card-pc');
 
-    if (iosCard) iosCard.style.borderColor = isIOS ? '#38bdf8' : 'rgba(255,255,255,0.12)';
-    if (andCard) andCard.style.borderColor = isAndroid ? '#34d399' : 'rgba(255,255,255,0.12)';
-    if (pcCard) pcCard.style.borderColor = (!isIOS && !isAndroid) ? '#fcd34d' : 'rgba(255,255,255,0.12)';
+    if (iosCard) {
+        iosCard.style.borderColor = isIOS ? '#38bdf8' : 'rgba(255,255,255,0.12)';
+        iosCard.style.boxShadow = isIOS ? '0 0 20px rgba(56,189,248,0.35)' : 'none';
+        if (isIOS) iosCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+    if (andCard) {
+        andCard.style.borderColor = isAndroid ? '#34d399' : 'rgba(255,255,255,0.12)';
+        andCard.style.boxShadow = isAndroid ? '0 0 20px rgba(52,211,153,0.35)' : 'none';
+        if (isAndroid && !isIOS) andCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+    if (pcCard) {
+        pcCard.style.borderColor = (!isIOS && !isAndroid) ? '#fcd34d' : 'rgba(255,255,255,0.12)';
+        pcCard.style.boxShadow = (!isIOS && !isAndroid) ? '0 0 20px rgba(252,211,77,0.35)' : 'none';
+    }
 
     modal.classList.add('open');
+    modal.style.display = 'flex';
 }
 
 function closeInstallGuideModal() {
     const modal = document.getElementById('install-guide-modal');
-    if (modal) modal.classList.remove('open');
+    if (modal) {
+        modal.classList.remove('open');
+        modal.style.display = 'none';
+    }
 }
 
 async function triggerNativePwaInstall() {
@@ -5144,12 +5297,20 @@ async function triggerNativePwaInstall() {
     } else {
         const ua = navigator.userAgent || '';
         if (/iPhone|iPad|iPod/i.test(ua)) {
-            alert("🍎 iPhone / iPad Kurulumu:\n\n1. Safari alt barındaki 'Paylaş' (⬆️ kare içinden çıkan ok) butonuna dokunun.\n2. Listeyi aşağı kaydırıp 'Ana Ekrana Ekle' seçeneğine basın.\n3. Sağ üstteki 'Ekle' butonuna dokunun.");
+            showIosSafariInstallGuide();
         } else {
-            alert("📲 Uygulama Kurulumu:\n\nTarayıcınızın sağ üst köşesindeki menüden (⋮) 'Uygulamayı Yükle' veya 'Ana Ekrana Ekle' seçeneğine dokunarak Dizsan Toplantı uygulamasını ana ekranınıza indirebilirsiniz.");
+            alert("📲 Android & Chrome Kurulumu:\n\n1. Tarayıcınızın sağ üst köşesindeki menüye (⋮ veya 3 nokta) dokunun.\n2. 'Uygulamayı Yükle' veya 'Ana Ekrana Ekle' seçeneğine dokunun.\n3. 'Yükle' onayını verin.");
         }
     }
 }
+
+window.handlePwaInstallClick = handlePwaInstallClick;
+window.openPwaPromptModal = openPwaPromptModal;
+window.closePwaPromptModal = closePwaPromptModal;
+window.dismissPwaBanner = dismissPwaBanner;
+window.closeIosInstallPrompt = closeIosInstallPrompt;
+window.checkPwaInstallState = checkPwaInstallState;
+window.isAppRunningStandalone = isAppRunningStandalone;
 
 function copyAppUrl(url) {
     if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -5195,6 +5356,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     applyAuthenticatedUser();
+
+    // Mobil PWA kurulum kontrolü ve otomatik uyarı motoru
+    checkPwaInstallState();
+    window.addEventListener('resize', checkPwaInstallState);
 
     // Herhangi bir dokunuşta / tıklamada (Android, iPhone, iPad, PC) arka plan ses motorunu ve VAPID Push kaydını hiçbir ayar gerektirmeden otomatik tamamla
     const unlockBgOnInteraction = () => {

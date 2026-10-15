@@ -1,6 +1,6 @@
 {
-  "version": "v1.8.0",
-  "updatedAt": "2026-10-15T21:13:52.009Z",
+  "version": "v1.8.1",
+  "updatedAt": "2026-10-15T21:23:46.258Z",
   "users": [
     {
       "order": 0,
@@ -1013,7 +1013,7 @@
       "resolvedBy": "ÖMER EREN"
     }
   ],
-  "stateRevision": 42,
+  "stateRevision": 43,
   "pushSubscriptions": [
     {
       "id": "SUB-1792079730314-929",
@@ -1526,12 +1526,12 @@
       "fail_count": 0
     }
   ],
-  "appVersion": "1.8.0",
+  "appVersion": "1.8.1",
   "latestVersion": {
-    "version": "1.8.0",
-    "releaseNotes": "Mobil app tam ekran tasarımı, açılır pencere kaydırma düzeltmesi, telefon geri tuşu navigasyon kalkanı, iki yönlü anlık bildirim ve Yönetici Ömer Eren Onay Kalkanı tamamlandı",
-    "releasedAt": "2026-10-16 00:13:52"
+    "version": "1.8.1",
+    "releaseNotes": "Akilli mobil kurulum uyarisi ve tek tikla yukleme",
+    "releasedAt": "2026-10-16 00:23:46"
   },
-  "versionUpdatedAt": "2026-10-16 00:13:52",
-  "versionReleaseNotes": "Mobil app tam ekran tasarımı, açılır pencere kaydırma düzeltmesi, telefon geri tuşu navigasyon kalkanı, iki yönlü anlık bildirim ve Yönetici Ömer Eren Onay Kalkanı tamamlandı"
+  "versionUpdatedAt": "2026-10-16 00:23:46",
+  "versionReleaseNotes": "Akilli mobil kurulum uyarisi ve tek tikla yukleme"
 }

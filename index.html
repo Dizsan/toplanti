@@ -21,7 +21,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-    <link rel="stylesheet" href="style.css?v=1.8.0">
+    <link rel="stylesheet" href="style.css?v=1.8.1">
 </head>
 <body>
 
@@ -34,7 +34,7 @@
                 <img src="dizsan_logo.jpg" alt="DİZSAN Logo" class="login-logo">
                 <h1>DİZSAN</h1>
                 <p>Kurumsal Toplantı, Eğitim, Çağrı, Aksiyon & Raporlama Sistemi</p>
-                <span class="version-pill"><i class="fa-solid fa-code-branch"></i> Sürüm <span class="dynamic-version-text">v1.8.0</span> • iOS / Android / Windows</span>
+                <span class="version-pill"><i class="fa-solid fa-code-branch"></i> Sürüm <span class="dynamic-version-text">v1.8.1</span> • iOS / Android / Windows</span>
             </div>
 
             <form id="login-form" onsubmit="handleLogin(event)">
@@ -199,7 +199,7 @@
                     <span class="brand-name">DİZSAN</span>
                     <span class="brand-sub">TOPLANTI & AKSİYON</span>
                     <span class="version-pill" onclick="switchTab('version-tab')" title="Sürüm ve Güncelleme Merkezini Gör">
-                        <i class="fa-solid fa-tag"></i> <span class="dynamic-version-text">v1.8.0</span>
+                        <i class="fa-solid fa-tag"></i> <span class="dynamic-version-text">v1.8.1</span>
                     </span>
                 </div>
             </div>
@@ -296,6 +296,9 @@
                         <h2 id="topbar-title">DİZSAN Kurumsal Toplantı Kokpiti</h2>
                         <p id="topbar-subtitle">Ortak Toplantı Çağrıları, Yönetici Onaylı Tutanaklar &amp; VAPID Kilit Ekranı Push Bildirimleri</p>
                     </div>
+                    <button id="mobile-topbar-install-btn" class="btn btn-primary btn-sm mobile-app-install-chip" onclick="handlePwaInstallClick()" style="display:none; margin-left:auto;" title="Uygulamayı Telefona Yükle">
+                        <i class="fa-solid fa-download"></i> <span>Uygulamayı Kur</span>
+                    </button>
                 </div>
 
                 <!-- Canlı Toplantı Kronometresi / Zamanlayıcı -->
@@ -329,6 +332,23 @@
                     </button>
                 </div>
             </header>
+
+            <!-- MOBİL AKILLI UYGULAMA KURULUM BANNERI (TARAYICI MODUNDA MOBİLDE GÖRÜNÜR) -->
+            <div id="mobile-pwa-install-banner" class="mobile-pwa-banner" style="display:none;">
+                <div class="pwa-banner-card">
+                    <img src="dizsan_logo.jpg" alt="Dizsan" class="pwa-banner-icon">
+                    <div class="pwa-banner-info">
+                        <strong>📱 Tam Ekran Mobil Uygulama Modu</strong>
+                        <p>Tarayıcıyı gizleyip %100 mobil app konforunda kullanmak için ana ekrana ekleyin.</p>
+                    </div>
+                    <div class="pwa-banner-buttons">
+                        <button type="button" class="btn btn-primary btn-sm" onclick="handlePwaInstallClick()">
+                            <i class="fa-solid fa-download"></i> Hemen Kur
+                        </button>
+                        <button type="button" class="pwa-close-btn" onclick="dismissPwaBanner()" title="Kapat">&times;</button>
+                    </div>
+                </div>
+            </div>
 
             <div class="content-wrapper">
 
@@ -786,7 +806,7 @@
                     <div class="glass-card" id="omer-version-admin-card">
                         <div class="card-header">
                             <h3><i class="fa-solid fa-user-shield" style="color:#34d399;"></i> Versiyon Güncelleme & Yayın Yönetimi (Sadece Yönetici: Ömer Eren)</h3>
-                            <span class="badge badge-done">Aktif Sürüm: <span class="dynamic-version-text">v1.8.0</span></span>
+                            <span class="badge badge-done">Aktif Sürüm: <span class="dynamic-version-text">v1.8.1</span></span>
                         </div>
 
                         <!-- Ömer Eren giriş yaptığında gösterilecek alan -->
@@ -1437,6 +1457,56 @@
     </div>
 
     <!-- ==========================================================================
+         MODAL 8: MOBİL OTOMATİK KURULUM UYARI DİYALOĞU (STANDALONE OLMAYAN MOBİL CİHAZLAR İÇİN)
+         ========================================================================== -->
+    <div id="mobile-pwa-prompt-modal" class="modal-backdrop" style="display:none; z-index:10050;">
+        <div class="modal-box pwa-prompt-sheet">
+            <div class="pwa-prompt-header" style="background:linear-gradient(135deg,#0284c7,#0f172a); padding:1.25rem 1.25rem 1rem 1.25rem; text-align:center; position:relative;">
+                <img src="dizsan_logo.jpg" alt="Dizsan" style="width:68px; height:68px; border-radius:16px; margin-bottom:0.65rem; border:2px solid rgba(255,255,255,0.25); box-shadow:0 8px 20px rgba(0,0,0,0.5);">
+                <h3 style="margin:0; font-size:1.15rem; color:#ffffff; font-weight:800;">DİZSAN Toplantı Uygulaması</h3>
+                <p style="margin:0.35rem 0 0 0; font-size:0.82rem; color:#bae6fd;">Telefon veya tabletinize hemen kurun</p>
+                <button type="button" onclick="closePwaPromptModal()" style="position:absolute; top:12px; right:14px; background:none; border:none; color:rgba(255,255,255,0.7); font-size:1.6rem; cursor:pointer; line-height:1;">&times;</button>
+            </div>
+            <div class="modal-body" style="padding:1.25rem; background:#0f172a;">
+                <div style="display:flex; flex-direction:column; gap:0.75rem; font-size:0.84rem; color:#cbd5e1; margin-bottom:1.25rem;">
+                    <div style="display:flex; align-items:center; gap:0.65rem;">
+                        <i class="fa-solid fa-circle-check" style="color:#34d399; font-size:1.1rem; flex-shrink:0;"></i>
+                        <span><strong>%100 Tam Ekran:</strong> Tarayıcı çubukları olmadan gerçek bir mobil app deneyimi</span>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:0.65rem;">
+                        <i class="fa-solid fa-bell" style="color:#38bdf8; font-size:1.1rem; flex-shrink:0;"></i>
+                        <span><strong>Kilit Ekranı Bildirimleri:</strong> Toplantı çağrıları ve görevler anında cep telefonunuza düşer</span>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:0.65rem;">
+                        <i class="fa-solid fa-bolt" style="color:#fcd34d; font-size:1.1rem; flex-shrink:0;"></i>
+                        <span><strong>Hızlı Başlatma:</strong> Ana ekranınızdan DİZSAN logosuyla tek dokunuşla açın</span>
+                    </div>
+                </div>
+
+                <div style="display:flex; flex-direction:column; gap:0.65rem;">
+                    <button type="button" class="btn btn-primary" onclick="handlePwaInstallClick()" style="min-height:50px; font-size:1rem; font-weight:800; border-radius:12px; box-shadow:0 6px 20px rgba(2,132,199,0.45); display:flex; align-items:center; justify-content:center; gap:0.5rem;">
+                        <i class="fa-solid fa-download"></i> 📲 Uygulamayı Şimdi Yükle
+                    </button>
+                    <button type="button" class="btn btn-secondary" onclick="closePwaPromptModal()" style="min-height:42px; font-size:0.85rem; border-radius:12px; color:#94a3b8; justify-content:center;">
+                        Daha Sonra / Tarayıcıda Devam Et
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- IOS SAFARI İÇİN ÖZEL ALT GÖSTERGE -->
+    <div id="ios-safari-install-prompt" class="ios-safari-pointer" style="display:none;" onclick="closeIosInstallPrompt()">
+        <div style="font-size:0.84rem; font-weight:700; color:#ffffff; display:flex; align-items:center; gap:0.4rem;">
+            <i class="fa-brands fa-apple" style="color:#38bdf8;"></i> Alttaki <strong>Paylaş (<i class="fa-solid fa-arrow-up-from-bracket" style="color:#38bdf8;"></i>)</strong> simgesine dokunun
+        </div>
+        <div style="font-size:0.75rem; color:#94a3b8;">
+            Ardından <strong>"Ana Ekrana Ekle"</strong> [+] seçeneğini seçin. (Kapatmak için dokunun)
+        </div>
+        <i class="fa-solid fa-chevron-down" style="color:#38bdf8; font-size:1.1rem; margin-top:2px;"></i>
+    </div>
+
+    <!-- ==========================================================================
          A4 RESMİ DİZSAN TOPLANTI TUTANAĞI VE RAPOR YAZDIRMA ALANI
          ========================================================================== -->
     <div id="print-minutes-area"></div>
@@ -1444,7 +1514,7 @@
     <!-- Otomatik Tarih Geçiş Kütüphanesi (GG.AA.YYYY Auto-Advance Kuralı) -->
     <script src="dizsan-back-navigation.js?v=2.0.0"></script>
     <script src="auto-date-helper.js"></script>
-    <script src="app.js?v=1.8.0"></script>
-<script src="dizsan-auto-updater.js" data-app-id="toplanti" data-app-name="Dizsan Toplantı & Aksiyon" data-version="1.8.0"></script>
+    <script src="app.js?v=1.8.1"></script>
+<script src="dizsan-auto-updater.js" data-app-id="toplanti" data-app-name="Dizsan Toplantı & Aksiyon" data-version="1.8.1"></script>
 </body>
 </html>

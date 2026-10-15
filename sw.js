@@ -1,9 +1,10 @@
-const CACHE_NAME = 'dizsan-toplanti-v1.8.0';
+const CACHE_NAME = 'dizsan-toplanti-v1.8.1';
 const ASSETS = [
   './',
   './index.html',
   './style.css',
   './app.js',
+  './dizsan-back-navigation.js',
   './alarm-worker.js',
   './auto-date-helper.js',
   './dizsan_logo.jpg',
