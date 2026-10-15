@@ -1,6 +1,6 @@
 {
   "version": "v1.7.1",
-  "updatedAt": "2026-10-15T16:45:32.258Z",
+  "updatedAt": "2026-10-15T20:30:44.213Z",
   "users": [
     {
       "order": 0,
@@ -1013,7 +1013,7 @@
       "resolvedBy": "ÖMER EREN"
     }
   ],
-  "stateRevision": 40,
+  "stateRevision": 41,
   "pushSubscriptions": [
     {
       "id": "SUB-1792079730314-929",
@@ -1118,6 +1118,19 @@
     }
   ],
   "pushNotificationLogs": [
+    {
+      "eventType": "ANNOUNCEMENT_DUY-1792069206449",
+      "subscription_id": "SUB-1792095635857",
+      "username": "omer",
+      "user_name": "ÖMER EREN",
+      "browser": "Samsung Internet",
+      "category": "INVITE",
+      "title": "📣 DİZSAN Kurumsal Duyuru: Deneme",
+      "status": "DELIVERED",
+      "httpStatus": 201,
+      "error_text": "",
+      "sentAt": "15.10.2026 23:30:43"
+    },
     {
       "eventType": "RED_5M_TOP-2026-001_2026-10-15_19:02",
       "subscription_id": "SUB-1792079730314-929",
@@ -1277,6 +1290,19 @@
   ],
   "pushPilotMode": "ALL_USERS",
   "pushDeliveryLogs": [
+    {
+      "eventType": "ANNOUNCEMENT_DUY-1792069206449",
+      "subscription_id": "SUB-1792095635857",
+      "username": "omer",
+      "user_name": "ÖMER EREN",
+      "browser": "Samsung Internet",
+      "category": "INVITE",
+      "title": "📣 DİZSAN Kurumsal Duyuru: Deneme",
+      "status": "DELIVERED",
+      "httpStatus": 201,
+      "error_text": "",
+      "sentAt": "15.10.2026 23:30:43"
+    },
     {
       "eventType": "RED_5M_TOP-2026-001_2026-10-15_19:02",
       "subscription_id": "SUB-1792079730314-929",
@@ -1446,7 +1472,7 @@
       "platform": "Android",
       "isActive": 1,
       "created_at": "15.10.2026 17:52:07",
-      "updatedAt": "15.10.2026 18:57:26",
+      "updatedAt": "15.10.2026 23:30:43",
       "last_success_at": "15.10.2026 18:57:26",
       "last_error": "",
       "fail_count": 0
@@ -1462,7 +1488,7 @@
       "platform": "Android",
       "isActive": 1,
       "created_at": "15.10.2026 18:54:58",
-      "updatedAt": "15.10.2026 18:57:26",
+      "updatedAt": "15.10.2026 23:30:43",
       "last_success_at": "15.10.2026 18:57:26",
       "last_error": "",
       "fail_count": 0
@@ -1478,8 +1504,24 @@
       "platform": "Android",
       "isActive": 1,
       "created_at": "15.10.2026 18:55:36",
-      "updatedAt": "15.10.2026 18:57:26",
+      "updatedAt": "15.10.2026 23:30:43",
       "last_success_at": "15.10.2026 18:57:26",
+      "last_error": "",
+      "fail_count": 0
+    },
+    {
+      "id": "SUB-1792095635857",
+      "username": "omer",
+      "userFullName": "ÖMER EREN",
+      "role": "Yönetici",
+      "endpointPreview": "https://fcm.googleapis.com/fcm/send/fDM8-8-4jns:...",
+      "endpoint": "https://fcm.googleapis.com/fcm/send/fDM8-8-4jns:APA91bHflWu4hcMZvyYw9kAgFedqT8frDAT7Da3M_Gr7CX4rZ9jgqBeWE521YhfX4UISAyUW3iH3xL7Hf0VKjt4-0fisMsQCQ-nD6_u60leJnYsEZN7LU8zeaoYY7Nok6EX3e42L6bTV",
+      "browser": "Samsung Internet",
+      "platform": "Android",
+      "isActive": 1,
+      "created_at": "15.10.2026 23:20:35",
+      "updatedAt": "15.10.2026 23:30:00",
+      "last_success_at": "15.10.2026 23:30:43",
       "last_error": "",
       "fail_count": 0
     }
