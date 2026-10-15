@@ -1,0 +1,1443 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#0284c7">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Dizsan Toplantı">
+    <title>DİZSAN | Kurumsal Toplantı, Eğitim, Çağrı, Aksiyon & Raporlama Sistemi v1.7.0</title>
+
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+    <link rel="icon" type="image/jpeg" href="dizsan_logo.jpg">
+
+    <!-- Fonts & Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <link rel="stylesheet" href="style.css?v=1.7.0">
+</head>
+<body>
+
+    <!-- ==========================================================================
+         PERSONEL KULLANICI GİRİŞ EKRANI (LOGIN OVERLAY)
+         ========================================================================== -->
+    <div id="login-overlay" class="login-overlay">
+        <div class="login-card">
+            <div class="login-brand">
+                <img src="dizsan_logo.jpg" alt="DİZSAN Logo" class="login-logo">
+                <h1>DİZSAN</h1>
+                <p>Kurumsal Toplantı, Eğitim, Çağrı, Aksiyon & Raporlama Sistemi</p>
+                <span class="version-pill"><i class="fa-solid fa-code-branch"></i> Sürüm <span class="dynamic-version-text">v1.7.0</span> • iOS / Android / Windows</span>
+            </div>
+
+            <form id="login-form" onsubmit="handleLogin(event)">
+                <div class="login-form-group">
+                    <label for="login-username">Personel Kullanıcı Adı veya E-Posta</label>
+                    <div class="login-input-wrap">
+                        <i class="fa-solid fa-user-check"></i>
+                        <input type="text" id="login-username" class="login-input" placeholder="Örn: ömer, hakan.aydin, rafet.canbek" required autocomplete="username">
+                    </div>
+                </div>
+
+                <div class="login-form-group" style="margin-bottom:0.75rem;">
+                    <label for="login-password">Şifre</label>
+                    <div class="login-input-wrap">
+                        <i class="fa-solid fa-lock"></i>
+                        <input type="password" id="login-password" class="login-input" placeholder="••••••" required autocomplete="current-password">
+                    </div>
+                </div>
+
+                <!-- Beni Hatırla & Şifremi Unuttum Satırı -->
+                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1.1rem; font-size:0.82rem;">
+                    <label style="display:flex; align-items:center; gap:0.45rem; color:var(--text-sec); cursor:pointer; user-select:none;">
+                        <input type="checkbox" id="login-remember-me" checked style="width:16px; height:16px; accent-color:var(--dizsan-light); cursor:pointer;">
+                        <span>Beni Hatırla</span>
+                    </label>
+                    <a href="javascript:void(0)" onclick="openForgotPasswordModal()" style="color:var(--dizsan-light); text-decoration:none; font-weight:600;">
+                        <i class="fa-solid fa-envelope-circle-check"></i> Şifremi Unuttum?
+                    </a>
+                </div>
+
+                <div id="login-error" style="display:none; color:#fca5a5; background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.35); padding:0.6rem; border-radius:10px; font-size:0.82rem; margin-bottom:0.85rem;"></div>
+
+                <button type="submit" class="btn-login">
+                    <i class="fa-solid fa-right-to-bracket"></i> Sisteme Giriş Yap
+                </button>
+            </form>
+
+            <!-- Telefon / Tablet / Bilgisayar Kurulum Butonu -->
+            <div style="margin-top:0.85rem;">
+                <button type="button" onclick="openInstallGuideModal()" style="width:100%; display:flex; align-items:center; justify-content:center; gap:0.55rem; padding:0.68rem 0.9rem; border-radius:12px; border:1px solid rgba(56,189,248,0.45); background:linear-gradient(135deg, rgba(2,132,199,0.22), rgba(16,185,129,0.18)); color:#e0f2fe; font-weight:700; font-size:0.82rem; cursor:pointer; transition:0.2s;">
+                    <i class="fa-solid fa-mobile-screen-button" style="color:#38bdf8; font-size:1rem;"></i>
+                    <span>📲 Telefon / Tablete Uygulama Olarak İndir (iOS • Android • PC)</span>
+                </button>
+            </div>
+
+            <div class="quick-user-chips">
+                <span><i class="fa-solid fa-users"></i> Hızlı Personel Seçimi (Kullanıcı adını doldurur):</span>
+                <div id="quick-user-list" class="chip-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==========================================================================
+         ŞİFREMİ UNUTTUM (MANUEL E-POSTA YAZMA + DOĞRULAMA) MODALI
+         ========================================================================== -->
+    <div id="forgot-password-modal" class="modal-backdrop" style="z-index: 10005;">
+        <div class="modal-box" style="max-width:480px;">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-envelope-circle-check" style="color:var(--dizsan-light);"></i> Şifremi Unuttum — E-Posta Doğrulama</h3>
+                <button class="modal-close" onclick="closeForgotPasswordModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <!-- Adım 1: Personel Seçimi / Kullanıcı Adı ve Manuel E-Posta Adresi Yazma -->
+                <div id="forgot-step-1">
+                    <p style="font-size:0.84rem; color:var(--text-sec); margin-bottom:1rem; line-height:1.5;">
+                        Kullanıcı adınızı seçin/yazın ve <strong>doğrulama kodunun gönderileceği e-posta adresinizi manuel olarak yazın</strong>. Yazdığınız mail adresine 6 haneli doğrulama kodu gönderilecek ve yeni şifreniz otomatik olarak sisteme entegre edilecektir.
+                    </p>
+                    <div class="form-group" style="margin-bottom:0.85rem;">
+                        <label>Personel Kullanıcı Adı veya Ad Soyad *</label>
+                        <input type="text" id="forgot-user-identifier" class="form-control" placeholder="Örn: hakan.aydin, rafet.canbek veya ömer" oninput="prefillForgotEmailFromUser(this.value)">
+                    </div>
+                    <div class="form-group" style="margin-bottom:1rem;">
+                        <label>Doğrulama Kodu Gönderilecek E-Posta Adresi (Manuel Yazınız) *</label>
+                        <input type="email" id="forgot-manual-email" class="form-control" placeholder="Kendi mail adresinizi yazın (Örn: adiniz@gmail.com veya @dizsan.com)" required>
+                    </div>
+                    <div id="forgot-step1-msg" style="display:none; margin-bottom:0.85rem; padding:0.65rem; border-radius:10px; font-size:0.82rem;"></div>
+                    <button type="button" class="btn btn-primary" style="width:100%; justify-content:center;" onclick="sendPasswordResetCode()">
+                        <i class="fa-solid fa-paper-plane"></i> Yazdığım Mail Adresine Doğrulama Kodu Gönder
+                    </button>
+                </div>
+
+                <!-- Adım 2: Doğrulama Kodu ve Yeni Şifre Girişi -->
+                <div id="forgot-step-2" style="display:none;">
+                    <div id="forgot-sent-info" style="background:rgba(16,185,129,0.12); border:1px solid rgba(16,185,129,0.35); color:#6ee7b7; padding:0.75rem; border-radius:10px; font-size:0.82rem; margin-bottom:1rem; line-height:1.5;"></div>
+                    <div class="form-group" style="margin-bottom:0.85rem;">
+                        <label>E-Postaya Gelen 6 Haneli Doğrulama Kodu *</label>
+                        <input type="text" id="forgot-verification-code" class="form-control" placeholder="Örn: 482910" maxlength="6" style="font-size:1.1rem; letter-spacing:3px; font-weight:700; text-align:center;">
+                    </div>
+                    <div class="form-group" style="margin-bottom:0.85rem;">
+                        <label>Yeni Şifreniz *</label>
+                        <input type="password" id="forgot-new-password" class="form-control" placeholder="Yeni şifrenizi girin">
+                    </div>
+                    <div class="form-group" style="margin-bottom:1rem;">
+                        <label>Yeni Şifre (Tekrar) *</label>
+                        <input type="password" id="forgot-new-password-confirm" class="form-control" placeholder="Yeni şifrenizi tekrar girin">
+                    </div>
+                    <div id="forgot-step2-msg" style="display:none; margin-bottom:0.85rem; padding:0.65rem; border-radius:10px; font-size:0.82rem;"></div>
+                    <div style="display:flex; gap:0.6rem;">
+                        <button type="button" class="btn btn-secondary" onclick="resetForgotModalSteps()">Geri</button>
+                        <button type="button" class="btn btn-success" style="flex:1; justify-content:center;" onclick="verifyAndResetPassword()">
+                            <i class="fa-solid fa-check-double"></i> Doğrula ve Şifreyi Sisteme Entegre Et
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==========================================================================
+         ŞİFREMİ DEĞİŞTİR (AKTİF KULLANICI ŞİFRE GÜNCELLEME) MODALI
+         ========================================================================== -->
+    <div id="change-password-modal" class="modal-backdrop" style="z-index: 10005;">
+        <div class="modal-box" style="max-width:460px;">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-key" style="color:#34d399;"></i> Şifremi Değiştir & E-Posta Güncelle</h3>
+                <button class="modal-close" onclick="closeChangePasswordModal()">&times;</button>
+            </div>
+            <form id="change-password-form" onsubmit="handleChangeOwnPassword(event)" class="modal-body">
+                <p style="font-size:0.83rem; color:var(--text-sec); margin-bottom:1rem; line-height:1.5;">
+                    Değiştirdiğiniz yeni şifre ve e-posta adresiniz <strong>otomatik olarak ortak sisteme, sunucuya ve DizGün veritabanına</strong> anında entegre edilir.
+                </p>
+                <div class="form-group" style="margin-bottom:0.85rem;">
+                    <label>Aktif Personel</label>
+                    <input type="text" id="cp-user-name" class="form-control" readonly style="opacity:0.75; cursor:not-allowed;">
+                </div>
+                <div class="form-group" style="margin-bottom:0.85rem;">
+                    <label>Kayıtlı E-Posta Adresiniz (İsterseniz Güncelleyebilirsiniz)</label>
+                    <input type="email" id="cp-user-email" class="form-control" placeholder="Kişisel veya kurumsal e-posta adresiniz" required>
+                </div>
+                <div class="form-group" style="margin-bottom:0.85rem;">
+                    <label>Mevcut Şifreniz *</label>
+                    <input type="password" id="cp-current-password" class="form-control" placeholder="Mevcut şifrenizi girin" required>
+                </div>
+                <div class="form-group" style="margin-bottom:0.85rem;">
+                    <label>Yeni Şifreniz *</label>
+                    <input type="password" id="cp-new-password" class="form-control" placeholder="Yeni şifrenizi belirleyin" required>
+                </div>
+                <div class="form-group" style="margin-bottom:1rem;">
+                    <label>Yeni Şifre (Tekrar) *</label>
+                    <input type="password" id="cp-new-password-confirm" class="form-control" placeholder="Yeni şifrenizi tekrar girin" required>
+                </div>
+                <div id="cp-msg" style="display:none; margin-bottom:0.85rem; padding:0.65rem; border-radius:10px; font-size:0.82rem;"></div>
+                <div class="modal-footer" style="padding:0.75rem 0 0;">
+                    <button type="button" class="btn btn-secondary" onclick="closeChangePasswordModal()">İptal</button>
+                    <button type="submit" class="btn btn-success"><i class="fa-solid fa-floppy-disk"></i> Yeni Şifreyi Kaydet & Entegre Et</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ==========================================================================
+         ANA UYGULAMA KABUĞU (APP SHELL)
+         ========================================================================== -->
+    <div class="app-shell">
+        <!-- SOL MENÜ (SIDEBAR) -->
+        <aside id="sidebar" class="sidebar">
+            <div class="brand-header">
+                <img src="dizsan_logo.jpg" alt="DİZSAN Logo" class="brand-logo">
+                <div class="brand-titles">
+                    <span class="brand-name">DİZSAN</span>
+                    <span class="brand-sub">TOPLANTI & AKSİYON</span>
+                    <span class="version-pill" onclick="switchTab('version-tab')" title="Sürüm ve Güncelleme Merkezini Gör">
+                        <i class="fa-solid fa-tag"></i> <span class="dynamic-version-text">v1.7.0</span>
+                    </span>
+                </div>
+            </div>
+
+            <!-- Aktif Giriş Yapan Personel Kartı + Şifremi Değiştir Butonu -->
+            <div class="active-user-box" style="flex-direction:column; align-items:stretch; gap:0.55rem;">
+                <div style="display:flex; align-items:center; justify-content:space-between; gap:0.5rem;">
+                    <div class="active-user-info">
+                        <img id="current-user-avatar" src="omer_eren_2.jpg" alt="Avatar" class="active-user-avatar" onerror="this.src='dizsan_logo.jpg'">
+                        <div class="active-user-text">
+                            <div id="current-user-name" class="active-user-name">ÖMER EREN</div>
+                            <div id="current-user-role" class="active-user-role">Yönetici</div>
+                        </div>
+                    </div>
+                    <button class="btn-logout-icon" onclick="handleLogout()" title="Güvenli Çıkış Yap">
+                        <i class="fa-solid fa-power-off"></i>
+                    </button>
+                </div>
+                <button type="button" class="btn btn-secondary btn-sm" style="width:100%; justify-content:center; font-size:0.75rem; padding:0.38rem;" onclick="openChangePasswordModal()">
+                    <i class="fa-solid fa-key" style="color:#34d399;"></i> Şifremi Değiştir
+                </button>
+            </div>
+
+            <!-- Navigasyon Menüsü -->
+            <ul class="nav-menu">
+                <li>
+                    <button class="nav-btn active" data-tab="dashboard-tab" onclick="switchTab('dashboard-tab')">
+                        <span class="nav-btn-left"><i class="fa-solid fa-chart-pie"></i> Genel Kokpit & Özet</span>
+                    </button>
+                </li>
+                <li>
+                    <button class="nav-btn" data-tab="meetings-tab" onclick="switchTab('meetings-tab')">
+                        <span class="nav-btn-left"><i class="fa-solid fa-handshake"></i> Toplantılar & Notlar</span>
+                        <span id="nav-badge-meetings" class="nav-badge">0</span>
+                    </button>
+                </li>
+                <li>
+                    <button class="nav-btn" data-tab="actions-tab" onclick="switchTab('actions-tab')">
+                        <span class="nav-btn-left"><i class="fa-solid fa-stopwatch"></i> Aksiyon & Hatırlatıcı</span>
+                        <span id="nav-badge-actions" class="nav-badge danger">0</span>
+                    </button>
+                </li>
+                <li>
+                    <button class="nav-btn" data-tab="reports-tab" onclick="switchTab('reports-tab')">
+                        <span class="nav-btn-left"><i class="fa-solid fa-chart-column"></i> Raporlama & Analiz</span>
+                    </button>
+                </li>
+                <li>
+                    <button class="nav-btn" data-tab="personnel-tab" onclick="switchTab('personnel-tab')">
+                        <span class="nav-btn-left"><i class="fa-solid fa-users-gear"></i> Personel Listesi</span>
+                        <span id="nav-badge-personnel" class="nav-badge">24</span>
+                    </button>
+                </li>
+                <li id="nav-item-logs">
+                    <button class="nav-btn" data-tab="logs-tab" onclick="switchTab('logs-tab')">
+                        <span class="nav-btn-left"><i class="fa-solid fa-shield-halved"></i> Ortak Log Kayıtları</span>
+                        <span id="nav-badge-logs" class="nav-badge">0</span>
+                    </button>
+                </li>
+                <li>
+                    <button class="nav-btn" data-tab="version-tab" onclick="switchTab('version-tab')">
+                        <span class="nav-btn-left"><i class="fa-solid fa-code-commit"></i> Sürüm & Push Testi</span>
+                        <span class="nav-badge dynamic-version-text" style="color:#34d399;">v1.7.0</span>
+                    </button>
+                </li>
+            </ul>
+
+            <div class="sidebar-footer">
+                <div class="sync-indicator">
+                    <span class="sync-dot"></span>
+                    <span id="sync-status-text">DizGün & VAPID Push Aktif</span>
+                </div>
+                <div>Tüm personel için ortak görünüm aktif</div>
+                <div style="display:flex; gap:0.4rem; margin-top:0.35rem;">
+                    <button class="btn btn-primary btn-sm" style="flex:1; justify-content:center;" onclick="openInstallGuideModal()" id="btn-pwa-install">
+                        <i class="fa-solid fa-mobile-screen-button"></i> Telefon / Tablete Kur
+                    </button>
+                    <button class="btn btn-secondary btn-sm" onclick="openPushTestCenterModal()" title="Web Push & Kilit Ekranı Bildirim Test Merkezi">
+                        <i class="fa-solid fa-satellite-dish" style="color:#34d399;"></i>
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- ANA İÇERİK ALANI -->
+        <div class="main-area">
+            <!-- ÜST BAR & CANLI TOPLANTI SÜRE SAYACI -->
+            <header class="topbar">
+                <div class="topbar-left">
+                    <button class="mobile-menu-btn" onclick="toggleMobileSidebar()">
+                        <i class="fa-solid fa-bars"></i>
+                    </button>
+                    <div class="page-title">
+                        <h2 id="topbar-title">DİZSAN Kurumsal Toplantı Kokpiti</h2>
+                        <p id="topbar-subtitle">Ortak Toplantı Çağrıları, Yönetici Onaylı Tutanaklar &amp; VAPID Kilit Ekranı Push Bildirimleri</p>
+                    </div>
+                </div>
+
+                <!-- Canlı Toplantı Kronometresi / Zamanlayıcı -->
+                <div class="meeting-timer-widget" title="Aktif Toplantı Süre Sayacı">
+                    <i class="fa-solid fa-clock" style="color:var(--dizsan-light);"></i>
+                    <span style="font-size:0.75rem; color:var(--text-sec); font-weight:600;">Toplantı Süresi:</span>
+                    <div id="live-meeting-timer" class="timer-display">00:00:00</div>
+                    <button id="btn-timer-toggle" class="timer-btn start" onclick="toggleMeetingTimer()">
+                        <i class="fa-solid fa-play"></i> Başlat
+                    </button>
+                    <button class="timer-btn" onclick="resetMeetingTimer()" title="Sayacı Sıfırla">
+                        <i class="fa-solid fa-rotate-left"></i>
+                    </button>
+                </div>
+
+                <div class="topbar-actions">
+                    <button id="btn-bg-notif-status" class="btn btn-secondary" onclick="openPushTestCenterModal()" title="VAPID Web Push & 15 Sn Kilit Ekranı Bildirim Test Merkezi">
+                        <i class="fa-solid fa-satellite-dish" style="color:#34d399;"></i> <span class="hide-on-sm">Bildirim &amp; Push Testi</span>
+                    </button>
+                    <button class="btn btn-secondary" onclick="openInstallGuideModal()" title="Telefon, Tablet ve Bilgisayara Kurulum & QR Kod">
+                        <i class="fa-solid fa-qrcode" style="color:#38bdf8;"></i> <span class="hide-on-sm">Mobil Kurulum</span>
+                    </button>
+                    <button class="btn" style="background:linear-gradient(135deg,#f59e0b,#d97706); color:#fff; border:none;" onclick="openAnnouncementModal()">
+                        <i class="fa-solid fa-bullhorn"></i> Toplantı Çağrısı / Duyuru
+                    </button>
+                    <button class="btn btn-primary" onclick="openMeetingModal()">
+                        <i class="fa-solid fa-plus"></i> Yeni Toplantı Kaydı
+                    </button>
+                    <button class="btn btn-success" onclick="openActionModal()">
+                        <i class="fa-solid fa-bolt"></i> Yeni Aksiyon Ekle
+                    </button>
+                </div>
+            </header>
+
+            <div class="content-wrapper">
+
+                <!-- UYGULAMA KAPALIYKEN / ARKA PLANDAYKEN BİLDİRİM & SESLİ UYARI AKTİVASYON BARI -->
+                <div id="bg-notification-permission-banner"></div>
+
+                <!-- ÖMER EREN YÖNETİCİ ONAY MERKEZİ (YENİ TOPLANTI ONAYI, DEĞİŞTİRME ONAYI, SİLME ONAYI) -->
+                <div id="omer-approval-center-container"></div>
+
+                <!-- CANLI TOPLANTI ÇAĞRISI, DAVET, 1 SAAT KALA (SARI) VE 5 DAKİKA KALA (KIRMIZI) UYARI BANNER ALANI -->
+                <div id="meeting-call-alert-container"></div>
+
+                <!-- 1 GÜN ÖNCE VE AYNI GÜN PERSONEL + YÖNETİCİ HATIRLATICI ALARM PANELİ -->
+                <div id="smart-reminder-banner" class="alarm-banner hidden">
+                    <div class="alarm-banner-left">
+                        <div class="alarm-pulse-icon">
+                            <i class="fa-solid fa-bell"></i>
+                        </div>
+                        <div>
+                            <h4 style="color:#fff; font-size:0.95rem; margin-bottom:3px;" id="reminder-banner-title">Personel & Yönetici Aksiyon Hatırlatıcısı</h4>
+                            <div style="color:#cbd5e1; font-size:0.82rem; line-height:1.45;" id="reminder-banner-desc"></div>
+                        </div>
+                    </div>
+                    <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+                        <button class="btn btn-secondary btn-sm" onclick="switchTab('actions-tab')">
+                            <i class="fa-solid fa-list-check"></i> Aksiyonlara Git
+                        </button>
+                        <button class="btn btn-danger btn-sm" onclick="testAlarmSound()">
+                            <i class="fa-solid fa-volume-high"></i> Sesli Uyarı
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ==================================================================
+                     SEKME 1: GENEL KOKPİT & ÖZET (DASHBOARD)
+                     ================================================================== -->
+                <section id="dashboard-tab" class="tab-section active">
+                    <div class="kpi-grid">
+                        <div class="kpi-card">
+                            <div class="kpi-info">
+                                <h4>Toplam Toplantı</h4>
+                                <div class="kpi-val" id="kpi-total-meetings">0</div>
+                                <div class="kpi-sub">Kayıtlı kurumsal tutanak</div>
+                            </div>
+                            <div class="kpi-icon"><i class="fa-solid fa-handshake"></i></div>
+                        </div>
+
+                        <div class="kpi-card purple">
+                            <div class="kpi-info">
+                                <h4>Açık / Devam Eden Aksiyon</h4>
+                                <div class="kpi-val" id="kpi-open-actions">0</div>
+                                <div class="kpi-sub">Takip edilen aktif görev</div>
+                            </div>
+                            <div class="kpi-icon"><i class="fa-solid fa-list-check"></i></div>
+                        </div>
+
+                        <div class="kpi-card amber">
+                            <div class="kpi-info">
+                                <h4>1 Gün Kala & Bugün Hatırlatma</h4>
+                                <div class="kpi-val" id="kpi-reminder-actions">0</div>
+                                <div class="kpi-sub">Personel + Yönetici uyarısı</div>
+                            </div>
+                            <div class="kpi-icon"><i class="fa-solid fa-bell"></i></div>
+                        </div>
+
+                        <div class="kpi-card green">
+                            <div class="kpi-info">
+                                <h4>Tamamlanan Aksiyon</h4>
+                                <div class="kpi-val" id="kpi-completed-actions">0</div>
+                                <div class="kpi-sub" id="kpi-completion-rate">%0 Tamamlanma Oranı</div>
+                            </div>
+                            <div class="kpi-icon"><i class="fa-solid fa-circle-check"></i></div>
+                        </div>
+                    </div>
+
+                    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap:1.5rem;">
+                        <!-- 1 Gün Önce & Aynı Gün Hatırlatıcıları ve Zamanlayıcı -->
+                        <div class="glass-card" style="margin-bottom:0;">
+                            <div class="card-header">
+                                <h3><i class="fa-solid fa-bell" style="color:#fbbf24;"></i> Aktif Hatırlatıcılar (1 Gün Önce & Aynı Gün)</h3>
+                                <button class="btn btn-secondary btn-sm" onclick="switchTab('actions-tab')">Tüm Aksiyonlar</button>
+                            </div>
+                            <div id="dashboard-upcoming-actions" style="display:flex; flex-direction:column; gap:0.75rem;"></div>
+                        </div>
+
+                        <!-- Son Toplantılar Özeti -->
+                        <div class="glass-card" style="margin-bottom:0;">
+                            <div class="card-header">
+                                <h3><i class="fa-solid fa-clipboard-list" style="color:var(--dizsan-light);"></i> Son Yapılan & Planlanan Toplantılar</h3>
+                                <div style="display:flex; gap:0.4rem;">
+                                    <button class="btn btn-sm" style="background:rgba(245,158,11,0.2); border:1px solid rgba(245,158,11,0.45); color:#fde68a;" onclick="openAnnouncementModal()"><i class="fa-solid fa-bullhorn"></i> Çağrı Yap</button>
+                                    <button class="btn btn-secondary btn-sm" onclick="switchTab('meetings-tab')">Tüm Toplantılar</button>
+                                </div>
+                            </div>
+                            <div id="dashboard-recent-meetings" style="display:flex; flex-direction:column; gap:0.75rem;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Rapor Görseli & Kurumsal Görünüm Kartı + Son Log Hareketleri (Loglar Sadece Ömer Eren'e Görünür) -->
+                    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap:1.5rem; margin-top:1.5rem;">
+                        <div id="dashboard-logs-card" class="glass-card" style="margin-bottom:0;">
+                            <div class="card-header">
+                                <h3><i class="fa-solid fa-shield-halved" style="color:#34d399;"></i> Son Personel İşlem Logları (Sadece Yönetici Ömer Eren)</h3>
+                                <button class="btn btn-secondary btn-sm" onclick="switchTab('logs-tab')">Tüm Loglar</button>
+                            </div>
+                            <div id="dashboard-recent-logs" style="display:flex; flex-direction:column; gap:0.55rem;"></div>
+                        </div>
+
+                        <div class="glass-card" style="margin-bottom:0; display:flex; flex-direction:column; justify-content:space-between;">
+                            <div class="card-header">
+                                <h3><i class="fa-solid fa-chart-line" style="color:var(--dizsan-light);"></i> Raporlama & DizGün Veri Köprüsü</h3>
+                                <button class="btn btn-primary btn-sm" onclick="switchTab('reports-tab')">
+                                    <i class="fa-solid fa-chart-column"></i> Raporlama Ekranını Aç
+                                </button>
+                            </div>
+                            <div style="display:flex; gap:1rem; align-items:center; flex-wrap:wrap;">
+                                <img src="rapor_fotografi.png" alt="Dizsan Rapor Görseli" style="width:130px; height:95px; object-fit:cover; border-radius:12px; border:1px solid var(--border-color);" onerror="this.src='dizsan_logo.jpg'">
+                                <div style="flex:1; min-width:200px;">
+                                    <h4 style="color:#fff; font-size:0.95rem; margin-bottom:0.35rem;">DizGün & Diğer Uygulamalarla Canlı Veri Alışverişi</h4>
+                                    <p style="color:var(--text-sec); font-size:0.82rem; line-height:1.45;">
+                                        Burada alınan kararlar ve aksiyonlar <strong>DizGün</strong>, <strong>DİT (Görev Takibi)</strong> ve <strong>Kurumsal Hafıza</strong> modülleriyle çift yönlü veri alışverişi yapar.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ==================================================================
+                     SEKME 2: TOPLANTILAR & NOTLAR (MEETINGS)
+                     ================================================================== -->
+                <section id="meetings-tab" class="tab-section">
+                    <div class="glass-card">
+                        <div class="card-header">
+                            <h3><i class="fa-solid fa-handshake" style="color:var(--dizsan-light);"></i> Toplantı &amp; Eğitim Kayıtları, Katılımcılar ve Tutanaklar</h3>
+                            <div style="display:flex; gap:0.6rem; flex-wrap:wrap;">
+                                <button class="btn btn-primary btn-sm" onclick="openMeetingModal()">
+                                    <i class="fa-solid fa-plus"></i> Yeni Toplantı / Eğitim Ekle
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="filter-bar">
+                            <input type="text" id="meeting-search" class="form-control" style="flex:1; min-width:220px;" placeholder="Toplantı/eğitim başlığı, gündem, not, karar veya katılımcı ara..." oninput="renderMeetings()">
+                            <select id="meeting-type-filter" class="form-control" onchange="renderMeetings()">
+                                <option value="ALL">Tüm Türler (Toplantı &amp; Eğitim)</option>
+                                <option value="Toplantı">🤝 Sadece Toplantılar</option>
+                                <option value="Eğitim">🎓 Sadece Eğitimler</option>
+                            </select>
+                            <select id="meeting-dept-filter" class="form-control" onchange="renderMeetings()">
+                                <option value="ALL">Tüm Departmanlar / Kategoriler</option>
+                                <option value="Genel Yönetim">Genel Yönetim</option>
+                                <option value="SSH & Servis">SSH & Servis Operasyon</option>
+                                <option value="Depo & Yedek Parça">Depo & Yedek Parça</option>
+                                <option value="Muhasebe & Finans">Muhasebe & Finans</option>
+                                <option value="Kalite & İSG">Kalite & İSG</option>
+                            </select>
+                            <select id="meeting-participant-filter" class="form-control" onchange="renderMeetings()">
+                                <option value="ALL">Tüm Katılımcı Personeller</option>
+                            </select>
+                        </div>
+
+                        <div id="meetings-container" class="meetings-grid"></div>
+                    </div>
+                </section>
+
+                <!-- ==================================================================
+                     SEKME 3: AKSİYONLAR & HATIRLATICI ZAMANLAYICI (ACTIONS)
+                     ================================================================== -->
+                <section id="actions-tab" class="tab-section">
+                    <div class="glass-card">
+                        <div class="card-header">
+                            <h3><i class="fa-solid fa-stopwatch" style="color:#fbbf24;"></i> Toplantı Aksiyonları, Personel & Yönetici Hatırlatıcıları (1 Gün Önce & Aynı Gün)</h3>
+                            <div style="display:flex; gap:0.6rem; flex-wrap:wrap;">
+                                <button class="btn btn-success btn-sm" onclick="openActionModal()">
+                                    <i class="fa-solid fa-plus"></i> Yeni Aksiyon Tanımla
+                                </button>
+                                <button class="btn btn-secondary btn-sm" onclick="exportAllDataExcelCSV()">
+                                    <i class="fa-solid fa-file-csv"></i> Excel (CSV) İndir
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="filter-bar">
+                            <input type="text" id="action-search" class="form-control" style="flex:1; min-width:200px;" placeholder="Aksiyon açıklaması, toplantı adı veya sorumlu personel ara..." oninput="renderActions()">
+                            <select id="action-assignee-filter" class="form-control" onchange="renderActions()">
+                                <option value="ALL">Tüm Sorumlu Personeller</option>
+                            </select>
+                            <select id="action-priority-filter" class="form-control" onchange="renderActions()">
+                                <option value="ALL">Tüm Öncelikler</option>
+                                <option value="Kritik">🚨 Kritik Öncelik</option>
+                                <option value="Normal">🔵 Normal Öncelik</option>
+                            </select>
+                            <select id="action-status-filter" class="form-control" onchange="renderActions()">
+                                <option value="ALL">Tüm Durumlar</option>
+                                <option value="Bekliyor">⏳ Bekliyor</option>
+                                <option value="Devam Ediyor">🔄 Devam Ediyor</option>
+                                <option value="Tamamlandı">✅ Tamamlandı</option>
+                            </select>
+                        </div>
+
+                        <div class="table-responsive">
+                            <table class="dizsan-table">
+                                <thead>
+                                    <tr>
+                                        <th>Kod / Toplantı</th>
+                                        <th>Aksiyon & Görev Tanımı</th>
+                                        <th>Sorumlu Personel</th>
+                                        <th>Bilgilendirilen Yönetici</th>
+                                        <th>Öncelik</th>
+                                        <th>Termin Tarihi</th>
+                                        <th>Hatırlatıcı & Kalan Süre</th>
+                                        <th>Durum</th>
+                                        <th>İşlem</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="actions-tbody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ==================================================================
+                     SEKME 4: KURUMSAL RAPORLAMA & ANALİZ KOKPİTİ (REPORTS)
+                     ================================================================== -->
+                <section id="reports-tab" class="tab-section">
+                    <!-- Rapor Görseli Kuralı Üst Banner -->
+                    <div class="glass-card" style="background: linear-gradient(135deg, rgba(2,132,199,0.18) 0%, rgba(17,24,39,0.95) 100%);">
+                        <div style="display:flex; align-items:center; justify-content:space-between; gap:1.5rem; flex-wrap:wrap;">
+                            <div style="display:flex; align-items:center; gap:1.25rem; flex-wrap:wrap;">
+                                <img src="rapor_fotografi.png" alt="Dizsan Rapor Görseli" style="width:155px; height:105px; object-fit:cover; border-radius:14px; border:2px solid rgba(56,189,248,0.4); box-shadow:0 8px 20px rgba(0,0,0,0.4);" onerror="this.src='dizsan_logo.jpg'">
+                                <div>
+                                    <span class="badge badge-normal" style="margin-bottom:0.4rem;"><i class="fa-solid fa-chart-pie"></i> DİZSAN YÖNETİM RAPORLAMA MERKEZİ</span>
+                                    <h3 style="font-family:'Outfit',sans-serif; font-size:1.4rem; color:#fff; margin-bottom:0.3rem;">Toplantı Katılım, Aksiyon Performans & Departman Raporları</h3>
+                                    <p style="font-size:0.84rem; color:var(--text-sec); max-width:650px;">
+                                        Tarih aralığı ve departman bazında yapılan toplantıları, personel aksiyon tamamlama yüzdelerini, geciken görevleri ve hatırlatıcı istatistiklerini tek ekranda analiz edin veya resmi A4 PDF / Excel olarak dışa aktarın.
+                                    </p>
+                                </div>
+                            </div>
+                            <div style="display:flex; gap:0.6rem; flex-wrap:wrap;">
+                                <button class="btn btn-primary" onclick="printExecutiveReport()">
+                                    <i class="fa-solid fa-print"></i> Genel Yönetici Raporu Yazdır (A4 PDF)
+                                </button>
+                                <button class="btn btn-success" onclick="exportAllDataExcelCSV()">
+                                    <i class="fa-solid fa-file-excel"></i> Excel (CSV) Rapor İndir
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Rapor Filtreleri -->
+                    <div class="glass-card">
+                        <div class="card-header">
+                            <h3><i class="fa-solid fa-filter" style="color:var(--dizsan-light);"></i> Raporlama Filtreleri & Dönem Seçimi</h3>
+                            <button class="btn btn-secondary btn-sm" onclick="resetReportFilters()">Filtreleri Sıfırla</button>
+                        </div>
+                        <div class="filter-bar" style="margin-bottom:0;">
+                            <div class="form-group" style="flex:1; min-width:160px;">
+                                <label>Başlangıç Tarihi (GG.AA.YYYY)</label>
+                                <input type="date" id="report-start-date" class="form-control" onchange="renderReports()">
+                            </div>
+                            <div class="form-group" style="flex:1; min-width:160px;">
+                                <label>Bitiş Tarihi (GG.AA.YYYY)</label>
+                                <input type="date" id="report-end-date" class="form-control" onchange="renderReports()">
+                            </div>
+                            <div class="form-group" style="flex:1; min-width:180px;">
+                                <label>Departman / Kategori</label>
+                                <select id="report-dept-filter" class="form-control" onchange="renderReports()">
+                                    <option value="ALL">Tüm Departmanlar</option>
+                                    <option value="Genel Yönetim">Genel Yönetim</option>
+                                    <option value="SSH & Servis">SSH & Servis Operasyon</option>
+                                    <option value="Depo & Yedek Parça">Depo & Yedek Parça</option>
+                                    <option value="Muhasebe & Finans">Muhasebe & Finans</option>
+                                    <option value="Kalite & İSG">Kalite & İSG</option>
+                                </select>
+                            </div>
+                            <div class="form-group" style="flex:1; min-width:180px;">
+                                <label>Personel Filtresi</label>
+                                <select id="report-person-filter" class="form-control" onchange="renderReports()">
+                                    <option value="ALL">Tüm Personeller</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Rapor Özet KPI Kartları -->
+                    <div class="kpi-grid">
+                        <div class="kpi-card">
+                            <div class="kpi-info">
+                                <h4>Dönem Toplantı Sayısı</h4>
+                                <div class="kpi-val" id="rep-kpi-meetings">0</div>
+                                <div class="kpi-sub">Seçili kriterlerde</div>
+                            </div>
+                            <div class="kpi-icon"><i class="fa-solid fa-calendar-check"></i></div>
+                        </div>
+                        <div class="kpi-card purple">
+                            <div class="kpi-info">
+                                <h4>Toplam Atanan Aksiyon</h4>
+                                <div class="kpi-val" id="rep-kpi-total-actions">0</div>
+                                <div class="kpi-sub">Görev & karar maddesi</div>
+                            </div>
+                            <div class="kpi-icon"><i class="fa-solid fa-bolt"></i></div>
+                        </div>
+                        <div class="kpi-card green">
+                            <div class="kpi-info">
+                                <h4>Başarı / Tamamlama Oranı</h4>
+                                <div class="kpi-val" id="rep-kpi-rate">%0</div>
+                                <div class="kpi-sub" id="rep-kpi-done-sub">0 Tamamlanan</div>
+                            </div>
+                            <div class="kpi-icon"><i class="fa-solid fa-award"></i></div>
+                        </div>
+                        <div class="kpi-card red">
+                            <div class="kpi-info">
+                                <h4>Geciken / Kritik Aksiyon</h4>
+                                <div class="kpi-val" id="rep-kpi-overdue">0</div>
+                                <div class="kpi-sub">Acil takip gerektiren</div>
+                            </div>
+                            <div class="kpi-icon"><i class="fa-solid fa-clock-rotate-left"></i></div>
+                        </div>
+                    </div>
+
+                    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap:1.5rem;">
+                        <!-- Personel Bazlı Aksiyon & Katılım Performans Tablosu -->
+                        <div class="glass-card" style="margin-bottom:0;">
+                            <div class="card-header">
+                                <h3><i class="fa-solid fa-user-check" style="color:#34d399;"></i> Personel Bazlı Katılım & Aksiyon Performans Raporu</h3>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="dizsan-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Personel</th>
+                                            <th>Görev / Bölüm</th>
+                                            <th>Katılım</th>
+                                            <th>Atanan</th>
+                                            <th>Biten</th>
+                                            <th>Geciken</th>
+                                            <th>Başarı %</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="report-personnel-tbody"></tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Departman Bazlı Dağılım Tablosu -->
+                        <div class="glass-card" style="margin-bottom:0;">
+                            <div class="card-header">
+                                <h3><i class="fa-solid fa-building" style="color:var(--dizsan-light);"></i> Departman Bazlı Toplantı & Aksiyon Dağılımı</h3>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="dizsan-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Departman</th>
+                                            <th>Toplantı Sayısı</th>
+                                            <th>Toplam Aksiyon</th>
+                                            <th>Açık / Bekleyen</th>
+                                            <th>Tamamlanan</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="report-dept-tbody"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ==================================================================
+                     SEKME 5: PERSONEL LİSTESİ & KATILIMCILAR (PERSONNEL MANAGEMENT)
+                     ================================================================== -->
+                <section id="personnel-tab" class="tab-section">
+                    <div class="glass-card">
+                        <div class="card-header">
+                            <h3 id="personnel-tab-title"><i class="fa-solid fa-users-gear" style="color:var(--dizsan-light);"></i> Dizsan Güncel Personel Listesi & Giriş Hesapları</h3>
+                            <button id="btn-add-new-personnel" class="btn btn-primary btn-sm" onclick="openUserModal()">
+                                <i class="fa-solid fa-user-plus"></i> Yeni Personel Ekle
+                            </button>
+                        </div>
+                        <p id="personnel-tab-desc" style="color:var(--text-sec); font-size:0.84rem; margin-bottom:1.1rem;">
+                            Resmi personel listesine göre güncellenmiş hesaplar aşağıdadır. Tüm personeller kullanıcı adı ve şifreleriyle giriş yapabilir, şifresini unuttuğunda kayıtlı e-posta adresine doğrulama kodu gönderebilir.
+                        </p>
+
+                        <div class="table-responsive">
+                            <table class="dizsan-table">
+                                <thead>
+                                    <tr>
+                                        <th>Sıra</th>
+                                        <th>Personel Adı Soyadı</th>
+                                        <th>Görev / Ünvan</th>
+                                        <th>Kullanıcı Adı</th>
+                                        <th>Kayıtlı E-Posta</th>
+                                        <th>Rol</th>
+                                        <th>Toplantı</th>
+                                        <th>Açık Aksiyon</th>
+                                        <th>İşlem</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="personnel-tbody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ==================================================================
+                     SEKME 6: ORTAK LOG KAYITLARI (AUDIT TRAIL)
+                     ================================================================== -->
+                <section id="logs-tab" class="tab-section">
+                    <div class="glass-card">
+                        <div class="card-header">
+                            <h3><i class="fa-solid fa-shield-halved" style="color:#34d399;"></i> Şeffaf Denetim ve İşlem Log Kayıtları (Audit Log)</h3>
+                            <div style="display:flex; gap:0.5rem;">
+                                <button class="btn btn-secondary btn-sm" onclick="exportLogsCSV()">
+                                    <i class="fa-solid fa-download"></i> Logları İndir (CSV)
+                                </button>
+                            </div>
+                        </div>
+                        <p style="color:var(--text-sec); font-size:0.84rem; margin-bottom:1rem;">
+                            Sisteme hangi personelin ne zaman giriş yaptığı, hangi toplantıyı oluşturduğu, hangi aksiyonu veya hatırlatıcıyı güncellediği tüm personel tarafından şeffaf olarak izlenir.
+                        </p>
+
+                        <div class="filter-bar">
+                            <input type="text" id="log-search" class="form-control" style="flex:1;" placeholder="Personel adı, işlem türü veya detay ara..." oninput="renderLogs()">
+                            <select id="log-type-filter" class="form-control" onchange="renderLogs()">
+                                <option value="ALL">Tüm İşlem Türleri</option>
+                                <option value="GİRİŞ / ÇIKIŞ">🔐 Giriş / Çıkış & Şifre</option>
+                                <option value="TOPLANTI">🤝 Toplantı İşlemleri</option>
+                                <option value="AKSİYON">⚡ Aksiyon & Hatırlatıcı</option>
+                                <option value="SÜRÜM / YÖNETİM">🚀 Sürüm & Sistem Yönetimi</option>
+                            </select>
+                        </div>
+
+                        <div class="table-responsive">
+                            <table class="dizsan-table">
+                                <thead>
+                                    <tr>
+                                        <th>Tarih & Saat</th>
+                                        <th>İşlemi Yapan Personel</th>
+                                        <th>Kategori</th>
+                                        <th>İşlem Özeti & Detay</th>
+                                        <th>Cihaz / Platform</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="logs-tbody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ==================================================================
+                     SEKME 7: SÜRÜM GÜNCELLEME (SADECE ÖMER EREN) & DİZGÜN ENTEGRASYONU
+                     ================================================================== -->
+                <section id="version-tab" class="tab-section">
+                    <!-- SADECE YÖNETİCİ ÖMER EREN'E AÇIK VERSİYON GÜNCELLEME PANELİ -->
+                    <div class="glass-card" id="omer-version-admin-card">
+                        <div class="card-header">
+                            <h3><i class="fa-solid fa-user-shield" style="color:#34d399;"></i> Versiyon Güncelleme & Yayın Yönetimi (Sadece Yönetici: Ömer Eren)</h3>
+                            <span class="badge badge-done">Aktif Sürüm: <span class="dynamic-version-text">v1.3.0</span></span>
+                        </div>
+
+                        <!-- Ömer Eren giriş yaptığında gösterilecek alan -->
+                        <div id="version-admin-controls" style="display:none;">
+                            <div style="background:rgba(16,185,129,0.08); border:1px solid rgba(16,185,129,0.3); border-radius:12px; padding:1rem; margin-bottom:1.1rem; font-size:0.84rem; color:#d1fae5;">
+                                <i class="fa-solid fa-circle-check"></i> <strong>Yetki Doğrulandı (ÖMER EREN):</strong> Uygulamaya yeni sürüm numarası atama, sürüm notu yayınlama ve sistemi sıfırlama/temizleme yetkisi yalnızca hesabınıza tanımlıdır.
+                            </div>
+                            <form onsubmit="publishNewVersion(event)" style="display:grid; grid-template-columns: 1fr 2fr auto; gap:0.85rem; align-items:end; flex-wrap:wrap;">
+                                <div class="form-group">
+                                    <label>Yeni Sürüm Numarası *</label>
+                                    <input type="text" id="new-version-code" class="form-control" placeholder="Örn: v1.4.0" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Sürüm / Revizyon Açıklaması *</label>
+                                    <input type="text" id="new-version-notes" class="form-control" placeholder="Bu sürümde yapılan değişiklik veya revizyon özeti..." required>
+                                </div>
+                                <button type="submit" class="btn btn-success">
+                                    <i class="fa-solid fa-rocket"></i> Sürümü Güncelle & Yayınla
+                                </button>
+                            </form>
+
+                            <div style="margin-top:1.15rem; padding-top:1rem; border-top:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem;">
+                                <span style="font-size:0.82rem; color:var(--text-sec);">Toplantı, aksiyon ve log kayıtlarını sıfırlayarak temiz başlangıç yapma (Sadece Ömer Eren):</span>
+                                <button type="button" class="btn btn-danger btn-sm" onclick="clearAllMeetingsAndActionsByAdmin()">
+                                    <i class="fa-solid fa-broom"></i> Tüm Kayıtları Temizle (Sıfırla)
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Diğer personeller baktığında gösterilecek uyarı -->
+                        <div id="version-locked-notice" style="display:none; background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.3); border-radius:12px; padding:1rem; color:#fca5a5; font-size:0.85rem;">
+                            <i class="fa-solid fa-lock"></i> <strong>Yetki Kısıtlaması:</strong> Programda versiyon güncelleme, revizyon yayınlama ve sistem sıfırlama yetkisi yalnızca <strong>Yönetici Ömer Eren</strong> hesabına aittir. Diğer personeller yalnızca mevcut sürüm bilgilerini görüntüleyebilir.
+                        </div>
+                    </div>
+
+                    <!-- DİZGÜN & DİĞER UYGULAMALAR VERİ ALIŞVERİŞİ KÖPRÜSÜ -->
+                    <div class="glass-card">
+                        <div class="card-header">
+                            <h3><i class="fa-solid fa-network-wired" style="color:var(--dizsan-light);"></i> DizGün Sistem & Diğer Uygulamalar Veri Alışveriş Köprüsü</h3>
+                            <button class="btn btn-primary btn-sm" onclick="syncWithDizGunEcosystem(true)">
+                                <i class="fa-solid fa-arrows-rotate"></i> Şimdi DizGün ile Eşitle
+                            </button>
+                        </div>
+                        <p style="font-size:0.84rem; color:var(--text-sec); margin-bottom:1rem; line-height:1.55;">
+                            Bu uygulama hem bağımsız olarak hem de <strong>DizGün Sistem</strong> içerisinde gömülü sekme (`#toplanti-view`) olarak çalışacak şekilde tasarlanmıştır. Toplantılarda alınan aksiyonlar ve kararlar <code>dizgun_shared_meeting_bridge</code> veri veri yolu üzerinden <strong>DizGün Görev Takibi (DİT)</strong>, <strong>Kurumsal Hafıza</strong> ve <strong>Personel Performans</strong> modülleriyle anlık paylaşılır.
+                        </p>
+
+                        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:1rem;">
+                            <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border-color); border-radius:12px; padding:1rem;">
+                                <h4 style="color:#fff; font-size:0.92rem; margin-bottom:0.4rem;"><i class="fa-solid fa-bolt" style="color:#fbbf24;"></i> DizGün & DİT Görev Senkronizasyonu</h4>
+                                <p style="font-size:0.8rem; color:var(--text-sec);" id="bridge-status-text">Aktif veri köprüsü hazır. Kaydedilen her toplantı ve aksiyon otomatik olarak DizGün ortak hafızasına yazılır.</p>
+                            </div>
+                            <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border-color); border-radius:12px; padding:1rem; display:flex; align-items:center; justify-content:space-between; gap:0.5rem; flex-wrap:wrap;">
+                                <div>
+                                    <h4 style="color:#fff; font-size:0.92rem; margin-bottom:0.25rem;"><i class="fa-solid fa-database" style="color:var(--dizsan-light);"></i> JSON Yedekleme & Taşıma</h4>
+                                    <p style="font-size:0.78rem; color:var(--text-sec);">Verileri dışa veya içe aktarın</p>
+                                </div>
+                                <div style="display:flex; gap:0.4rem;">
+                                    <button class="btn btn-secondary btn-sm" onclick="exportFullBackupJSON()"><i class="fa-solid fa-download"></i> İndir</button>
+                                    <label class="btn btn-secondary btn-sm" style="cursor:pointer;">
+                                        <i class="fa-solid fa-upload"></i> Yükle
+                                        <input type="file" accept=".json" style="display:none;" onchange="importFullBackupJSON(event)">
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <h4 style="color:#fff; margin:1.25rem 0 0.75rem; font-size:0.95rem;"><i class="fa-solid fa-clock-rotate-left"></i> Sürüm Geçmişi (Changelog)</h4>
+                        <div id="version-history-list" style="display:flex; flex-direction:column; gap:0.75rem;"></div>
+                    </div>
+
+                    <!-- GERÇEK VAPID WEB PUSH & SAMSUNG INTERNET / CHROME KİLİT EKRANI TEST MERKEZİ -->
+                    <div class="glass-card" id="embedded-push-test-card" style="border:1px solid rgba(16,185,129,0.45);">
+                        <div class="card-header">
+                            <h3><i class="fa-solid fa-satellite-dish" style="color:#34d399;"></i> 📡 VAPID Web Push &amp; 15 Saniye Kilit Ekranı Bildirim Test Merkezi</h3>
+                            <button type="button" class="btn btn-success btn-sm" onclick="openPushTestCenterModal()">
+                                <i class="fa-solid fa-up-right-from-square"></i> Tam Ekran Test Merkezini Aç
+                            </button>
+                        </div>
+                        <div id="embedded-push-test-summary" style="font-size:0.84rem; color:var(--text-sec);">
+                            Samsung Internet ve Chrome üzerinde ekran kilitliyken ve uygulama kapalıyken gerçek VAPID Web Push bildirimlerini test etmek için yukarıdaki butona dokunun.
+                        </div>
+                    </div>
+                </section>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- ==========================================================================
+         MOBİL ALT MENÜ (iOS / ANDROID BOTTOM BAR)
+         ========================================================================== -->
+    <nav class="mobile-bottom-nav">
+        <button class="mob-nav-item active" data-tab="dashboard-tab" onclick="switchTab('dashboard-tab')">
+            <i class="fa-solid fa-chart-pie"></i>
+            <span>Kokpit</span>
+        </button>
+        <button class="mob-nav-item" data-tab="meetings-tab" onclick="switchTab('meetings-tab')">
+            <i class="fa-solid fa-handshake"></i>
+            <span>Toplantılar</span>
+        </button>
+        <button class="mob-nav-item" data-tab="actions-tab" onclick="switchTab('actions-tab')">
+            <i class="fa-solid fa-stopwatch"></i>
+            <span>Aksiyonlar</span>
+        </button>
+        <button class="mob-nav-item" data-tab="reports-tab" onclick="switchTab('reports-tab')">
+            <i class="fa-solid fa-chart-column"></i>
+            <span>Raporlar</span>
+        </button>
+        <button class="mob-nav-item" onclick="openPushTestCenterModal()">
+            <i class="fa-solid fa-satellite-dish" style="color:#34d399;"></i>
+            <span>Push Test</span>
+        </button>
+    </nav>
+
+    <!-- ==========================================================================
+         MODAL 1: TOPLANTI EKLE / DÜZENLE MODALI
+         ========================================================================== -->
+    <div id="meeting-modal" class="modal-backdrop">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3 id="meeting-modal-title"><i class="fa-solid fa-handshake" style="color:var(--dizsan-light);"></i> Yeni Toplantı / Eğitim ve Tutanak Kaydı</h3>
+                <button class="modal-close" onclick="closeMeetingModal()">&times;</button>
+            </div>
+            <form id="meeting-form" onsubmit="saveMeeting(event)" class="modal-body">
+                <input type="hidden" id="meeting-id">
+
+                <!-- Kayıt Türü Seçimi: Toplantı veya Eğitim -->
+                <div style="margin-bottom:1rem; background:rgba(56,189,248,0.07); border:1px solid rgba(56,189,248,0.28); border-radius:12px; padding:0.75rem 1rem; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.75rem;">
+                    <div>
+                        <strong style="font-size:0.86rem; color:#fff; display:block;"><i class="fa-solid fa-layer-group" style="color:var(--dizsan-light);"></i> Kayıt Türü Seçimi (Toplantı veya Eğitim) *</strong>
+                        <span style="font-size:0.75rem; color:var(--text-sec);">Bu oturum bir toplantı mı yoksa personel eğitimi mi?</span>
+                    </div>
+                    <input type="hidden" id="meeting-record-type-input" value="Toplantı">
+                    <div style="display:flex; gap:0.5rem;">
+                        <button type="button" id="btn-type-toplanti" class="btn btn-primary btn-sm" onclick="setMeetingRecordType('Toplantı')" style="padding:0.45rem 1rem;">
+                            <i class="fa-solid fa-handshake"></i> 🤝 Toplantı
+                        </button>
+                        <button type="button" id="btn-type-egitim" class="btn btn-secondary btn-sm" onclick="setMeetingRecordType('Eğitim')" style="padding:0.45rem 1rem;">
+                            <i class="fa-solid fa-graduation-cap"></i> 🎓 Eğitim
+                        </button>
+                    </div>
+                </div>
+
+                <div class="form-grid">
+                    <div class="form-group" style="grid-column: span 2;">
+                        <label id="meeting-title-label">Toplantı / Eğitim Başlığı &amp; Konusu *</label>
+                        <input type="text" id="meeting-title-input" class="form-control" placeholder="Örn: Haftalık Servis & Depo Koordinasyon Toplantısı veya Teknik Eğitim" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Departman / Kategori *</label>
+                        <select id="meeting-dept-input" class="form-control" required>
+                            <option value="Genel Yönetim">Genel Yönetim</option>
+                            <option value="SSH & Servis">SSH & Servis Operasyon</option>
+                            <option value="Depo & Yedek Parça">Depo & Yedek Parça</option>
+                            <option value="Muhasebe & Finans">Muhasebe & Finans</option>
+                            <option value="Kalite & İSG">Kalite & İSG</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Tarih (GG.AA.YYYY) *</label>
+                        <input type="date" id="meeting-date-input" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Başlangıç Saati *</label>
+                        <input type="time" id="meeting-time-input" class="form-control" value="09:30" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Konum / Salon</label>
+                        <input type="text" id="meeting-location-input" class="form-control" value="Dizsan Toplantı Salonu" placeholder="Toplantı / Eğitim Salonu">
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-bottom:1rem;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.35rem; flex-wrap:wrap; gap:0.4rem;">
+                        <div>
+                            <label style="margin:0;">Katılımcılar (Personel Seçimi) *</label>
+                            <small style="display:block; color:#38bdf8; font-size:0.72rem;"><i class="fa-solid fa-lock"></i> Sadece burada işaretlenen katılımcılar toplantı/eğitim içeriğini görebilir. Katılmayıp aksiyon verilenler yalnızca kendi aksiyonunu görür.</small>
+                        </div>
+                        <div style="display:flex; gap:0.5rem;">
+                            <button type="button" class="btn btn-secondary btn-sm" style="padding:2px 8px; font-size:0.72rem;" onclick="toggleAllParticipants(true)">Tümünü Seç</button>
+                            <button type="button" class="btn btn-secondary btn-sm" style="padding:2px 8px; font-size:0.72rem;" onclick="toggleAllParticipants(false)">Temizle</button>
+                        </div>
+                    </div>
+                    <div id="meeting-participants-box" class="participants-selector"></div>
+
+                    <!-- Seçmeli Liste Haricinde Dış / Manuel Katılımcı Ekleme Alanı -->
+                    <div style="margin-top:0.65rem; background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.38); border-radius:12px; padding:0.85rem;">
+                        <label style="display:flex; align-items:center; gap:0.55rem; cursor:pointer; font-size:0.85rem; font-weight:700; color:#fde68a; margin:0; text-transform:none;">
+                            <input type="checkbox" id="external-participant-toggle" style="width:18px; height:18px; accent-color:#f59e0b; cursor:pointer;" onchange="toggleExternalParticipantSection(this.checked)">
+                            <span><i class="fa-solid fa-user-plus"></i> Seçmeli Liste Haricinde Dış Katılımcı / Manuel Katılımcı Var (İşaretleyince Alan Açılır)</span>
+                        </label>
+
+                        <div id="external-participants-section" class="hidden" style="display:none; margin-top:0.8rem; padding-top:0.8rem; border-top:1px dashed rgba(245,158,11,0.4);">
+                            <div style="font-size:0.79rem; color:#fde68a; font-weight:600; margin-bottom:0.55rem;">
+                                <i class="fa-solid fa-building-user" style="color:#fbbf24;"></i> Dış katılımcının <strong>Adı Soyadı</strong>, <strong>Telefon Numarası</strong> ve <strong>Temsil Ettiği Firma</strong> bilgilerini yazıp <strong>"Ekle"</strong> butonuna basın:
+                            </div>
+
+                            <!-- Manuel Dış Katılımcı Yazma ve Ekleme Kutusu -->
+                            <div class="external-participant-row" style="display:grid; grid-template-columns: 1.3fr 1fr 1.3fr auto; gap:0.55rem; align-items:end; background:rgba(15,23,42,0.8); padding:0.65rem; border-radius:10px; border:1px solid rgba(245,158,11,0.4); margin-bottom:0.65rem;">
+                                <div>
+                                    <label style="font-size:0.72rem; color:#fde68a; margin-bottom:3px; display:block; font-weight:700;">Katılımcı Adı Soyadı *</label>
+                                    <input type="text" id="ext-manual-name" class="form-control" placeholder="Örn: Ahmet Yılmaz" onkeydown="if(event.key==='Enter'){event.preventDefault();addManualExternalParticipantFromInputs();}">
+                                </div>
+                                <div>
+                                    <label style="font-size:0.72rem; color:#fde68a; margin-bottom:3px; display:block; font-weight:700;">Telefon Numarası</label>
+                                    <input type="tel" id="ext-manual-phone" class="form-control" placeholder="05XX XXX XX XX" onkeydown="if(event.key==='Enter'){event.preventDefault();addManualExternalParticipantFromInputs();}">
+                                </div>
+                                <div>
+                                    <label style="font-size:0.72rem; color:#fde68a; margin-bottom:3px; display:block; font-weight:700;">Temsil Ettiği Firma</label>
+                                    <input type="text" id="ext-manual-company" class="form-control" placeholder="Örn: ABC Otomotiv A.Ş." onkeydown="if(event.key==='Enter'){event.key==='Enter' && addManualExternalParticipantFromInputs();}">
+                                </div>
+                                <div>
+                                    <button type="button" class="btn btn-success" style="padding:0.62rem 1rem; font-weight:800; white-space:nowrap;" onclick="addManualExternalParticipantFromInputs()">
+                                        <i class="fa-solid fa-plus-circle"></i> Ekle
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Eklenen Dış Katılımcılar Listesi -->
+                            <div id="external-participants-list" style="display:flex; flex-direction:column; gap:0.45rem;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-bottom:1rem;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.25rem;">
+                        <label style="margin:0;">Gündem Maddeleri &amp; Toplantı / Eğitim Notları (Detaylı Tutanak) *</label>
+                        <small style="color:var(--dizsan-light); font-size:0.72rem;"><i class="fa-solid fa-list-ol"></i> Enter tuşuna basınca otomatik 1, 2, 3 numaralandırır</small>
+                    </div>
+                    <textarea id="meeting-notes-input" class="form-control" rows="4" placeholder="1. Konuşulan konular, tespitler ve görüşleri buraya yazın (Enter'a basınca 2. satıra geçer)..." onfocus="handleNumberedTextareaFocus(this)" onkeydown="handleNumberedTextareaKeydown(event, this)" oninput="handleNumberedTextareaInput(this)" required></textarea>
+                </div>
+
+                <div class="form-group" style="margin-bottom:1rem;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.25rem;">
+                        <label style="margin:0;">Alınan Kararlar &amp; Özet Sonuç</label>
+                        <small style="color:var(--dizsan-light); font-size:0.72rem;"><i class="fa-solid fa-list-ol"></i> Enter tuşuna basınca otomatik 1, 2, 3 numaralandırır</small>
+                    </div>
+                    <textarea id="meeting-decisions-input" class="form-control" rows="3" placeholder="1. Karara bağlanan maddeler (Enter'a basınca 2. satıra geçer)..." onfocus="handleNumberedTextareaFocus(this)" onkeydown="handleNumberedTextareaKeydown(event, this)" oninput="handleNumberedTextareaInput(this)"></textarea>
+                </div>
+
+                <!-- Toplantı / Eğitim Ekleri: Fotoğraf, El Yazısı Kağıt Tutanak, Bilgi veya Belge Ekleme Alanı -->
+                <div style="margin-bottom:1rem; background:rgba(16,185,129,0.07); border:1px solid rgba(16,185,129,0.3); border-radius:12px; padding:0.9rem;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; margin-bottom:0.6rem;">
+                        <div>
+                            <strong style="font-size:0.86rem; color:#6ee7b7;"><i class="fa-solid fa-camera-retro"></i> Toplantı / Eğitim Ekleri (Fotoğraf, El Yazısı Kağıt, Bilgi veya Belge Ekle)</strong>
+                            <div style="font-size:0.74rem; color:var(--text-sec);">Kağıda yazılan notların fotoğrafını, toplantı/eğitim fotoğrafını veya PDF/belge dosyalarını buraya ekleyebilirsiniz.</div>
+                        </div>
+                        <div style="display:flex; gap:0.45rem; flex-wrap:wrap;">
+                            <label class="btn btn-success btn-sm" style="cursor:pointer; margin:0; padding:0.4rem 0.75rem; font-size:0.76rem;">
+                                <i class="fa-solid fa-camera"></i> Fotoğraf / Kağıt / Belge Seç
+                                <input type="file" id="meeting-attachment-file-input" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt" style="display:none;" onchange="handleMeetingAttachmentUpload(event)">
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Ek Bilgi / Belge Notu Manuel Ekleme Satırı -->
+                    <div style="display:flex; gap:0.5rem; margin-bottom:0.6rem; flex-wrap:wrap;">
+                        <input type="text" id="meeting-attachment-note-input" class="form-control" style="flex:1; min-width:220px; font-size:0.8rem;" placeholder="Ek bilgi notu veya yüklenen kağıt/fotoğraf açıklaması yazın...">
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="addTextNoteAttachment()">
+                            <i class="fa-solid fa-file-circle-plus"></i> Ek Bilgi Notu Olarak Ekle
+                        </button>
+                    </div>
+
+                    <div id="meeting-attachments-preview" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(170px, 1fr)); gap:0.6rem;"></div>
+                </div>
+
+                <!-- Toplantı İçinden Hızlı Aksiyon Ekleme Bölümü -->
+                <div style="background:rgba(2,132,199,0.08); border:1px solid rgba(56,189,248,0.25); border-radius:12px; padding:1rem;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
+                        <strong style="font-size:0.88rem; color:var(--dizsan-light);"><i class="fa-solid fa-bolt"></i> Bu Oturuma Bağlı Aksiyon / Görev Ekle (1 Gün Önce &amp; Aynı Gün Hatırlatıcılı)</strong>
+                        <button type="button" class="btn btn-primary btn-sm" onclick="addInlineActionRow()">
+                            <i class="fa-solid fa-plus"></i> Aksiyon Satırı Ekle
+                        </button>
+                    </div>
+                    <div id="inline-actions-container" style="display:flex; flex-direction:column; gap:0.6rem;"></div>
+                </div>
+
+                <div class="modal-footer" style="margin-top:1.25rem; padding:1rem 0 0;">
+                    <button type="button" class="btn btn-secondary" onclick="closeMeetingModal()">İptal</button>
+                    <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Kaydet</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ==========================================================================
+         MODAL 2: AKSİYON EKLE / DÜZENLE MODALI (1 GÜN ÖNCE & AYNI GÜN HATIRLATICI)
+         ========================================================================== -->
+    <div id="action-modal" class="modal-backdrop">
+        <div class="modal-box" style="max-width:640px;">
+            <div class="modal-header">
+                <h3 id="action-modal-title"><i class="fa-solid fa-stopwatch" style="color:#fbbf24;"></i> Aksiyon & Otomatik Hatırlatıcı Tanımla</h3>
+                <button class="modal-close" onclick="closeActionModal()">&times;</button>
+            </div>
+            <form id="action-form" onsubmit="saveAction(event)" class="modal-body">
+                <input type="hidden" id="action-id">
+
+                <div class="form-group" style="margin-bottom:1rem;">
+                    <label>Bağlı Olduğu Toplantı / Eğitim *</label>
+                    <select id="action-meeting-select" class="form-control" required></select>
+                </div>
+
+                <div class="form-group" style="margin-bottom:1rem;">
+                    <label>Aksiyon / Görev Tanımı *</label>
+                    <textarea id="action-title-input" class="form-control" rows="3" placeholder="Yapılacak aksiyonu net olarak açıklayın..." required></textarea>
+                </div>
+
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Aksiyon Verilen Sorumlu Personel *</label>
+                        <select id="action-assignee-select" class="form-control" required></select>
+                    </div>
+                    <div class="form-group">
+                        <label>Hatırlatma Yapılacak Yönetici *</label>
+                        <select id="action-manager-select" class="form-control" required>
+                            <option value="ÖMER EREN">ÖMER EREN (Yönetici)</option>
+                            <option value="RAFET CANBEK">RAFET CANBEK (Genel Müdür)</option>
+                            <option value="HAKAN AYDIN">HAKAN AYDIN (Servis Müdürü)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Aksiyon Termin Tarihi (GG.AA.YYYY) *</label>
+                        <input type="date" id="action-duedate-input" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Hatırlatma Saati *</label>
+                        <input type="time" id="action-duetime-input" class="form-control" value="09:00" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Öncelik & Durum *</label>
+                        <div style="display:flex; gap:0.4rem;">
+                            <select id="action-priority-select" class="form-control" required>
+                                <option value="Normal">🔵 Normal</option>
+                                <option value="Kritik">🚨 Kritik</option>
+                            </select>
+                            <select id="action-status-select" class="form-control" required>
+                                <option value="Bekliyor">⏳ Bekliyor</option>
+                                <option value="Devam Ediyor">🔄 Devam Ediyor</option>
+                                <option value="Tamamlandı">✅ Tamamlandı</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 1 Gün Önce ve Aynı Gün Hatırlatma Kuralı Bilgisi -->
+                <div style="background:rgba(245,158,11,0.1); border:1px solid rgba(245,158,11,0.35); border-radius:10px; padding:0.75rem; margin-bottom:1rem; font-size:0.8rem; color:#fde68a;">
+                    <i class="fa-solid fa-bell"></i> <strong>Çift Aşamalı Hatırlatıcı Aktif:</strong> Bu aksiyon hem <strong>sorumlu personele</strong> hem de seçilen <strong>yöneticiye</strong> termin tarihinden <strong>1 gün önce</strong> ve <strong>termin günü (aynı gün)</strong> sesli, masaüstü bildirimli ve görsel olarak otomatik hatırlatılır.
+                </div>
+
+                <div class="form-group" style="margin-bottom:0.5rem;">
+                    <label>Personel Tamamlama / İlerleme Notu</label>
+                    <input type="text" id="action-note-input" class="form-control" placeholder="Aksiyonla ilgili son durum veya açıklama...">
+                </div>
+
+                <div class="modal-footer" style="margin-top:1.25rem; padding:1rem 0 0;">
+                    <button type="button" class="btn btn-secondary" onclick="closeActionModal()">İptal</button>
+                    <button type="submit" class="btn btn-success"><i class="fa-solid fa-check"></i> Aksiyonu ve Hatırlatıcıyı Kaydet</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ==========================================================================
+         MODAL 3: PERSONEL EKLE / DÜZENLE MODALI
+         ========================================================================== -->
+    <div id="user-modal" class="modal-backdrop">
+        <div class="modal-box" style="max-width:540px;">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-user-plus" style="color:var(--dizsan-light);"></i> Personel Hesabı Tanımla / Güncelle</h3>
+                <button class="modal-close" onclick="closeUserModal()">&times;</button>
+            </div>
+            <form id="user-form" onsubmit="saveUser(event)" class="modal-body">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Personel Adı Soyadı *</label>
+                        <input type="text" id="user-fullname-input" class="form-control" placeholder="Örn: HAKAN AYDIN" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Görev / Bölüm *</label>
+                        <input type="text" id="user-dept-input" class="form-control" value="Servis" placeholder="Örn: Servis Müdürü" required>
+                    </div>
+                </div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Giriş Kullanıcı Adı *</label>
+                        <input type="text" id="user-username-input" class="form-control" placeholder="Örn: hakan.aydin" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Giriş Şifresi</label>
+                        <input type="password" id="user-password-input" class="form-control" placeholder="Değiştirmek için yeni şifre yazın">
+                    </div>
+                </div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>E-Posta Adresi (Şifre Sıfırlama İçin) *</label>
+                        <input type="email" id="user-email-input" class="form-control" placeholder="kullanici@kurum.com.tr" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Sistem Rolü</label>
+                        <select id="user-role-input" class="form-control">
+                            <option value="Personel">Personel</option>
+                            <option value="Yönetici">Yönetici</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer" style="margin-top:1rem; padding:1rem 0 0;">
+                    <button type="button" class="btn btn-secondary" onclick="closeUserModal()">İptal</button>
+                    <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Personeli Kaydet</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ==========================================================================
+         MODAL 4: TOPLANTI / EĞİTİM EKİ (FOTOĞRAF / KAĞIT TUTANAK / BELGE) ÖNİZLEME MODALI
+         ========================================================================== -->
+    <div id="attachment-preview-modal" class="modal-backdrop">
+        <div class="modal-box" style="max-width:780px;">
+            <div class="modal-header">
+                <h3 id="attachment-preview-title"><i class="fa-solid fa-paperclip" style="color:#34d399;"></i> Toplantı / Eğitim Eki Önizleme</h3>
+                <button class="modal-close" onclick="closeAttachmentPreviewModal()">&times;</button>
+            </div>
+            <div id="attachment-preview-body" class="modal-body" style="text-align:center;"></div>
+            <div class="modal-footer">
+                <a id="attachment-download-btn" href="#" download class="btn btn-primary"><i class="fa-solid fa-download"></i> Dosyayı / Fotoğrafı İndir</a>
+                <button type="button" class="btn btn-secondary" onclick="closeAttachmentPreviewModal()">Kapat</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==========================================================================
+         MODAL 5: TELEFON, TABLET VE BİLGİSAYARA KURULUM REHBERİ & QR KOD MODALI
+         ========================================================================== -->
+    <div id="install-guide-modal" class="modal-backdrop" style="z-index: 10010;">
+        <div class="modal-box" style="max-width:720px;">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-mobile-screen-button" style="color:#38bdf8;"></i> Telefon, Tablet ve Bilgisayara Uygulama Olarak İndirme</h3>
+                <button class="modal-close" onclick="closeInstallGuideModal()">&times;</button>
+            </div>
+            <div class="modal-body" style="display:flex; flex-direction:column; gap:1rem;">
+                <!-- Otomatik Tek Tıkla Kurulum Alanı (Android / Chrome / Edge) -->
+                <div style="background:linear-gradient(135deg, rgba(16,185,129,0.18), rgba(2,132,199,0.18)); border:1px solid rgba(16,185,129,0.45); border-radius:14px; padding:1rem; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.85rem;">
+                    <div style="flex:1; min-width:240px;">
+                        <div style="font-weight:800; color:#34d399; font-size:0.95rem; margin-bottom:0.25rem;">
+                            <i class="fa-solid fa-bolt"></i> Hızlı Kurulum &amp; Paylaşım Merkezi
+                        </div>
+                        <div style="font-size:0.8rem; color:var(--text-sec); line-height:1.45;">
+                            Uygulama App Store veya Google Play gerektirmeden <strong>doğrudan DİZSAN logosuyla ana ekrana iner</strong> ve tam ekran çalışır.
+                        </div>
+                    </div>
+                    <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+                        <button type="button" class="btn btn-success" onclick="triggerNativePwaInstall()">
+                            <i class="fa-solid fa-download"></i> ⚡ Tek Tıkla Cihaza Kur
+                        </button>
+                        <button type="button" class="btn btn-primary" style="background:linear-gradient(135deg,#25D366,#128C7E);" onclick="shareAppOnWhatsApp()">
+                            <i class="fa-brands fa-whatsapp"></i> WhatsApp ile Personele Gönder
+                        </button>
+                    </div>
+                </div>
+
+                <!-- QR Kod ve Canlı Yayın Linkleri -->
+                <div style="display:grid; grid-template-columns: 155px 1fr; gap:1rem; align-items:center; background:rgba(15,23,42,0.75); border:1px solid rgba(56,189,248,0.25); border-radius:14px; padding:1rem;">
+                    <div style="text-align:center; background:#ffffff; padding:8px; border-radius:12px;">
+                        <img id="install-qr-img" src="" alt="QR Kod" style="width:135px; height:135px; display:block; margin:0 auto;">
+                        <div style="font-size:0.68rem; color:#0f172a; font-weight:700; margin-top:4px;">Kamerayla Okutun</div>
+                    </div>
+                    <div style="display:flex; flex-direction:column; gap:0.55rem;">
+                        <div>
+                            <div style="font-size:0.75rem; color:#38bdf8; font-weight:700; margin-bottom:0.2rem;">🌐 1. Global HTTPS Linki (Her Yerden &amp; 4.5G/5G/Wi-Fi - Önerilen):</div>
+                            <div style="display:flex; gap:0.4rem;">
+                                <input type="text" id="live-https-url-input" class="form-control" value="https://dizsan.github.io/toplanti/" readonly style="font-size:0.8rem; font-weight:700; color:#34d399;">
+                                <button type="button" class="btn btn-secondary btn-sm" onclick="copyAppUrl('https://dizsan.github.io/toplanti/')">
+                                    <i class="fa-solid fa-copy"></i> Kopyala
+                                </button>
+                            </div>
+                        </div>
+                        <div>
+                            <div style="font-size:0.75rem; color:#fcd34d; font-weight:700; margin-bottom:0.2rem;">🏢 2. DİZSAN Kurumsal Sunucu Linki:</div>
+                            <div style="display:flex; gap:0.4rem;">
+                                <input type="text" id="live-server-url-input" class="form-control" value="http://31.40.199.81:8080/toplanti/" readonly style="font-size:0.8rem; color:#e2e8f0;">
+                                <button type="button" class="btn btn-secondary btn-sm" onclick="copyAppUrl('http://31.40.199.81:8080/toplanti/')">
+                                    <i class="fa-solid fa-copy"></i> Kopyala
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cihaz Türüne Göre Adım Adım Kurulum Kartları -->
+                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap:0.85rem;">
+                    <!-- iPhone / iPad (iOS) -->
+                    <div id="guide-card-ios" style="background:rgba(15,23,42,0.75); border:1px solid rgba(255,255,255,0.12); border-radius:12px; padding:0.9rem;">
+                        <div style="font-weight:800; color:#f8fafc; font-size:0.88rem; margin-bottom:0.5rem; display:flex; align-items:center; gap:0.45rem;">
+                            <i class="fa-brands fa-apple" style="font-size:1.15rem; color:#38bdf8;"></i> iPhone &amp; iPad (iOS)
+                        </div>
+                        <ol style="margin:0; padding-left:1.1rem; font-size:0.78rem; color:var(--text-sec); line-height:1.6;">
+                            <li>Linki <strong>Safari</strong> tarayıcısında açın.</li>
+                            <li>Ekranın alt ortasındaki <strong>Paylaş</strong> (<i class="fa-solid fa-arrow-up-from-bracket" style="color:#38bdf8;"></i>) simgesine dokunun.</li>
+                            <li>Menüyü aşağı kaydırıp <strong>"Ana Ekrana Ekle"</strong> (<i class="fa-solid fa-square-plus" style="color:#34d399;"></i>) seçeneğine basın.</li>
+                            <li>Sağ üstteki <strong>"Ekle"</strong> butonuna dokunun.</li>
+                        </ol>
+                    </div>
+
+                    <!-- Android Telefon & Tablet -->
+                    <div id="guide-card-android" style="background:rgba(15,23,42,0.75); border:1px solid rgba(255,255,255,0.12); border-radius:12px; padding:0.9rem;">
+                        <div style="font-weight:800; color:#f8fafc; font-size:0.88rem; margin-bottom:0.5rem; display:flex; align-items:center; gap:0.45rem;">
+                            <i class="fa-brands fa-android" style="font-size:1.15rem; color:#34d399;"></i> Android Telefon &amp; Tablet
+                        </div>
+                        <ol style="margin:0; padding-left:1.1rem; font-size:0.78rem; color:var(--text-sec); line-height:1.6;">
+                            <li>Linki <strong>Chrome</strong> tarayıcısında açın.</li>
+                            <li>Yukarıdaki <strong>"⚡ Tek Tıkla Cihaza Kur"</strong> butonuna basın.</li>
+                            <li>Veya sağ üstteki <strong>Üç Nokta (⋮)</strong> menüsüne dokunun.</li>
+                            <li><strong>"Uygulamayı Yükle"</strong> veya <strong>"Ana ekrana ekle"</strong> seçin.</li>
+                        </ol>
+                    </div>
+
+                    <!-- Windows / Mac Bilgisayar -->
+                    <div id="guide-card-pc" style="background:rgba(15,23,42,0.75); border:1px solid rgba(255,255,255,0.12); border-radius:12px; padding:0.9rem;">
+                        <div style="font-weight:800; color:#f8fafc; font-size:0.88rem; margin-bottom:0.5rem; display:flex; align-items:center; gap:0.45rem;">
+                            <i class="fa-solid fa-desktop" style="font-size:1.05rem; color:#fcd34d;"></i> Bilgisayar (Windows / Mac)
+                        </div>
+                        <ol style="margin:0; padding-left:1.1rem; font-size:0.78rem; color:var(--text-sec); line-height:1.6;">
+                            <li>Adres çubuğunun sağındaki <strong>Uygulamayı Yükle</strong> (<i class="fa-solid fa-download" style="color:#fcd34d;"></i>) simgesine tıklayın.</li>
+                            <li>Veya <strong>"⚡ Tek Tıkla Cihaza Kur"</strong> butonuna basın.</li>
+                            <li>Masaüstünüze ve Başlat menünüze <strong>Dizsan Toplantı</strong> kısayolu eklenir.</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeInstallGuideModal()">Kapat</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==========================================================================
+         MODAL 6: TOPLANTI ÇAĞRISI PLANLAMA & DUYURU YAYINLAMA MODALI
+         (1 Saat Kala Sarı Sesli Uyarı + 5 Dakika Kala Kırmızı Sesli Uyarı)
+         ========================================================================== -->
+    <div id="announcement-modal" class="modal-backdrop" style="z-index: 10012;">
+        <div class="modal-box" style="max-width:680px;">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-bullhorn" style="color:#fbbf24;"></i> Toplantı Çağrısı Planla &amp; Kurumsal Duyuru Gönder</h3>
+                <button class="modal-close" onclick="closeAnnouncementModal()">&times;</button>
+            </div>
+            <form id="announcement-form" onsubmit="saveMeetingCallOrAnnouncement(event)" class="modal-body">
+                <div style="background:linear-gradient(135deg, rgba(245,158,11,0.14), rgba(239,68,68,0.12)); border:1px solid rgba(245,158,11,0.4); border-radius:12px; padding:0.85rem; margin-bottom:1rem; font-size:0.81rem; color:#fde68a; line-height:1.5;">
+                    <i class="fa-solid fa-bell"></i> <strong>Otomatik Bildirim &amp; Sesli Alarm Kuralı:</strong><br>
+                    • Seçtiğiniz katılımcılara <strong>anında toplantı çağrısı / duyuru bildirimi</strong> gider.<br>
+                    • Toplantı saatine <strong>1 saat kala 🟨 SARI UYARI + Bildirim Sesi</strong>, <strong>5 dakika kala 🟥 KIRMIZI UYARI + Acil Alarm Sesi</strong> davet edilenlerin ekranında otomatik çalar!
+                </div>
+
+                <!-- Çağrı / Duyuru Türü -->
+                <div class="form-grid" style="margin-bottom:0.85rem;">
+                    <div class="form-group">
+                        <label>Çağrı / Bildirim Türü *</label>
+                        <select id="call-type-select" class="form-control" onchange="toggleCallTypeFields(this.value)" required>
+                            <option value="MEETING_CALL">📅 Planlı Toplantı Çağrısı (1 Saat &amp; 5 Dk Alarmlı)</option>
+                            <option value="TRAINING_CALL">🎓 Planlı Eğitim Çağrısı (1 Saat &amp; 5 Dk Alarmlı)</option>
+                            <option value="ANNOUNCEMENT">📣 Genel Kurumsal Duyuru (Anlık Sesli Bildirim)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Departman / Kategori *</label>
+                        <select id="call-dept-input" class="form-control" required>
+                            <option value="Genel Yönetim">Genel Yönetim</option>
+                            <option value="SSH & Servis">SSH &amp; Servis Operasyon</option>
+                            <option value="Depo & Yedek Parça">Depo &amp; Yedek Parça</option>
+                            <option value="Muhasebe & Finans">Muhasebe &amp; Finans</option>
+                            <option value="Kalite & İSG">Kalite &amp; İSG</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-bottom:0.85rem;">
+                    <label>Toplantı Çağrısı / Duyuru Başlığı *</label>
+                    <input type="text" id="call-title-input" class="form-control" placeholder="Örn: Yarın Saat 16:00 Haftalık Değerlendirme Toplantısı Çağrısı" required>
+                </div>
+
+                <div id="call-datetime-row" class="form-grid" style="margin-bottom:0.85rem;">
+                    <div class="form-group">
+                        <label>Toplantı Tarihi (GG.AA.YYYY) *</label>
+                        <input type="date" id="call-date-input" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Toplantı Saati (Örn: 16:00) *</label>
+                        <input type="time" id="call-time-input" class="form-control" value="16:00" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Toplantı Yeri / Salon *</label>
+                        <input type="text" id="call-location-input" class="form-control" value="Dizsan Toplantı Salonu" required>
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-bottom:0.85rem;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.35rem; flex-wrap:wrap; gap:0.4rem;">
+                        <label style="margin:0;">Davet Edilen / Bildirim Gidecek Katılımcılar *</label>
+                        <div style="display:flex; gap:0.45rem;">
+                            <button type="button" class="btn btn-secondary btn-sm" style="padding:2px 8px; font-size:0.72rem;" onclick="toggleAllCallParticipants(true)">Tüm Personeli Seç</button>
+                            <button type="button" class="btn btn-secondary btn-sm" style="padding:2px 8px; font-size:0.72rem;" onclick="toggleAllCallParticipants(false)">Temizle</button>
+                        </div>
+                    </div>
+                    <div id="call-participants-box" class="participants-selector"></div>
+                </div>
+
+                <div class="form-group" style="margin-bottom:0.85rem;">
+                    <label>Toplantı Gündemi / Duyuru Mesajı *</label>
+                    <textarea id="call-message-input" class="form-control" rows="3" placeholder="1. Görüşülecek gündem maddeleri veya duyuru detayını yazın..." onfocus="handleNumberedTextareaFocus(this)" onkeydown="handleNumberedTextareaKeydown(event, this)" oninput="handleNumberedTextareaInput(this)" required></textarea>
+                </div>
+
+                <div class="modal-footer" style="padding:0.75rem 0 0;">
+                    <button type="button" class="btn btn-secondary" onclick="closeAnnouncementModal()">İptal</button>
+                    <button type="submit" class="btn" style="background:linear-gradient(135deg,#f59e0b,#ef4444); color:#fff; border:none;">
+                        <i class="fa-solid fa-paper-plane"></i> Çağrıyı / Duyuruyu Yayınla &amp; Katılımcılara Bildirim Gönder
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ==========================================================================
+         MODAL 7: GERÇEK VAPID WEB PUSH & SAMSUNG INTERNET / CHROME KİLİT EKRANI TEST MERKEZİ
+         ========================================================================== -->
+    <div id="push-test-modal" class="modal-backdrop" style="z-index: 10015;">
+        <div class="modal-box" style="max-width:780px;">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-satellite-dish" style="color:#34d399;"></i> 📡 Web Push &amp; Kilit Ekranı Bildirim Test Merkezi (VAPID)</h3>
+                <button class="modal-close" onclick="closePushTestCenterModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="push-test-modal-body" style="display:flex; flex-direction:column; gap:1rem;">
+                <!-- Dinamik olarak renderPushTestCenterUI() tarafından doldurulur -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closePushTestCenterModal()">Kapat</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==========================================================================
+         A4 RESMİ DİZSAN TOPLANTI TUTANAĞI VE RAPOR YAZDIRMA ALANI
+         ========================================================================== -->
+    <div id="print-minutes-area"></div>
+
+    <!-- Otomatik Tarih Geçiş Kütüphanesi (GG.AA.YYYY Auto-Advance Kuralı) -->
+    <script src="auto-date-helper.js"></script>
+    <script src="app.js?v=1.7.1"></script>
+<script src="dizsan-auto-updater.js" data-app-id="toplanti" data-app-name="Dizsan Toplantı & Aksiyon" data-version="1.7.2"></script>
+</body>
+</html>

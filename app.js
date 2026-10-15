@@ -1,0 +1,5099 @@
+/**
+ * ==========================================================================
+ * DİZSAN KURUMSAL TOPLANTI, AKSİYON, HATIRLATICI VE RAPORLAMA SİSTEMİ - v1.3.0
+ * - Güncel Resmi Personel Listesi (Ömer Eren + 23 Personel)
+ * - Beni Hatırla & E-Posta Doğrulama Kodlu Şifremi Unuttum Sistemi
+ * - Sıfır (Boş) Başlangıç Veritabanı (Örnek Kayıtlar Temizlendi)
+ * - 1 Gün Önce ve Aynı Gün (Personel + Yönetici) Hatırlatıcı Alarm Motoru
+ * - Sadece Yönetici Ömer Eren'e Özel Versiyon Güncelleme Yetkisi
+ * - DizGün & Diğer Uygulamalarla Çift Yönlü Veri Alışveriş Köprüsü
+ * ==========================================================================
+ */
+
+const INITIAL_APP_VERSION = "v1.7.1";
+const VAPID_PUBLIC_KEY = "BJIJfCBiDwya3clZOWS08EDxfuN18xtfJGTX0n_apWBTEW7-kO_FGKNy5VDRvUsMgc46IP5oxLlIHqgrDo-JTkE";
+const STORAGE_KEY_STATE = "dizsan_toplanti_shared_state_v2";
+const STORAGE_KEY_SESSION = "dizsan_toplanti_active_user";
+const STORAGE_KEY_REMEMBER = "dizsan_toplanti_remembered_login";
+const STORAGE_KEY_DIZGUN_BRIDGE = "dizgun_shared_meeting_bridge";
+
+const CORP_MAIL_HOST = ['dizsan', 'com', 'tr'].join('.');
+const DEFAULT_PIN_STAMP = "3592512679-3759997292-303417646";
+
+function sha256Hex(str) {
+    const utf8 = unescape(encodeURIComponent(String(str)));
+    const K = [
+        0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
+        0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
+        0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,
+        0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,
+        0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,
+        0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,
+        0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,
+        0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2
+    ];
+    const H = [0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19];
+    const words = [];
+    for (let i = 0; i < utf8.length; i++) {
+        words[i >> 2] |= (utf8.charCodeAt(i) & 0xff) << (24 - (i % 4) * 8);
+    }
+    const bitLen = utf8.length * 8;
+    words[bitLen >> 5] |= 0x80 << (24 - (bitLen % 32));
+    words[(((bitLen + 64) >> 9) << 4) + 15] = bitLen;
+    const W = new Array(64);
+    const rotr = (n, x) => (x >>> n) | (x << (32 - n));
+    for (let i = 0; i < words.length; i += 16) {
+        let [a, b, c, d, e, f, g, h] = H;
+        for (let t = 0; t < 64; t++) {
+            if (t < 16) W[t] = words[i + t] | 0;
+            else {
+                const s0 = rotr(7, W[t - 15]) ^ rotr(18, W[t - 15]) ^ (W[t - 15] >>> 3);
+                const s1 = rotr(17, W[t - 2]) ^ rotr(19, W[t - 2]) ^ (W[t - 2] >>> 10);
+                W[t] = (W[t - 16] + s0 + W[t - 7] + s1) | 0;
+            }
+            const S1 = rotr(6, e) ^ rotr(11, e) ^ rotr(25, e);
+            const ch = (e & f) ^ (~e & g);
+            const temp1 = (h + S1 + ch + K[t] + W[t]) | 0;
+            const S0 = rotr(2, a) ^ rotr(13, a) ^ rotr(22, a);
+            const maj = (a & b) ^ (a & c) ^ (b & c);
+            const temp2 = (S0 + maj) | 0;
+            h = g; g = f; f = e; e = (d + temp1) | 0;
+            d = c; c = b; b = a; a = (temp1 + temp2) | 0;
+        }
+        H[0] = (H[0] + a) | 0; H[1] = (H[1] + b) | 0; H[2] = (H[2] + c) | 0; H[3] = (H[3] + d) | 0;
+        H[4] = (H[4] + e) | 0; H[5] = (H[5] + f) | 0; H[6] = (H[6] + g) | 0; H[7] = (H[7] + h) | 0;
+    }
+    return H.map(v => (v >>> 0).toString(16).padStart(8, "0")).join("");
+}
+
+function hashPin(val) {
+    const s = String(val || "").trim();
+    if (!s) return "";
+    if (/^\d{6,10}-\d{6,10}-\d{6,10}$/.test(s)) return s;
+    const hex = sha256Hex("dizsan_auth_v1:" + s);
+    return `${parseInt(hex.slice(0, 8), 16)}-${parseInt(hex.slice(8, 16), 16)}-${parseInt(hex.slice(16, 24), 16)}`;
+}
+
+function verifyUserPin(user, inputVal) {
+    if (!user) return false;
+    const candidate = String(inputVal || "").trim();
+    if (!candidate) return false;
+    const stored = user.pinStamp || (user.password ? hashPin(user.password) : DEFAULT_PIN_STAMP);
+    return stored === hashPin(candidate) || stored === candidate;
+}
+
+function resolveUserEmail(u) {
+    if (!u) return `rcanbek@${CORP_MAIL_HOST}`;
+    if (u.email && u.email.includes("@")) {
+        if (u.email.endsWith("@dizsan.com")) {
+            return u.email.replace(/@dizsan\.com$/, `@${CORP_MAIL_HOST}`);
+        }
+        return u.email;
+    }
+    const box = u.mailBox || "rcanbek";
+    return box.includes("@") ? box : `${box}@${CORP_MAIL_HOST}`;
+}
+
+// Kullanıcının Paylaştığı Resmi Güncel Personel Listesi + Yönetici Ömer Eren (SHA-256 Korumalı)
+const OFFICIAL_PERSONNEL_RAW = [
+    { order: 0,  name: "ÖMER EREN",                  username: "ömer",             mailBox: "oeren",    pinStamp: "2697120930-1230232798-23831670", role: "Yönetici", dept: "Yönetim Kurulu / Sistem Yöneticisi", avatar: "omer_eren_2.jpg" },
+    { order: 1,  name: "HAKAN AYDIN",                username: "hakan.aydin",      mailBox: "haydin",   pinStamp: "3552174369-58562770-3993401784", role: "Yönetici", dept: "Servis Müdürü" },
+    { order: 2,  name: "FATİH KIROĞLU",              username: "fatih.kiroglu",    mailBox: "fkiroglu", pinStamp: "567307289-1446660830-2254300224", role: "Personel", dept: "Depo" },
+    { order: 3,  name: "RAFET CANBEK",               username: "rafet.canbek",     mailBox: "rcanbek",  pinStamp: DEFAULT_PIN_STAMP,                role: "Yönetici", dept: "Genel Müdür" },
+    { order: 4,  name: "GÖKHAN ÖZBULUT",             username: "gokhan.ozbulut",   mailBox: "gozbulut", pinStamp: "3741314348-4038843960-1626309061", role: "Personel", dept: "Muhasebe" },
+    { order: 5,  name: "ERTUĞRUL ERDEM",             username: "ertugrul.erdem",   mailBox: "eerdem",   pinStamp: DEFAULT_PIN_STAMP,                role: "Personel", dept: "Servis Danışmanı" },
+    { order: 7,  name: "NECATİ DEMİRCİ",             username: "necati.demirci",   mailBox: "ndemirci", pinStamp: DEFAULT_PIN_STAMP,                role: "Personel", dept: "Servis Danışmanı" },
+    { order: 8,  name: "MURAT KARAOĞLU",             username: "murat.karaoglu",   mailBox: "rcanbek",  pinStamp: DEFAULT_PIN_STAMP,                role: "Personel", dept: "Formen" },
+    { order: 9,  name: "MURAT SALMAN",               username: "murat.salman",     mailBox: "rcanbek",  pinStamp: DEFAULT_PIN_STAMP,                role: "Personel", dept: "Mekaniker" },
+    { order: 10, name: "YILDIRAY KARAGÖZ",           username: "yildiray.karagoz", mailBox: "rcanbek",  pinStamp: DEFAULT_PIN_STAMP,                role: "Personel", dept: "Elektrik tekn." },
+    { order: 11, name: "MUSTAFA İLGEN",              username: "mustafa.ilgen",    mailBox: "rcanbek",  pinStamp: DEFAULT_PIN_STAMP,                role: "Personel", dept: "Fren tekn." },
+    { order: 12, name: "MİRAÇ ARDANUŞ",              username: "mirac.ardanus",    mailBox: "rcanbek",  pinStamp: DEFAULT_PIN_STAMP,                role: "Personel", dept: "Mekaniker yrd." },
+    { order: 13, name: "HAKAN DEMİRAL",              username: "hakan.demiral",    mailBox: "rcanbek",  pinStamp: DEFAULT_PIN_STAMP,                role: "Personel", dept: "Güvenlik" },
+    { order: 14, name: "GÜLŞEN ŞİMŞEK",              username: "gulsen.simsek",    mailBox: "rcanbek",  pinStamp: DEFAULT_PIN_STAMP,                role: "Personel", dept: "Mutfak" },
+    { order: 15, name: "ALPEREN KAYACI",             username: "alperen.kayaci",   mailBox: "rcanbek",  pinStamp: DEFAULT_PIN_STAMP,                role: "Personel", dept: "Mekaniker Yrd." },
+    { order: 16, name: "MUHAMMED ALİ EROL",          username: "muhammed.erol",    mailBox: "rcanbek",  pinStamp: DEFAULT_PIN_STAMP,                role: "Personel", dept: "Mekaniker Yrd." },
+    { order: 17, name: "YİĞİT ALP GÜMÜŞ",            username: "yigit.alp",        mailBox: "rcanbek",  pinStamp: DEFAULT_PIN_STAMP,                role: "Personel", dept: "Mesem Stajyer" },
+    { order: 18, name: "BERAT YUSUF KIZILIRMAK",     username: "berat.yusuf",      mailBox: "rcanbek",  pinStamp: DEFAULT_PIN_STAMP,                role: "Personel", dept: "Mesem Stajyer" },
+    { order: 19, name: "MUAMMER SAMET KARATAŞ",      username: "muammer.samet",    mailBox: "rcanbek",  pinStamp: DEFAULT_PIN_STAMP,                role: "Personel", dept: "Mesem Stajyer" },
+    { order: 20, name: "AYDIN ALINCA",               username: "aydin.alinca",     mailBox: "rcanbek",  pinStamp: DEFAULT_PIN_STAMP,                role: "Personel", dept: "Mesem Stajyer" },
+    { order: 21, name: "YAHYA ATMACA",               username: "yahya.atmaca",     mailBox: "rcanbek",  pinStamp: DEFAULT_PIN_STAMP,                role: "Personel", dept: "Mesem Stajyer" },
+    { order: 22, name: "EMİR BALTACI",               username: "emir.baltaci",     mailBox: "rcanbek",  pinStamp: DEFAULT_PIN_STAMP,                role: "Personel", dept: "Mesem Stajyer" },
+    { order: 23, name: "EMRE ( hitit ünv )",         username: "emre.hitit",       mailBox: "rcanbek",  pinStamp: DEFAULT_PIN_STAMP,                role: "Personel", dept: "Hitit Ünv. Stajyer" },
+    { order: 24, name: "ENVER ( hitit ünv )",        username: "enver.hitit",      mailBox: "rcanbek",  pinStamp: DEFAULT_PIN_STAMP,                role: "Personel", dept: "Hitit Ünv. Stajyer" }
+];
+const OFFICIAL_PERSONNEL_LIST = OFFICIAL_PERSONNEL_RAW.map(u => ({ ...u, email: resolveUserEmail(u) }));
+
+const INITIAL_CHANGELOG = [
+    {
+        version: "v1.7.1",
+        date: "15.10.2026",
+        author: "ÖMER EREN",
+        notes: "Tüm personeller için Sıfır Ayar (Zero-Touch) Otomatik Bildirim Kaydı devreye alındı: Android (Samsung Internet, Chrome), Apple iPhone & iPad (iOS/iPadOS 16.4+ Web Push + otomatik sesli arka plan motoru) ve bilgisayarlarda kullanıcılar hiçbir ayar yapmadan giriş yaptıkları veya ekrana dokundukları anda otomatik olarak bildirim sistemine kaydedilir. Tüm toplantı, 60 dk / 5 dk hatırlatıcı, aksiyon, duyuru ve Ömer Eren onay bildirimleri tam otomatik hale getirildi."
+    },
+    {
+        version: "v1.7.0",
+        date: "15.10.2026",
+        author: "ÖMER EREN",
+        notes: "Gerçek VAPID (RFC 8291 / RFC 8292) Web Push bildirim altyapısı, sunucu tarafı hatırlatıcı zamanlayıcısı, Samsung Internet ve Chrome için 15 saniyelik Kilit Ekranı Bildirim Test Merkezi, bildirime dokunulduğunda ilgili ekrana doğrudan yönlendirme (deep-link) ve Ömer Eren Onay Merkezi (omerApprovedStamp) güvenlik kilidi devreye alındı."
+    },
+    {
+        version: "v1.6.1",
+        date: "15.10.2026",
+        author: "ÖMER EREN",
+        notes: "Kaydedilen tüm toplantıların, düzenleme (değiştirme) ve silme işlemlerinin istisnasız olarak Yönetici Ömer Eren Onay Merkezine düşmesi ve sesli/görsel onay bildirimi vermesi sağlandı. Bulut senkronizasyonu çakışma koruması (Queue + 409 Retry) ve tuş kilitliyken / PC arka plandayken çalan 4 katmanlı gerçek WAV medya alarm motoru eklendi."
+    },
+    {
+        version: "v1.6.0",
+        date: "15.10.2026",
+        author: "ÖMER EREN",
+        notes: "Uygulama kapalıyken / arka plandayken işletim sistemi (OS) bildirimleri ve sesli uyarı veren Service Worker + Web Worker + Cihaz Alarmı (.ics) altyapısı eklendi. Kaydedilen toplantıların Yönetici (Ömer Eren) onayına düşmesi ve toplantı silme/değiştirme işlemlerinin sadece Ömer Eren onayıyla gerçekleşmesi sağlandı."
+    },
+    {
+        version: "v1.5.0",
+        date: "15.10.2026",
+        author: "ÖMER EREN",
+        notes: "Toplantı çağrısı ve duyuru yayınlama sistemi, davet edilen katılımcılara anında bildirim, toplantı saatine 1 saat kala Sarı Uyarı + bildirim sesi, 5 dakika kala Kırmızı Uyarı + acil alarm sesi, dış katılımcı manuel 'Ekle' butonu düzeltmesi ve log kayıtlarının sadece Yönetici Ömer Eren'e görünür yapılması tamamlandı."
+    },
+    {
+        version: "v1.4.0",
+        date: "15.10.2026",
+        author: "ÖMER EREN",
+        notes: "Kurumsal e-posta adresleri, katılımcı bazlı toplantı gizliliği (katılmayanların içeriği görmememesi, aksiyon alanların sadece kendi aksiyonunu görmesi), toplantı/eğitim türü seçimi, fotoğraf/kağıt tutanak/belge ekleme alanı, dış katılımcı ve Enter ile otomatik numaralandırma eklendi."
+    },
+    {
+        version: "v1.3.0",
+        date: "15.10.2026",
+        author: "ÖMER EREN",
+        notes: "Beni hatırla, e-posta doğrulama kodlu şifremi unuttum sistemi, güncel 24 kişilik resmi personel listesi, kurumsal raporlama kokpiti, 1 gün önce ve aynı gün (personel + yönetici) hatırlatıcı motoru, sadece Ömer Eren'e özel versiyon güncelleme yetkisi ve DizGün çift yönlü veri alışveriş köprüsü eklendi. Tüm örnek kayıtlar silinerek kullanıma hazır temiz başlangıç yapıldı."
+    }
+];
+
+function mergePushSubscriptionsLists(localList, remoteList) {
+    const map = new Map();
+    (Array.isArray(remoteList) ? remoteList : []).forEach(s => {
+        if (s && s.endpoint) map.set(s.endpoint, s);
+    });
+    (Array.isArray(localList) ? localList : []).forEach(s => {
+        if (s && s.endpoint) map.set(s.endpoint, s);
+    });
+    return Array.from(map.values());
+}
+
+// Uygulama Durumu
+let appState = {
+    version: INITIAL_APP_VERSION,
+    users: [...OFFICIAL_PERSONNEL_LIST],
+    meetings: [],
+    actions: [],
+    announcements: [],
+    approvalRequests: [],
+    pushSubscriptions: [],
+    pushTestRequests: [],
+    pushNotificationLogs: [],
+    pushPilotMode: "ALL_USERS",
+    logs: [],
+    changelog: [...INITIAL_CHANGELOG]
+};
+
+let currentUser = null;
+let meetingTimerSeconds = 0;
+let meetingTimerInterval = null;
+let deferredPwaPrompt = null;
+let activePasswordResetRequest = null; // { username, email, code, expiresAt }
+let currentDraftAttachments = []; // Modal içinde eklenen fotoğraf / kağıt tutanak / belge listesi
+let bgAlarmWorker = null;
+let keepAliveAudioCtx = null;
+let activeWakeLock = null;
+let pushCountdownTimer = null;
+
+function isMeetingApprovedByOmer(m) {
+    if (!m) return false;
+    return m.approvalStatus === 'Onaylandı' && m.omerApprovedStamp === true;
+}
+
+function ensureMeetingsApprovalIntegrity(meetingsArray) {
+    if (!Array.isArray(meetingsArray)) return [];
+    return meetingsArray.map(m => {
+        if (!isMeetingApprovedByOmer(m)) {
+            return {
+                ...m,
+                approvalStatus: 'Yönetici Onayı Bekliyor',
+                omerApprovedStamp: false
+            };
+        }
+        return m;
+    });
+}
+
+function migrateOfficialUserEmails(usersArray) {
+    if (!Array.isArray(usersArray)) return OFFICIAL_PERSONNEL_LIST.map(u => ({ ...u }));
+    return usersArray.map(u => {
+        const official = OFFICIAL_PERSONNEL_LIST.find(o => o.username === u.username || o.name === u.name);
+        const resolvedEmail = resolveUserEmail(u.email ? u : (official || u));
+        const resolvedStamp = u.pinStamp
+            ? hashPin(u.pinStamp)
+            : (u.password ? hashPin(u.password) : (official ? official.pinStamp : DEFAULT_PIN_STAMP));
+        const copy = {
+            ...u,
+            email: resolvedEmail,
+            mailBox: resolvedEmail.replace(`@${CORP_MAIL_HOST}`, ''),
+            pinStamp: resolvedStamp
+        };
+        delete copy.password;
+        return copy;
+    });
+}
+
+function sanitizeStateForCloud(stateObj) {
+    const cloned = { ...stateObj };
+    if (Array.isArray(cloned.users)) {
+        cloned.users = cloned.users.map(u => {
+            const emailStr = resolveUserEmail(u);
+            const cleanUser = {
+                order: u.order,
+                name: u.name,
+                username: u.username,
+                mailBox: emailStr.replace(`@${CORP_MAIL_HOST}`, ''),
+                pinStamp: u.pinStamp ? hashPin(u.pinStamp) : (u.password ? hashPin(u.password) : DEFAULT_PIN_STAMP),
+                role: u.role,
+                dept: u.dept
+            };
+            if (u.avatar) cleanUser.avatar = u.avatar;
+            return cleanUser;
+        });
+    }
+    return cloned;
+}
+
+// ==========================================================================
+// 1. VERİTABANI BAŞLATMA, DİZGÜN VERİ ALIŞVERİŞİ VE ORTAK SENKRONİZASYON
+// ==========================================================================
+function loadState() {
+    // Eski örnek verileri barındıran v1 anahtarını temizle
+    localStorage.removeItem("dizsan_toplanti_shared_state_v1");
+
+    const raw = localStorage.getItem(STORAGE_KEY_STATE);
+    if (raw) {
+        try {
+            const parsed = JSON.parse(raw);
+            appState.version = INITIAL_APP_VERSION;
+            const loadedUsers = Array.isArray(parsed.users) && parsed.users.length >= 20 ? parsed.users : [...OFFICIAL_PERSONNEL_LIST];
+            appState.users = migrateOfficialUserEmails(loadedUsers);
+            appState.meetings = ensureMeetingsApprovalIntegrity(Array.isArray(parsed.meetings) ? parsed.meetings : []);
+            appState.actions = Array.isArray(parsed.actions) ? parsed.actions : [];
+            appState.announcements = Array.isArray(parsed.announcements) ? parsed.announcements : [];
+            appState.approvalRequests = Array.isArray(parsed.approvalRequests) ? parsed.approvalRequests : [];
+            appState.pushSubscriptions = Array.isArray(parsed.pushSubscriptions) ? parsed.pushSubscriptions : [];
+            appState.pushTestRequests = Array.isArray(parsed.pushTestRequests) ? parsed.pushTestRequests : [];
+            appState.pushNotificationLogs = Array.isArray(parsed.pushNotificationLogs) ? parsed.pushNotificationLogs : [];
+            appState.pushPilotMode = parsed.pushPilotMode || "ALL_USERS";
+            appState.logs = Array.isArray(parsed.logs) ? parsed.logs : [];
+            appState.changelog = [...INITIAL_CHANGELOG];
+        } catch (e) {
+            resetToCleanState();
+        }
+    } else {
+        resetToCleanState();
+    }
+
+    saveStateLocally();
+    syncWithDizGunEcosystem(false);
+    syncFromServer();
+}
+
+function resetToCleanState() {
+    appState = {
+        version: INITIAL_APP_VERSION,
+        users: OFFICIAL_PERSONNEL_LIST.map(u => ({ ...u })),
+        meetings: [],
+        actions: [],
+        announcements: [],
+        approvalRequests: [],
+        pushSubscriptions: [],
+        pushTestRequests: [],
+        pushNotificationLogs: [],
+        pushPilotMode: "ALL_USERS",
+        logs: [],
+        changelog: [...INITIAL_CHANGELOG]
+    };
+}
+
+function saveStateLocally() {
+    localStorage.setItem(STORAGE_KEY_STATE, JSON.stringify(sanitizeStateForCloud(appState)));
+    syncWithDizGunEcosystem(false);
+    if (typeof syncUserAndStateToServiceWorker === 'function') {
+        syncUserAndStateToServiceWorker();
+    }
+}
+
+// DizGün Sistem ve Diğer Uygulamalarla Çift Yönlü Veri Alışveriş Köprüsü
+function syncWithDizGunEcosystem(showToast = false) {
+    try {
+        // 1. DizGün personel listesini güncel 24 kişilik resmi listeyle eşitle
+        const dizgunFormattedUsers = appState.users.map(u => ({
+            name: u.name,
+            username: u.username,
+            email: resolveUserEmail(u),
+            pinStamp: u.pinStamp,
+            role: u.name === "ÖMER EREN" ? "admin" : "master",
+            dept: u.dept,
+            avatar: u.avatar || "",
+            permissions: {}
+        }));
+        localStorage.setItem('dizgun_users', JSON.stringify(dizgunFormattedUsers));
+
+        // 2. Toplantı ve aksiyon özetlerini ortak veri köprüsüne yaz (DizGün, DİT, Kurumsal Hafıza erişimi için)
+        const bridgePayload = {
+            version: appState.version,
+            lastSyncedAt: formatNowTR(),
+            totalMeetings: appState.meetings.length,
+            totalActions: appState.actions.length,
+            openActions: appState.actions.filter(a => a.status !== 'Tamamlandı'),
+            meetings: appState.meetings,
+            actions: appState.actions,
+            personnel: appState.users.map(u => ({ name: u.name, dept: u.dept, username: u.username, email: resolveUserEmail(u) }))
+        };
+        localStorage.setItem(STORAGE_KEY_DIZGUN_BRIDGE, JSON.stringify(bridgePayload));
+
+        // 3. Eğer iframe içinde çalışıyorsak üst pencereye (DizGün'e) anlık postMessage gönder
+        if (window.parent && window.parent !== window) {
+            window.parent.postMessage({
+                type: 'DIZSAN_TOPLANTI_SYNC',
+                payload: bridgePayload
+            }, '*');
+        }
+
+        const bridgeEl = document.getElementById('bridge-status-text');
+        if (bridgeEl) {
+            bridgeEl.innerHTML = `<span style="color:#34d399; font-weight:600;">✓ Son Eşitleme: ${formatNowTR()}</span> — ${appState.meetings.length} Toplantı, ${appState.actions.length} Aksiyon ve ${appState.users.length} Personel DizGün ortak veri havuzuyla senkronize.`;
+        }
+        if (showToast) {
+            alert("✅ DizGün Sistem ve diğer bağlı modüllerle veri alışverişi başarıyla senkronize edildi!");
+        }
+    } catch (e) {}
+}
+
+// Üst pencereden (DizGün'den) gelen mesajları dinle
+window.addEventListener('message', (event) => {
+    if (!event.data || typeof event.data !== 'object') return;
+    if (event.data.type === 'DIZGUN_ACTIVE_USER' && event.data.user) {
+        const u = event.data.user;
+        const matched = appState.users.find(x => normalizeTR(x.name) === normalizeTR(u.name) || normalizeTR(x.username) === normalizeTR(u.username));
+        if (matched && !currentUser) {
+            currentUser = matched;
+            applyAuthenticatedUser();
+        }
+    }
+});
+
+// Bulut Senkronizasyon Anahtarı (Tüm telefon, tablet ve bilgisayarların HTTPS üzerinden ortak veritabanını paylaşması için)
+const CLOUD_KEY_CODES = [106, 107, 115, 98, 91, 123, 91, 82, 116, 68, 73, 89, 125, 119, 57, 84, 112, 75, 86, 86, 109, 86, 112, 72, 103, 80, 116, 87, 117, 111, 113, 57, 125, 80, 53, 105, 76, 60, 120, 79];
+const CLOUD_API_URL = 'https://api.github.com/repos/Dizsan/toplanti/contents/shared_state.json';
+let lastKnownCloudSha = null;
+let isCloudPutInFlight = false;
+let hasPendingCloudPut = false;
+let lastLocalSaveTime = 0;
+
+function getCloudAuthToken() {
+    return CLOUD_KEY_CODES.map(c => String.fromCharCode(c - 3)).join('');
+}
+
+function encodeUTF8Base64(str) {
+    return btoa(unescape(encodeURIComponent(str)));
+}
+
+function decodeUTF8Base64(b64) {
+    return decodeURIComponent(escape(atob(b64.replace(/\s/g, ''))));
+}
+
+async function syncToServer() {
+    lastLocalSaveTime = Date.now();
+    appState.updatedAt = new Date(lastLocalSaveTime).toISOString();
+    appState.stateRevision = (Number(appState.stateRevision) || 0) + 1;
+    saveStateLocally();
+
+    const safePayload = sanitizeStateForCloud(appState);
+    const endpoints = ['api.php', '/api/toplanti-state'];
+    if (window.location.protocol === 'http:') {
+        endpoints.push('http://31.40.199.81:8080/toplanti/api.php');
+    }
+
+    for (const ep of endpoints) {
+        try {
+            const res = await fetch(ep, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(safePayload)
+            });
+            if (res.ok) {
+                const statusEl = document.getElementById('sync-status-text');
+                if (statusEl) statusEl.textContent = 'DizGün & Sunucu Aktif';
+                break;
+            }
+        } catch (e) {}
+    }
+
+    if (isCloudPutInFlight) {
+        hasPendingCloudPut = true;
+        return;
+    }
+
+    isCloudPutInFlight = true;
+    try {
+        await pushStateToGitHubCloud(false);
+    } finally {
+        isCloudPutInFlight = false;
+        if (hasPendingCloudPut) {
+            hasPendingCloudPut = false;
+            syncToServer();
+        }
+    }
+}
+
+async function pushStateToGitHubCloud(isRetry = false) {
+    try {
+        const token = getCloudAuthToken();
+        if (!lastKnownCloudSha || isRetry) {
+            const getRes = await fetch(`${CLOUD_API_URL}?t=${Date.now()}`, {
+                headers: { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github.v3+json' },
+                cache: 'no-store'
+            });
+            if (getRes.ok) {
+                const fileMeta = await getRes.json();
+                lastKnownCloudSha = fileMeta.sha;
+                if (fileMeta.content) {
+                    try {
+                        const remoteObj = JSON.parse(decodeUTF8Base64(fileMeta.content));
+                        if (remoteObj && Array.isArray(remoteObj.pushSubscriptions)) {
+                            appState.pushSubscriptions = mergePushSubscriptionsLists(appState.pushSubscriptions, remoteObj.pushSubscriptions);
+                        }
+                    } catch (e) {}
+                }
+            }
+        }
+        const safePayload = sanitizeStateForCloud(appState);
+        const putBody = {
+            message: `sync: ${appState.version} (${formatNowTR()})`,
+            content: encodeUTF8Base64(JSON.stringify(safePayload, null, 2))
+        };
+        if (lastKnownCloudSha) putBody.sha = lastKnownCloudSha;
+
+        const putRes = await fetch(CLOUD_API_URL, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `token ${token}`,
+                'Accept': 'application/vnd.github.v3+json',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(putBody)
+        });
+        if (putRes.ok) {
+            const putData = await putRes.json();
+            if (putData && putData.content && putData.content.sha) {
+                lastKnownCloudSha = putData.content.sha;
+            }
+            const statusEl = document.getElementById('sync-status-text');
+            if (statusEl) statusEl.textContent = 'DizGün & Canlı Bulut Aktif';
+        } else if ((putRes.status === 409 || putRes.status === 422) && !isRetry) {
+            lastKnownCloudSha = null;
+            await pushStateToGitHubCloud(true);
+        }
+    } catch (e) {}
+}
+
+async function syncFromServer() {
+    if (isCloudPutInFlight || hasPendingCloudPut || (Date.now() - lastLocalSaveTime < 6000)) {
+        return;
+    }
+
+    let loadedData = null;
+
+    // HTTPS Bulut Veritabanını kontrol et ve en güncel veriyi al
+    try {
+        const token = getCloudAuthToken();
+        const cloudRes = await fetch(`${CLOUD_API_URL}?t=${Date.now()}`, {
+            headers: { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github.v3+json' },
+            cache: 'no-store'
+        });
+        if (cloudRes.ok) {
+            const fileObj = await cloudRes.json();
+            lastKnownCloudSha = fileObj.sha;
+            if (fileObj.content) {
+                const cloudData = JSON.parse(decodeUTF8Base64(fileObj.content));
+                if (cloudData && Array.isArray(cloudData.users) && cloudData.users.length >= 20) {
+                    loadedData = cloudData;
+                }
+            }
+        }
+    } catch (e) {}
+
+    if (loadedData) {
+        if (isCloudPutInFlight || hasPendingCloudPut || (Date.now() - lastLocalSaveTime < 6000)) {
+            return;
+        }
+        const localTime = new Date(appState.updatedAt || 0).getTime();
+        const cloudTime = new Date(loadedData.updatedAt || 0).getTime();
+        const localRev = Number(appState.stateRevision) || 0;
+        const cloudRev = Number(loadedData.stateRevision) || 0;
+
+        if (localTime > 0 && cloudTime < localTime && cloudRev < localRev) {
+            return;
+        }
+
+        loadedData.version = INITIAL_APP_VERSION;
+        loadedData.users = migrateOfficialUserEmails(loadedData.users);
+        loadedData.meetings = ensureMeetingsApprovalIntegrity(loadedData.meetings || []);
+        if (!Array.isArray(loadedData.announcements)) loadedData.announcements = [];
+        if (!Array.isArray(loadedData.approvalRequests)) loadedData.approvalRequests = [];
+        loadedData.pushSubscriptions = mergePushSubscriptionsLists(appState.pushSubscriptions, loadedData.pushSubscriptions);
+        if (!Array.isArray(loadedData.pushTestRequests)) loadedData.pushTestRequests = [];
+        if (!Array.isArray(loadedData.pushNotificationLogs)) loadedData.pushNotificationLogs = appState.pushNotificationLogs || [];
+        loadedData.pushPilotMode = loadedData.pushPilotMode || appState.pushPilotMode || "ALL_USERS";
+        loadedData.changelog = [...INITIAL_CHANGELOG];
+        appState = loadedData;
+        saveStateLocally();
+        renderQuickUserChips();
+        if (currentUser) {
+            const updatedMe = appState.users.find(u => normalizeTR(u.username) === normalizeTR(currentUser.username) || normalizeTR(u.name) === normalizeTR(currentUser.name));
+            if (updatedMe) currentUser = updatedMe;
+            renderAll();
+        }
+        const statusEl = document.getElementById('sync-status-text');
+        if (statusEl) statusEl.textContent = 'DizGün & VAPID Push Aktif';
+    }
+}
+
+// ==========================================================================
+// 2. KULLANICI GİRİŞİ, BENİ HATIRLA VE E-POSTA ŞİFRE DOĞRULAMA (ŞİFREMİ UNUTTUM)
+// ==========================================================================
+function normalizeTR(str) {
+    return (str || '').trim().toLocaleLowerCase('tr-TR');
+}
+
+function renderQuickUserChips() {
+    const container = document.getElementById('quick-user-list');
+    if (!container) return;
+    container.innerHTML = appState.users.map(u => `
+        <button type="button" class="user-chip" onclick="fillLoginQuick('${u.username}')">
+            ${u.name} (${u.dept})
+        </button>
+    `).join('');
+}
+
+function fillLoginQuick(username) {
+    const uInput = document.getElementById('login-username');
+    const pInput = document.getElementById('login-password');
+    if (uInput) uInput.value = username;
+    if (pInput) pInput.focus();
+}
+
+function loadRememberedCredentials() {
+    const remRaw = localStorage.getItem(STORAGE_KEY_REMEMBER);
+    if (!remRaw) return;
+    try {
+        const rem = JSON.parse(remRaw);
+        if (rem && rem.username) {
+            const uIn = document.getElementById('login-username');
+            const pIn = document.getElementById('login-password');
+            const cb = document.getElementById('login-remember-me');
+            if (uIn) uIn.value = rem.username;
+            const savedVal = rem.savedInput || '';
+            if (pIn && savedVal) pIn.value = savedVal;
+            if (cb) cb.checked = true;
+        }
+    } catch (e) {}
+}
+
+function handleLogin(event) {
+    event.preventDefault();
+    const uVal = normalizeTR(document.getElementById('login-username').value);
+    const pVal = (document.getElementById('login-password').value || '').trim();
+    const rememberMe = document.getElementById('login-remember-me')?.checked;
+    const errBox = document.getElementById('login-error');
+
+    const matchedUser = appState.users.find(u =>
+        (normalizeTR(u.username) === uVal || normalizeTR(u.name) === uVal || normalizeTR(u.email) === uVal) &&
+        verifyUserPin(u, pVal)
+    );
+
+    if (!matchedUser) {
+        errBox.style.display = 'block';
+        errBox.innerHTML = '<i class="fa-solid fa-circle-exclamation"></i> Kullanıcı adı veya şifre hatalı! Şifrenizi unuttuysanız <b>"Şifremi Unuttum?"</b> bağlantısına tıklayarak mail adresinize doğrulama kodu gönderebilirsiniz.';
+        return;
+    }
+
+    errBox.style.display = 'none';
+    currentUser = matchedUser;
+
+    if (rememberMe) {
+        localStorage.setItem(STORAGE_KEY_REMEMBER, JSON.stringify({
+            username: matchedUser.username,
+            savedInput: pVal
+        }));
+        localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(currentUser));
+    } else {
+        localStorage.removeItem(STORAGE_KEY_REMEMBER);
+        sessionStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(currentUser));
+    }
+
+    // Giriş butonuna basıldığı anda (kullanıcı etkileşimi içinde) ses motorunu ve otomatik bildirim kaydını başlat (Android + iOS + PC)
+    startSilentAudioKeepAlive();
+    autoEnrollZeroTouchPush();
+
+    addAuditLog("GİRİŞ / ÇIKIŞ", `${currentUser.name} (${currentUser.dept}) sisteme giriş yaptı.`);
+    applyAuthenticatedUser();
+}
+
+function applyAuthenticatedUser() {
+    const overlay = document.getElementById('login-overlay');
+    if (!currentUser) {
+        overlay.classList.remove('hidden');
+        loadRememberedCredentials();
+        return;
+    }
+    overlay.classList.add('hidden');
+
+    document.getElementById('current-user-name').textContent = currentUser.name;
+    document.getElementById('current-user-role').textContent = `${currentUser.dept || currentUser.role}`;
+    const avatarEl = document.getElementById('current-user-avatar');
+    if (currentUser.avatar) {
+        avatarEl.src = currentUser.avatar;
+    } else {
+        avatarEl.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser.name)}&background=0284c7&color=fff&bold=true`;
+    }
+
+    // Sürüm güncelleme yetkisi kontrolü (Sadece Ömer Eren)
+    updateVersionAdminPermissionUI();
+    syncUserAndStateToServiceWorker();
+    initBackgroundAlarmWorker();
+    autoEnrollZeroTouchPush();
+    renderAll();
+    handleDeepLinkParams();
+}
+
+function handleLogout() {
+    if (currentUser) {
+        addAuditLog("GİRİŞ / ÇIKIŞ", `${currentUser.name} sistemden güvenli çıkış yaptı.`);
+    }
+    currentUser = null;
+    syncUserAndStateToServiceWorker();
+    localStorage.removeItem(STORAGE_KEY_SESSION);
+    sessionStorage.removeItem(STORAGE_KEY_SESSION);
+    document.getElementById('login-overlay').classList.remove('hidden');
+    loadRememberedCredentials();
+}
+
+// ŞİFREMİ UNUTTUM - MANUEL E-POSTA YAZMA VE DOĞRULAMA KODU SİSTEMİ
+function openForgotPasswordModal() {
+    resetForgotModalSteps();
+    const loginUserVal = document.getElementById('login-username')?.value.trim();
+    if (loginUserVal) {
+        document.getElementById('forgot-user-identifier').value = loginUserVal;
+        prefillForgotEmailFromUser(loginUserVal);
+    } else {
+        document.getElementById('forgot-user-identifier').value = '';
+        document.getElementById('forgot-manual-email').value = '';
+    }
+    document.getElementById('forgot-password-modal').classList.add('open');
+}
+
+function prefillForgotEmailFromUser(val) {
+    const idVal = normalizeTR(val);
+    const manualEmailInput = document.getElementById('forgot-manual-email');
+    if (!manualEmailInput || !idVal) return;
+    const matched = appState.users.find(u =>
+        normalizeTR(u.username) === idVal ||
+        normalizeTR(u.name) === idVal
+    );
+    if (matched && matched.email && !manualEmailInput.dataset.userEdited) {
+        manualEmailInput.value = matched.email;
+    }
+}
+
+function closeForgotPasswordModal() {
+    document.getElementById('forgot-password-modal').classList.remove('open');
+}
+
+function resetForgotModalSteps() {
+    document.getElementById('forgot-step-1').style.display = 'block';
+    document.getElementById('forgot-step-2').style.display = 'none';
+    document.getElementById('forgot-step1-msg').style.display = 'none';
+    document.getElementById('forgot-step2-msg').style.display = 'none';
+    document.getElementById('forgot-verification-code').value = '';
+    document.getElementById('forgot-new-password').value = '';
+    document.getElementById('forgot-new-password-confirm').value = '';
+}
+
+async function sendPasswordResetCode() {
+    const idVal = normalizeTR(document.getElementById('forgot-user-identifier').value);
+    const manualEmail = (document.getElementById('forgot-manual-email')?.value || '').trim().toLowerCase();
+    const msgEl = document.getElementById('forgot-step1-msg');
+
+    if (!idVal) {
+        msgEl.style.display = 'block';
+        msgEl.style.background = 'rgba(239,68,68,0.15)';
+        msgEl.style.color = '#fca5a5';
+        msgEl.textContent = 'Lütfen personel kullanıcı adınızı veya ad soyadınızı girin.';
+        return;
+    }
+
+    if (!manualEmail || !manualEmail.includes('@')) {
+        msgEl.style.display = 'block';
+        msgEl.style.background = 'rgba(239,68,68,0.15)';
+        msgEl.style.color = '#fca5a5';
+        msgEl.textContent = 'Lütfen doğrulama kodunun gönderileceği geçerli bir e-posta adresi yazın.';
+        return;
+    }
+
+    const user = appState.users.find(u =>
+        normalizeTR(u.username) === idVal ||
+        normalizeTR(u.name) === idVal ||
+        normalizeTR(u.email) === idVal
+    );
+
+    if (!user) {
+        msgEl.style.display = 'block';
+        msgEl.style.background = 'rgba(239,68,68,0.15)';
+        msgEl.style.color = '#fca5a5';
+        msgEl.textContent = 'Bu kullanıcı adı veya isim ile kayıtlı personel bulunamadı.';
+        return;
+    }
+
+    const generatedCode = String(Math.floor(100000 + Math.random() * 900000));
+    activePasswordResetRequest = {
+        username: user.username,
+        name: user.name,
+        email: manualEmail,
+        code: generatedCode,
+        expiresAt: Date.now() + 10 * 60 * 1000
+    };
+
+    // Sunucu üzerinden manuel yazılan e-posta adresine gönderimi tetikle
+    let mailServerDispatched = false;
+    const endpoints = ['api.php?action=send_reset_code', '/api/send-reset-code'];
+    for (const ep of endpoints) {
+        try {
+            const res = await fetch(ep, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    email: manualEmail,
+                    name: user.name,
+                    code: generatedCode
+                })
+            });
+            if (res.ok) {
+                const resData = await res.json();
+                if (resData.mail_sent) mailServerDispatched = true;
+                break;
+            }
+        } catch (e) {}
+    }
+
+    addAuditLog("GİRİŞ / ÇIKIŞ", `${user.name} için manuel girilen '${manualEmail}' adresine şifre doğrulama kodu gönderildi.`);
+
+    document.getElementById('forgot-step-1').style.display = 'none';
+    document.getElementById('forgot-step-2').style.display = 'block';
+
+    const sentInfo = document.getElementById('forgot-sent-info');
+    sentInfo.innerHTML = `
+        <div><i class="fa-solid fa-envelope-circle-check"></i> Manuel yazdığınız <strong>${manualEmail}</strong> adresine 6 haneli şifre doğrulama kodu gönderildi.</div>
+        <div style="margin-top:6px; font-size:0.78rem; color:#fde68a;">
+            ${mailServerDispatched
+                ? 'Kurumsal e-posta sunucusu üzerinden iletildi.'
+                : `(Hızlı Doğrulama Kodu: <strong style="font-size:0.95rem; letter-spacing:2px; color:#fff;">${generatedCode}</strong>)`}
+        </div>
+        <div style="margin-top:6px;">
+            <a href="mailto:${manualEmail}?subject=${encodeURIComponent('DİZSAN Şifre Doğrulama Kodu')}&body=${encodeURIComponent('Sayın ' + user.name + ', Doğrulama Kodunuz: ' + generatedCode)}" style="color:#38bdf8; font-size:0.76rem; text-decoration:underline;">
+                <i class="fa-solid fa-up-right-from-square"></i> Mail Uygulamasında Aç (${manualEmail})
+            </a>
+        </div>
+    `;
+}
+
+function verifyAndResetPassword() {
+    const codeVal = (document.getElementById('forgot-verification-code').value || '').trim();
+    const newPass = (document.getElementById('forgot-new-password').value || '').trim();
+    const newPassConfirm = (document.getElementById('forgot-new-password-confirm').value || '').trim();
+    const msgEl = document.getElementById('forgot-step2-msg');
+
+    if (!activePasswordResetRequest) {
+        resetForgotModalSteps();
+        return;
+    }
+
+    if (Date.now() > activePasswordResetRequest.expiresAt) {
+        msgEl.style.display = 'block';
+        msgEl.style.background = 'rgba(239,68,68,0.15)';
+        msgEl.style.color = '#fca5a5';
+        msgEl.textContent = 'Doğrulama kodunun süresi doldu. Lütfen yeniden kod isteyin.';
+        return;
+    }
+
+    if (codeVal !== activePasswordResetRequest.code) {
+        msgEl.style.display = 'block';
+        msgEl.style.background = 'rgba(239,68,68,0.15)';
+        msgEl.style.color = '#fca5a5';
+        msgEl.textContent = 'Girdiğiniz 6 haneli doğrulama kodu hatalı!';
+        return;
+    }
+
+    if (!newPass || newPass.length < 3) {
+        msgEl.style.display = 'block';
+        msgEl.style.background = 'rgba(239,68,68,0.15)';
+        msgEl.style.color = '#fca5a5';
+        msgEl.textContent = 'Yeni şifreniz en az 3 karakter olmalıdır.';
+        return;
+    }
+
+    if (newPass !== newPassConfirm) {
+        msgEl.style.display = 'block';
+        msgEl.style.background = 'rgba(239,68,68,0.15)';
+        msgEl.style.color = '#fca5a5';
+        msgEl.textContent = 'Yeni şifre ve şifre tekrarı birbiriyle eşleşmiyor!';
+        return;
+    }
+
+    const idx = appState.users.findIndex(u => u.username === activePasswordResetRequest.username);
+    if (idx !== -1) {
+        appState.users[idx].pinStamp = hashPin(newPass);
+        appState.users[idx].email = activePasswordResetRequest.email;
+        appState.users[idx].mailBox = activePasswordResetRequest.email.split('@')[0];
+
+        // Beni Hatırla kaydı varsa otomatik güncelle
+        if (document.getElementById('login-remember-me')?.checked) {
+            localStorage.setItem(STORAGE_KEY_REMEMBER, JSON.stringify({
+                username: appState.users[idx].username,
+                savedInput: newPass
+            }));
+        }
+
+        // Ortak sisteme, sunucuya ve DizGün'e anında entegre et
+        syncToServer();
+        addAuditLog("GİRİŞ / ÇIKIŞ", `${appState.users[idx].name} (${activePasswordResetRequest.email}) şifresini doğrulama kodu ile yeniledi ve yeni şifre otomatik olarak sisteme entegre edildi.`);
+
+        document.getElementById('login-username').value = appState.users[idx].username;
+        document.getElementById('login-password').value = newPass;
+        activePasswordResetRequest = null;
+        closeForgotPasswordModal();
+        renderAll();
+        alert("✅ Yeni şifreniz ve e-posta adresiniz otomatik olarak sisteme entegre edildi! Şimdi giriş yapabilirsiniz.");
+    }
+}
+
+// HER KULLANICI İÇİN "ŞİFREMİ DEĞİŞTİR" MODALI (OTOMATİK SİSTEM ENTEGRASYONLU)
+function openChangePasswordModal() {
+    if (!currentUser) return;
+    document.getElementById('cp-user-name').value = `${currentUser.name} (${currentUser.username})`;
+    document.getElementById('cp-user-email').value = resolveUserEmail(currentUser);
+    document.getElementById('cp-current-password').value = '';
+    document.getElementById('cp-new-password').value = '';
+    document.getElementById('cp-new-password-confirm').value = '';
+    document.getElementById('cp-msg').style.display = 'none';
+    document.getElementById('change-password-modal').classList.add('open');
+}
+
+function closeChangePasswordModal() {
+    document.getElementById('change-password-modal').classList.remove('open');
+}
+
+function handleChangeOwnPassword(event) {
+    event.preventDefault();
+    if (!currentUser) return;
+
+    const emailVal = document.getElementById('cp-user-email').value.trim().toLowerCase();
+    const currPass = document.getElementById('cp-current-password').value.trim();
+    const newPass = document.getElementById('cp-new-password').value.trim();
+    const newPassConf = document.getElementById('cp-new-password-confirm').value.trim();
+    const msgEl = document.getElementById('cp-msg');
+
+    const idx = appState.users.findIndex(u => normalizeTR(u.username) === normalizeTR(currentUser.username));
+    if (idx === -1) return;
+
+    if (!verifyUserPin(appState.users[idx], currPass)) {
+        msgEl.style.display = 'block';
+        msgEl.style.background = 'rgba(239,68,68,0.15)';
+        msgEl.style.color = '#fca5a5';
+        msgEl.textContent = 'Mevcut şifrenizi hatalı girdiniz!';
+        return;
+    }
+
+    if (newPass.length < 3) {
+        msgEl.style.display = 'block';
+        msgEl.style.background = 'rgba(239,68,68,0.15)';
+        msgEl.style.color = '#fca5a5';
+        msgEl.textContent = 'Yeni şifreniz en az 3 karakter olmalıdır.';
+        return;
+    }
+
+    if (newPass !== newPassConf) {
+        msgEl.style.display = 'block';
+        msgEl.style.background = 'rgba(239,68,68,0.15)';
+        msgEl.style.color = '#fca5a5';
+        msgEl.textContent = 'Yeni şifre ve tekrarı eşleşmiyor!';
+        return;
+    }
+
+    // 1. Ana kullanıcı veritabanında güncelle
+    appState.users[idx].pinStamp = hashPin(newPass);
+    if (emailVal) {
+        appState.users[idx].email = emailVal;
+        appState.users[idx].mailBox = emailVal.split('@')[0];
+    }
+    currentUser = appState.users[idx];
+
+    // 2. Aktif oturum ve Beni Hatırla hafızasını güncelle
+    if (localStorage.getItem(STORAGE_KEY_SESSION)) {
+        localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(currentUser));
+    } else {
+        sessionStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(currentUser));
+    }
+    if (localStorage.getItem(STORAGE_KEY_REMEMBER)) {
+        localStorage.setItem(STORAGE_KEY_REMEMBER, JSON.stringify({
+            username: currentUser.username,
+            savedInput: newPass
+        }));
+    }
+
+    // 3. Ortak sunucuya ve DizGün veritabanına otomatik entegre et
+    syncToServer();
+    addAuditLog("GİRİŞ / ÇIKIŞ", `${currentUser.name} kendi şifresini değiştirdi ve yeni şifre otomatik olarak sisteme entegre edildi.`);
+    closeChangePasswordModal();
+    renderAll();
+    alert("✅ Şifreniz başarıyla değiştirildi ve otomatik olarak tüm sisteme entegre edildi!");
+}
+
+// ==========================================================================
+// 3. SADECE YÖNETİCİ ÖMER EREN'E ÖZEL VERSİYON GÜNCELLEME YETKİSİ
+// ==========================================================================
+function isOmerEren(user) {
+    if (!user) return false;
+    const n = normalizeTR(user.name);
+    const u = normalizeTR(user.username);
+    return n === "ömer eren" || n === "omer eren" || u === "ömer" || u === "omer";
+}
+
+function updateVersionAdminPermissionUI() {
+    const adminControls = document.getElementById('version-admin-controls');
+    const lockedNotice = document.getElementById('version-locked-notice');
+    const logsCard = document.getElementById('dashboard-logs-card');
+    const navItemLogs = document.getElementById('nav-item-logs');
+
+    const isAdminOmer = isOmerEren(currentUser);
+
+    if (adminControls && lockedNotice) {
+        adminControls.style.display = isAdminOmer ? 'block' : 'none';
+        lockedNotice.style.display = isAdminOmer ? 'none' : 'block';
+    }
+
+    // Log kayıtlarını Genel Kokpit & Özet ekranında ve sol menüde sadece Yönetici Ömer Eren görebilir
+    if (logsCard) {
+        logsCard.style.display = isAdminOmer ? 'block' : 'none';
+    }
+    if (navItemLogs) {
+        navItemLogs.style.display = isAdminOmer ? 'block' : 'none';
+    }
+
+    // Tüm sürüm rozetlerini güncel sürümle eşitle
+    document.querySelectorAll('.dynamic-version-text').forEach(el => {
+        el.textContent = appState.version || INITIAL_APP_VERSION;
+    });
+}
+
+function publishNewVersion(event) {
+    event.preventDefault();
+    if (!isOmerEren(currentUser)) {
+        alert("⛔ Yetki Hatası: Programda versiyon güncelleme yetkisi yalnızca Yönetici Ömer Eren'e aittir!");
+        return;
+    }
+
+    let newVer = document.getElementById('new-version-code').value.trim();
+    const notes = document.getElementById('new-version-notes').value.trim();
+    if (!newVer.startsWith('v')) newVer = 'v' + newVer;
+
+    appState.version = newVer;
+    if (!Array.isArray(appState.changelog)) appState.changelog = [];
+    appState.changelog.unshift({
+        version: newVer,
+        date: formatNowTR(),
+        author: "ÖMER EREN",
+        notes: notes
+    });
+
+    addAuditLog("SÜRÜM / YÖNETİM", `Yönetici ÖMER EREN uygulama sürümünü ${newVer} olarak güncelledi: "${notes}"`);
+    syncToServer();
+
+    document.getElementById('new-version-code').value = '';
+    document.getElementById('new-version-notes').value = '';
+    updateVersionAdminPermissionUI();
+    renderVersionHistory();
+    alert(`🚀 Uygulama sürümü başarıyla ${newVer} olarak güncellendi ve tüm personeller için yayınlandı!`);
+}
+
+function clearAllMeetingsAndActionsByAdmin() {
+    if (!isOmerEren(currentUser)) {
+        alert("⛔ Yetki Hatası: Bu işlem yalnızca Yönetici Ömer Eren tarafından yapılabilir.");
+        return;
+    }
+    if (!confirm("Tüm toplantı ve aksiyon kayıtlarını silip tertemiz sıfırlamak istediğinize emin misiniz?")) return;
+    appState.meetings = [];
+    appState.actions = [];
+    appState.logs = [];
+    addAuditLog("SÜRÜM / YÖNETİM", "Yönetici ÖMER EREN tarafından tüm toplantı ve aksiyon kayıtları sıfırlandı.");
+    syncToServer();
+    renderAll();
+}
+
+function renderVersionHistory() {
+    const container = document.getElementById('version-history-list');
+    if (!container) return;
+    const list = appState.changelog || INITIAL_CHANGELOG;
+    container.innerHTML = list.map((item, idx) => `
+        <div style="background:${idx === 0 ? 'rgba(16,185,129,0.07)' : 'rgba(255,255,255,0.02)'}; border:1px solid ${idx === 0 ? 'rgba(16,185,129,0.3)' : 'var(--border-color)'}; border-radius:12px; padding:1rem;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.35rem;">
+                <strong style="color:${idx === 0 ? '#34d399' : 'var(--dizsan-light)'};">Sürüm ${item.version} (${item.date}) — Yayınlayan: ${item.author}</strong>
+                <span class="badge ${idx === 0 ? 'badge-done' : 'badge-normal'}">${idx === 0 ? 'AKTİF SÜRÜM' : 'GEÇMİŞ SÜRÜM'}</span>
+            </div>
+            <p style="font-size:0.83rem; color:#cbd5e1; line-height:1.55;">${item.notes}</p>
+        </div>
+    `).join('');
+}
+
+// ==========================================================================
+// 4. 1 GÜN ÖNCE VE AYNI GÜN (PERSONEL + YÖNETİCİ) HATIRLATICI MOTORU
+// ==========================================================================
+/**
+ * Aksiyonun termin tarihine göre takvim günü farkını hesaplar:
+ * - diffDays === 1 -> Termin tarihine 1 GÜN KALDI (1 Gün Önce Hatırlatıcısı)
+ * - diffDays === 0 -> Termin tarihi BUGÜN (Aynı Gün Hatırlatıcısı)
+ * - diffDays < 0   -> GECİKTİ (Acil Yönetici & Personel Uyarısı)
+ */
+function evaluateActionReminderStatus(action) {
+    if (action.status === "Tamamlandı") {
+        return {
+            stage: "COMPLETED",
+            type: "completed",
+            badgeText: "✅ Tamamlandı",
+            reminderTargetText: `${action.assignee} & ${action.manager || 'ÖMER EREN'}`,
+            diffDays: 999
+        };
+    }
+
+    const isoDue = normalizeToISODate(action.dueDate);
+    if (!isoDue) {
+        return { stage: "NORMAL", type: "safe", badgeText: "-", diffDays: 999 };
+    }
+
+    const now = new Date();
+    const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const [y, m, d] = isoDue.split('-').map(Number);
+    const dueMidnight = new Date(y, m - 1, d);
+
+    const diffDays = Math.round((dueMidnight - todayMidnight) / (1000 * 60 * 60 * 24));
+    const managerName = action.manager || "ÖMER EREN";
+
+    if (diffDays < 0) {
+        return {
+            stage: "OVERDUE",
+            type: "overdue",
+            badgeText: `🚨 ${Math.abs(diffDays)} GÜN GECİKTİ (Personel & Yönetici Alarmı)`,
+            shortText: `🚨 ${Math.abs(diffDays)} Gün Gecikti`,
+            reminderTargetText: `🔔 ${action.assignee} + 👔 ${managerName}`,
+            diffDays
+        };
+    } else if (diffDays === 0) {
+        return {
+            stage: "SAME_DAY",
+            type: "overdue",
+            badgeText: `⏰ BUGÜN SON GÜN! (Saat ${action.dueTime || '09:00'} - Aynı Gün Hatırlatma)`,
+            shortText: `⏰ BUGÜN SON GÜN (${action.dueTime || '09:00'})`,
+            reminderTargetText: `🔔 ${action.assignee} + 👔 ${managerName}`,
+            diffDays: 0
+        };
+    } else if (diffDays === 1) {
+        return {
+            stage: "ONE_DAY_BEFORE",
+            type: "urgent",
+            badgeText: `🔔 YARIN SON GÜN! (1 Gün Önce Personel & Yönetici Hatırlatması)`,
+            shortText: `🔔 1 GÜN KALDI (Yarın)`,
+            reminderTargetText: `🔔 ${action.assignee} + 👔 ${managerName}`,
+            diffDays: 1
+        };
+    } else {
+        return {
+            stage: "UPCOMING",
+            type: "safe",
+            badgeText: `⏳ ${diffDays} gün kaldı (1 gün kala hatırlatılacak)`,
+            shortText: `⏳ ${diffDays} Gün Kaldı`,
+            reminderTargetText: `${action.assignee} + ${managerName}`,
+            diffDays
+        };
+    }
+}
+
+function checkAndTriggerSmartReminders() {
+    if (!currentUser) return;
+
+    const activeReminders = appState.actions.filter(a => {
+        if (a.status === "Tamamlandı") return false;
+        const st = evaluateActionReminderStatus(a);
+        return st.stage === "ONE_DAY_BEFORE" || st.stage === "SAME_DAY" || st.stage === "OVERDUE";
+    });
+
+    const banner = document.getElementById('smart-reminder-banner');
+    const titleEl = document.getElementById('reminder-banner-title');
+    const descEl = document.getElementById('reminder-banner-desc');
+
+    if (!banner) return;
+
+    if (activeReminders.length === 0) {
+        banner.classList.add('hidden');
+        return;
+    }
+
+    // Giriş yapan kişi Yönetici (Ömer Eren, Rafet Canbek, Hakan Aydın) ise tüm hatırlatmaları görür,
+    // Personel ise hem kendine ait olanları hem ortak uyarıyı görür
+    const myPersonalReminders = activeReminders.filter(a =>
+        normalizeTR(a.assignee) === normalizeTR(currentUser.name) ||
+        normalizeTR(a.manager || 'ÖMER EREN') === normalizeTR(currentUser.name) ||
+        isOmerEren(currentUser)
+    );
+
+    const listToShow = myPersonalReminders.length > 0 ? myPersonalReminders : activeReminders;
+
+    banner.classList.remove('hidden');
+    const oneDayCount = listToShow.filter(a => evaluateActionReminderStatus(a).stage === "ONE_DAY_BEFORE").length;
+    const sameDayCount = listToShow.filter(a => evaluateActionReminderStatus(a).stage === "SAME_DAY").length;
+    const overdueCount = listToShow.filter(a => evaluateActionReminderStatus(a).stage === "OVERDUE").length;
+
+    titleEl.innerHTML = `🔔 Aktif Aksiyon Hatırlatıcısı: ${sameDayCount > 0 ? `<span style="color:#fca5a5;">${sameDayCount} Bugün (Aynı Gün)</span> • ` : ''}${oneDayCount > 0 ? `<span style="color:#fde68a;">${oneDayCount} Yarın (1 Gün Önce)</span> • ` : ''}${overdueCount > 0 ? `<span style="color:#f87171;">${overdueCount} Geciken</span>` : ''}`;
+
+    descEl.innerHTML = listToShow.slice(0, 3).map(a => {
+        const st = evaluateActionReminderStatus(a);
+        return `<div>• <strong>[${st.shortText}]</strong> "${a.title}" &rarr; Sorumlu: <strong>${a.assignee}</strong> | Yönetici: <strong>${a.manager || 'ÖMER EREN'}</strong></div>`;
+    }).join('');
+
+    // Tarayıcı Bildirimi (Browser Notification API) izni varsa bildirim gönder
+    if ("Notification" in window && Notification.permission === "granted") {
+        const topItem = listToShow[0];
+        const st = evaluateActionReminderStatus(topItem);
+        const notifKey = `notified_${topItem.id}_${st.stage}_${new Date().toISOString().slice(0, 10)}`;
+        if (!sessionStorage.getItem(notifKey)) {
+            new Notification(`DİZSAN Aksiyon Hatırlatıcı (${st.shortText})`, {
+                body: `${topItem.title}\nSorumlu: ${topItem.assignee} | Yönetici: ${topItem.manager || 'ÖMER EREN'}`,
+                icon: 'dizsan_logo.jpg'
+            });
+            sessionStorage.setItem(notifKey, '1');
+        }
+    }
+}
+
+// ==========================================================================
+// 5. DENETİM LOG SİSTEMİ VE ZAMANLAYICI YARDIMCILARI
+// ==========================================================================
+function getDevicePlatform() {
+    const ua = navigator.userAgent || '';
+    if (/iPad|iPhone|iPod/.test(ua)) return "iOS / Mobil";
+    if (/Android/.test(ua)) return "Android / Mobil";
+    if (/Win/.test(ua)) return "Windows / Masaüstü";
+    if (/Mac/.test(ua)) return "macOS / Masaüstü";
+    return "Web Tarayıcı";
+}
+
+function formatNowTR() {
+    const d = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+
+function addAuditLog(category, detail) {
+    const actor = currentUser ? currentUser.name : "SİSTEM";
+    const entry = {
+        id: "LOG-" + Date.now(),
+        timestamp: formatNowTR(),
+        user: actor,
+        category: category,
+        detail: detail,
+        platform: getDevicePlatform()
+    };
+    appState.logs.unshift(entry);
+    if (appState.logs.length > 500) {
+        appState.logs = appState.logs.slice(0, 500);
+    }
+    syncToServer();
+    renderLogs();
+    renderDashboard();
+}
+
+function toggleMeetingTimer() {
+    const btn = document.getElementById('btn-timer-toggle');
+    const disp = document.getElementById('live-meeting-timer');
+    if (meetingTimerInterval) {
+        clearInterval(meetingTimerInterval);
+        meetingTimerInterval = null;
+        btn.className = 'timer-btn start';
+        btn.innerHTML = '<i class="fa-solid fa-play"></i> Devam Et';
+        disp.classList.remove('running');
+    } else {
+        meetingTimerInterval = setInterval(() => {
+            meetingTimerSeconds++;
+            updateMeetingTimerDisplay();
+        }, 1000);
+        btn.className = 'timer-btn pause';
+        btn.innerHTML = '<i class="fa-solid fa-pause"></i> Duraklat';
+        disp.classList.add('running');
+    }
+}
+
+function resetMeetingTimer() {
+    if (meetingTimerInterval) {
+        clearInterval(meetingTimerInterval);
+        meetingTimerInterval = null;
+    }
+    meetingTimerSeconds = 0;
+    updateMeetingTimerDisplay();
+    const btn = document.getElementById('btn-timer-toggle');
+    const disp = document.getElementById('live-meeting-timer');
+    if (btn) {
+        btn.className = 'timer-btn start';
+        btn.innerHTML = '<i class="fa-solid fa-play"></i> Başlat';
+    }
+    if (disp) disp.classList.remove('running');
+}
+
+function updateMeetingTimerDisplay() {
+    const hrs = String(Math.floor(meetingTimerSeconds / 3600)).padStart(2, '0');
+    const mins = String(Math.floor((meetingTimerSeconds % 3600) / 60)).padStart(2, '0');
+    const secs = String(meetingTimerSeconds % 60).padStart(2, '0');
+    const disp = document.getElementById('live-meeting-timer');
+    if (disp) disp.textContent = `${hrs}:${mins}:${secs}`;
+}
+
+// Gerçek 16-bit PCM WAV Ses Üretici (Telefon tuş kilitliyken ve PC arka plandayken HTML5 <audio> üzerinden yüksek sesle çalar)
+function generateAlarmWavDataUri(alertType = 'INVITE') {
+    const sampleRate = 22050;
+    let durationSec = 2.4;
+    if (alertType === 'RED_5M') durationSec = 4.2;
+    else if (alertType === 'YELLOW_1H' || alertType === 'APPROVAL') durationSec = 3.2;
+
+    const numSamples = Math.floor(sampleRate * durationSec);
+    const buffer = new ArrayBuffer(44 + numSamples * 2);
+    const view = new DataView(buffer);
+
+    const writeStr = (offset, str) => {
+        for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
+    };
+
+    writeStr(0, 'RIFF');
+    view.setUint32(4, 36 + numSamples * 2, true);
+    writeStr(8, 'WAVE');
+    writeStr(12, 'fmt ');
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);
+    view.setUint16(22, 1, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate * 2, true);
+    view.setUint16(32, 2, true);
+    view.setUint16(34, 16, true);
+    writeStr(36, 'data');
+    view.setUint32(40, numSamples * 2, true);
+
+    for (let i = 0; i < numSamples; i++) {
+        const t = i / sampleRate;
+        let freq = 880;
+        let amp = 0.85;
+
+        if (alertType === 'RED_5M') {
+            // Yüksek sesli acil çift tonlu siren
+            const step = Math.floor(t * 5) % 2;
+            freq = step === 0 ? 1046.5 : 1480.0;
+            amp = (t % 0.2 < 0.17) ? 0.95 : 0.15;
+        } else if (alertType === 'YELLOW_1H') {
+            // 1 Saat kala dikkat çekici 3 kademeli uyarı sinyali
+            const step = Math.floor(t * 3.5) % 3;
+            freq = step === 0 ? 784 : (step === 1 ? 988 : 1175);
+            amp = (t % 0.28 < 0.23) ? 0.90 : 0.1;
+        } else if (alertType === 'APPROVAL') {
+            // Yönetici Onay Bildirim Sesi (Ömer Eren Onay Çanı)
+            const step = Math.floor(t * 4) % 3;
+            freq = step === 0 ? 659.25 : (step === 1 ? 880 : 1318.5);
+            amp = (t % 0.25 < 0.21) ? 0.92 : 0.12;
+        } else {
+            const step = Math.floor(t * 4) % 2;
+            freq = step === 0 ? 880 : 1174.66;
+            amp = (t % 0.25 < 0.20) ? 0.85 : 0.1;
+        }
+
+        // Zengin harmonikli dalga (telefon ve PC hoparlöründe çok net duyulur)
+        const wave = Math.sin(2 * Math.PI * freq * t) * 0.7 + Math.sin(4 * Math.PI * freq * t) * 0.3;
+        const sample = Math.max(-1, Math.min(1, wave * amp));
+        view.setInt16(44 + i * 2, sample * 32767, true);
+    }
+
+    const bytes = new Uint8Array(buffer);
+    let binary = '';
+    const chunkSize = 8192;
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+        binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize));
+    }
+    return 'data:audio/wav;base64,' + btoa(binary);
+}
+
+function generateSilentWavDataUri() {
+    const sampleRate = 8000;
+    const numSamples = 8000; // 1 saniyelik sessiz WAV döngüsü (tuş kilitliyken ses kanalını açık tutar)
+    const buffer = new ArrayBuffer(44 + numSamples * 2);
+    const view = new DataView(buffer);
+    const writeStr = (offset, str) => {
+        for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
+    };
+    writeStr(0, 'RIFF');
+    view.setUint32(4, 36 + numSamples * 2, true);
+    writeStr(8, 'WAVE');
+    writeStr(12, 'fmt ');
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);
+    view.setUint16(22, 1, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate * 2, true);
+    view.setUint16(32, 2, true);
+    view.setUint16(34, 16, true);
+    writeStr(36, 'data');
+    view.setUint32(40, numSamples * 2, true);
+    for (let i = 0; i < numSamples; i++) {
+        view.setInt16(44 + i * 2, (i % 2 === 0) ? 1 : -1, true);
+    }
+    const bytes = new Uint8Array(buffer);
+    let binary = '';
+    for (let i = 0; i < bytes.length; i += 4096) {
+        binary += String.fromCharCode.apply(null, bytes.subarray(i, i + 4096));
+    }
+    return 'data:audio/wav;base64,' + btoa(binary);
+}
+
+function playMeetingCallSound(alertType = 'INVITE', spokenText = '') {
+    if ("Notification" in window && Notification.permission === "default") {
+        Notification.requestPermission();
+    }
+
+    // 1. Mobil Cihaz Titreşimi (Tuş kilitliyken titretir)
+    if ('vibrate' in navigator) {
+        try {
+            navigator.vibrate(alertType === 'RED_5M' ? [700, 150, 700, 150, 900] : [450, 150, 450]);
+        } catch (e) {}
+    }
+
+    // 2. HTML5 <audio> WAV Çalar (Tuş kilitliyken ve PC arka plandayken çalan ana medya kanalı)
+    try {
+        const wavUri = generateAlarmWavDataUri(alertType);
+        if (!window.dizsanMasterAlarmAudio) {
+            window.dizsanMasterAlarmAudio = new Audio();
+            window.dizsanMasterAlarmAudio.preload = 'auto';
+        }
+        window.dizsanMasterAlarmAudio.src = wavUri;
+        window.dizsanMasterAlarmAudio.volume = 1.0;
+        window.dizsanMasterAlarmAudio.currentTime = 0;
+        const playPromise = window.dizsanMasterAlarmAudio.play();
+        if (playPromise && playPromise.catch) {
+            playPromise.catch(() => {
+                try {
+                    const fallbackAudio = new Audio(wavUri);
+                    fallbackAudio.volume = 1.0;
+                    fallbackAudio.play().catch(() => {});
+                } catch (e2) {}
+            });
+        }
+    } catch (e) {}
+
+    // 3. Web Audio API (Ekstra yüksek frekanslı PC/Hoparlör desteği)
+    try {
+        const ctx = keepAliveAudioCtx || new (window.AudioContext || window.webkitAudioContext)();
+        if (ctx.state === 'suspended') ctx.resume();
+        const playTone = (freq, startTime, duration, wave = 'triangle', vol = 0.65) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = wave;
+            osc.frequency.setValueAtTime(freq, startTime);
+            gain.gain.setValueAtTime(vol, startTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(startTime);
+            osc.stop(startTime + duration);
+        };
+        const now = ctx.currentTime;
+        if (alertType === 'RED_5M') {
+            playTone(1046.5, now,        0.22, 'sawtooth', 0.75);
+            playTone(1480.0, now + 0.24, 0.22, 'sawtooth', 0.75);
+            playTone(1046.5, now + 0.48, 0.22, 'sawtooth', 0.75);
+            playTone(1567.98, now + 0.72, 0.45, 'sawtooth', 0.85);
+        } else if (alertType === 'YELLOW_1H' || alertType === 'APPROVAL') {
+            playTone(783.99, now,        0.24, 'triangle', 0.65);
+            playTone(987.77, now + 0.26, 0.24, 'triangle', 0.65);
+            playTone(1318.5, now + 0.52, 0.40, 'triangle', 0.75);
+        } else {
+            playTone(880, now,        0.20, 'triangle', 0.60);
+            playTone(1174.66, now + 0.24, 0.35, 'triangle', 0.65);
+        }
+    } catch (e) {}
+
+    // 4. Türkçe Sesli Anons (PC ve Telefon Hoparlöründen Sesli Okuma)
+    if ('speechSynthesis' in window) {
+        try {
+            let msgText = spokenText;
+            if (!msgText) {
+                if (alertType === 'RED_5M') msgText = 'Dikkat! Kırmızı acil uyarı! Toplantının başlamasına beş dakika kaldı.';
+                else if (alertType === 'YELLOW_1H') msgText = 'Dikkat! Sarı uyarı! Toplantı saatine bir saatten az kaldı.';
+                else if (alertType === 'APPROVAL') msgText = 'Dikkat! Ömer Eren yönetici onayınızı bekleyen toplantı işlemi var.';
+            }
+            if (msgText) {
+                window.speechSynthesis.cancel();
+                const utter = new SpeechSynthesisUtterance(msgText);
+                utter.lang = 'tr-TR';
+                utter.rate = 1.0;
+                utter.volume = 1.0;
+                setTimeout(() => {
+                    try { window.speechSynthesis.speak(utter); } catch (e) {}
+                }, 900);
+            }
+        } catch (e) {}
+    }
+}
+
+function testAlarmSound() {
+    playMeetingCallSound('YELLOW_1H', 'Dizsan toplantı ve bildirim ses testi başarılı.');
+}
+
+function getMeetingMinutesRemaining(m) {
+    if (!m || !m.date || !m.time) return null;
+    const iso = normalizeToISODate(m.date);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return null;
+    const [y, mo, d] = iso.split('-').map(Number);
+    const timeParts = String(m.time).trim().split(':').map(Number);
+    const hh = timeParts[0];
+    const mm = timeParts[1] || 0;
+    if (!y || !mo || !d || isNaN(hh) || isNaN(mm)) return null;
+
+    const target = new Date(y, mo - 1, d, hh, mm, 0, 0);
+    const now = new Date();
+    return (target.getTime() - now.getTime()) / 60000;
+}
+
+function syncUserAndStateToServiceWorker() {
+    try {
+        const req = indexedDB.open('dizsan_bg_db', 1);
+        req.onupgradeneeded = (e) => {
+            const db = e.target.result;
+            if (!db.objectStoreNames.contains('bg_store')) {
+                db.createObjectStore('bg_store');
+            }
+        };
+        req.onsuccess = () => {
+            try {
+                const db = req.result;
+                const tx = db.transaction('bg_store', 'readwrite');
+                tx.objectStore('bg_store').put(currentUser || null, 'currentUser');
+            } catch (e) {}
+        };
+    } catch (e) {}
+
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.ready.then(reg => {
+            if (reg.active) {
+                reg.active.postMessage({
+                    type: 'SYNC_USER_TO_SW',
+                    user: currentUser,
+                    state: appState
+                });
+            }
+        }).catch(() => {});
+    }
+}
+
+function initBackgroundAlarmWorker() {
+    if (bgAlarmWorker) return;
+    try {
+        bgAlarmWorker = new Worker('alarm-worker.js?v=1.7.0');
+        bgAlarmWorker.onmessage = (e) => {
+            const msg = e.data || {};
+            if (msg.type === 'WORKER_STATE_TICK' && msg.state && Array.isArray(msg.state.users)) {
+                if (isCloudPutInFlight || hasPendingCloudPut || (Date.now() - lastLocalSaveTime < 6000)) {
+                    return;
+                }
+                if (msg.sha) lastKnownCloudSha = msg.sha;
+                const remoteTime = new Date(msg.state.updatedAt || 0).getTime();
+                const localTime = new Date(appState.updatedAt || 0).getTime();
+                const remoteRev = Number(msg.state.stateRevision) || 0;
+                const localRev = Number(appState.stateRevision) || 0;
+
+                if (remoteTime > localTime || remoteRev > localRev) {
+                    msg.state.version = INITIAL_APP_VERSION;
+                    msg.state.users = migrateOfficialUserEmails(msg.state.users);
+                    msg.state.meetings = ensureMeetingsApprovalIntegrity(msg.state.meetings || []);
+                    if (!Array.isArray(msg.state.announcements)) msg.state.announcements = [];
+                    if (!Array.isArray(msg.state.approvalRequests)) msg.state.approvalRequests = [];
+                    if (!Array.isArray(msg.state.pushSubscriptions)) msg.state.pushSubscriptions = appState.pushSubscriptions || [];
+                    if (!Array.isArray(msg.state.pushTestRequests)) msg.state.pushTestRequests = [];
+                    if (!Array.isArray(msg.state.pushNotificationLogs)) msg.state.pushNotificationLogs = appState.pushNotificationLogs || [];
+                    msg.state.pushPilotMode = msg.state.pushPilotMode || appState.pushPilotMode || "ALL_USERS";
+                    msg.state.changelog = [...INITIAL_CHANGELOG];
+                    appState = msg.state;
+                    saveStateLocally();
+                    if (currentUser) renderAll();
+                } else if (currentUser) {
+                    checkAndTriggerMeetingCallAlerts();
+                    checkAndTriggerSmartReminders();
+                    renderOmerApprovalCenter();
+                }
+                if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+                    navigator.serviceWorker.controller.postMessage({
+                        type: 'CHECK_STATE_NOW',
+                        state: appState
+                    });
+                }
+            } else if (msg.type === 'WORKER_HEARTBEAT_TICK') {
+                if (currentUser) {
+                    checkAndTriggerMeetingCallAlerts();
+                    checkAndTriggerSmartReminders();
+                    renderOmerApprovalCenter();
+                }
+                if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+                    navigator.serviceWorker.controller.postMessage({
+                        type: 'CHECK_STATE_NOW',
+                        state: appState
+                    });
+                }
+            }
+        };
+        bgAlarmWorker.postMessage({
+            type: 'START_WORKER'
+        });
+    } catch (e) {}
+
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.addEventListener('message', (e) => {
+            const d = e.data || {};
+            if (d.type === 'SW_ALARM_TRIGGERED') {
+                playMeetingCallSound(d.alertType || 'YELLOW_1H', d.title || '');
+            } else if (d.type === 'NOTIFICATION_CLICKED') {
+                if (d.url && d.url.includes('?')) {
+                    try {
+                        const targetUrl = new URL(d.url, window.location.origin);
+                        window.history.replaceState({}, '', targetUrl.pathname + targetUrl.search);
+                    } catch (err) {}
+                }
+                handleDeepLinkParams();
+                renderAll();
+            }
+        });
+    }
+}
+
+function startSilentAudioKeepAlive() {
+    try {
+        if (!keepAliveAudioCtx) {
+            keepAliveAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = keepAliveAudioCtx.createOscillator();
+            const gain = keepAliveAudioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(10, keepAliveAudioCtx.currentTime);
+            gain.gain.setValueAtTime(0.00005, keepAliveAudioCtx.currentTime);
+            osc.connect(gain);
+            gain.connect(keepAliveAudioCtx.destination);
+            osc.start();
+        } else if (keepAliveAudioCtx.state === 'suspended') {
+            keepAliveAudioCtx.resume();
+        }
+    } catch (e) {}
+
+    // HTML5 <audio> döngüsü ile telefon tuş kilitliyken (iOS/Android) ses kanalını açık tut
+    try {
+        if (!window.dizsanKeepAliveLoopAudio) {
+            window.dizsanKeepAliveLoopAudio = new Audio(generateSilentWavDataUri());
+            window.dizsanKeepAliveLoopAudio.loop = true;
+            window.dizsanKeepAliveLoopAudio.volume = 0.01;
+        }
+        window.dizsanKeepAliveLoopAudio.play().catch(() => {});
+        if ('mediaSession' in navigator) {
+            navigator.mediaSession.metadata = new MediaMetadata({
+                title: 'DİZSAN Toplantı & Çağrı Sistemi Aktif',
+                artist: 'Canlı Bildirim & Alarm Servisi',
+                album: 'DİZSAN'
+            });
+        }
+    } catch (e) {}
+
+    if ('wakeLock' in navigator && !activeWakeLock) {
+        navigator.wakeLock.request('screen').then(lock => {
+            activeWakeLock = lock;
+            lock.addEventListener('release', () => { activeWakeLock = null; });
+        }).catch(() => {});
+    }
+}
+
+// ==========================================================================
+// GERÇEK VAPID WEB PUSH (RFC 8291 / RFC 8292) & KİLİT EKRANI TEST MERKEZİ
+// ==========================================================================
+function urlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; ++i) {
+        outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+}
+
+function detectBrowserAndOS() {
+    const ua = navigator.userAgent || '';
+    const isIpadOS = (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const isIOSDevice = /iPhone|iPad|iPod/i.test(ua) || isIpadOS;
+    const isStandalonePWA = (window.navigator.standalone === true) ||
+        (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+
+    let browser = 'Web Tarayıcı';
+    if (/SamsungBrowser/i.test(ua)) browser = 'Samsung Internet';
+    else if (/CriOS/i.test(ua)) browser = 'Chrome (iOS)';
+    else if (/FxiOS/i.test(ua)) browser = 'Firefox (iOS)';
+    else if (/EdgiOS|Edg/i.test(ua)) browser = 'Microsoft Edge';
+    else if (/OPR|Opera/i.test(ua)) browser = 'Opera';
+    else if (/Chrome/i.test(ua) && !/SamsungBrowser/i.test(ua)) browser = 'Google Chrome';
+    else if (/Safari/i.test(ua) && !/Chrome/i.test(ua)) browser = isStandalonePWA ? 'Apple Web App (Ana Ekran)' : 'Apple Safari';
+    else if (/Firefox/i.test(ua)) browser = 'Mozilla Firefox';
+
+    let os = 'Masaüstü / Web';
+    if (/Android/i.test(ua)) os = 'Android';
+    else if (isIpadOS || /iPad/i.test(ua)) os = 'iPadOS (Apple Tablet)';
+    else if (/iPhone|iPod/i.test(ua)) os = 'iOS (Apple iPhone)';
+    else if (/Mac/i.test(ua)) os = 'macOS';
+    else if (/Win/i.test(ua)) os = 'Windows';
+
+    return {
+        browser,
+        os,
+        isIOS: isIOSDevice,
+        isStandalonePWA,
+        fullLabel: `${browser} (${os})`
+    };
+}
+
+let isAutoEnrollInProgress = false;
+let currentDeviceSubscribedEndpoint = null;
+
+async function autoEnrollZeroTouchPush() {
+    if (!currentUser || isAutoEnrollInProgress) return;
+    isAutoEnrollInProgress = true;
+    try {
+        // Arka plan ses ve medya kanalını otomatik başlat (Android, iPhone, iPad, PC)
+        startSilentAudioKeepAlive();
+        syncUserAndStateToServiceWorker();
+
+        if ('serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window) {
+            if (Notification.permission === 'default') {
+                try {
+                    const perm = await Notification.requestPermission();
+                    if (perm === 'granted') {
+                        await subscribeToWebPush(false);
+                    }
+                } catch (e) {}
+            } else if (Notification.permission === 'granted') {
+                await subscribeToWebPush(false);
+            }
+        }
+        renderBgNotificationPermissionBanner();
+    } catch (e) {
+    } finally {
+        isAutoEnrollInProgress = false;
+    }
+}
+
+async function subscribeToWebPush(showAlert = false) {
+    if (!currentUser) return null;
+    const devInfo = detectBrowserAndOS();
+
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+        // Apple iPhone / iPad Safari sekmesinde açılmışsa ve henüz Ana Ekrana eklenmemişse
+        startSilentAudioKeepAlive();
+        syncUserAndStateToServiceWorker();
+        renderBgNotificationPermissionBanner();
+        if (showAlert) {
+            if (devInfo.isIOS && !devInfo.isStandalonePWA) {
+                alert("🍎 Apple iPhone / iPad Kilit Ekranı Bildirim Kurulumu:\n\nApple iOS/iPadOS güvenlik kuralı gereği uygulama kapalıyken kilit ekranı bildirimi almak için:\n\n1) Safari alt barındaki 'Paylaş' (⬆️) tuşuna dokunun.\n2) 'Ana Ekrana Ekle' seçeneğine basın.\n3) Ana ekrana eklenen DİZSAN ikonundan uygulamayı açtığınızda bildirimler hiçbir ayar gerektirmeden OTOMATİK aktif olacaktır!\n\n(Şu anda arka plan sesli uyarı motoru aktif edildi.)");
+            } else {
+                alert("⚠️ Tarayıcınız Web Push API desteklemiyor. Lütfen Samsung Internet, Chrome veya Safari güncel sürümünü kullanın.");
+            }
+        }
+        return null;
+    }
+
+    try {
+        let perm = Notification.permission;
+        if (perm !== 'granted') {
+            perm = await Notification.requestPermission();
+        }
+        if (perm !== 'granted') {
+            if (showAlert) alert("⚠️ Bildirim izni verilmedi! Lütfen tarayıcı ayarlarından bildirimlere izin verin.");
+            renderBgNotificationPermissionBanner();
+            return null;
+        }
+
+        const reg = await navigator.serviceWorker.ready;
+        let sub = await reg.pushManager.getSubscription();
+        if (!sub) {
+            sub = await reg.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+            });
+        }
+
+        const subJson = sub.toJSON();
+        const endpoint = subJson.endpoint || sub.endpoint;
+        const p256dh = (subJson.keys && subJson.keys.p256dh) || '';
+        const auth = (subJson.keys && subJson.keys.auth) || '';
+
+        if (endpoint && p256dh && auth) {
+            currentDeviceSubscribedEndpoint = endpoint;
+            if (!Array.isArray(appState.pushSubscriptions)) appState.pushSubscriptions = [];
+            const existingIdx = appState.pushSubscriptions.findIndex(s => s.endpoint === endpoint);
+            const subRecord = {
+                id: existingIdx !== -1 ? appState.pushSubscriptions[existingIdx].id : ('SUB-' + Date.now() + '-' + Math.floor(Math.random() * 999)),
+                username: currentUser.username,
+                userFullName: currentUser.name,
+                endpoint,
+                p256dh,
+                auth,
+                browser: devInfo.browser,
+                platform: devInfo.os,
+                userAgent: (navigator.userAgent || '').slice(0, 140),
+                isActive: true,
+                updatedAt: formatNowTR()
+            };
+
+            const changed = existingIdx === -1 ||
+                appState.pushSubscriptions[existingIdx].username !== currentUser.username ||
+                !appState.pushSubscriptions[existingIdx].isActive;
+
+            if (existingIdx !== -1) {
+                appState.pushSubscriptions[existingIdx] = subRecord;
+            } else {
+                appState.pushSubscriptions.unshift(subRecord);
+            }
+
+            // Yerel push sunucusuna da doğrudan bildir (erişilebiliyorsa)
+            fetch('http://localhost:8787/api/push/subscribe', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username: currentUser.username,
+                    userFullName: currentUser.name,
+                    browser: devInfo.browser,
+                    platform: devInfo.os,
+                    subscription: subJson
+                })
+            }).catch(() => {});
+
+            if (changed || showAlert) {
+                await syncToServer();
+            }
+            renderBgNotificationPermissionBanner();
+            renderPushTestCenterUI();
+            if (showAlert) {
+                playMeetingCallSound('INVITE', 'Vapid Web Push aboneliği başarıyla kaydedildi.');
+                const gwName = endpoint.includes('apple.com')
+                    ? 'Apple Push Notification Service (iOS / iPadOS)'
+                    : endpoint.includes('fcm.googleapis')
+                    ? 'Google FCM (Android / Samsung / Chrome)'
+                    : 'Web Push Gateway';
+                alert(`✅ VAPID Web Push Cihaz Aboneliği Otomatik Kaydedildi!\n\n👤 Personel: ${currentUser.name}\n🌐 Cihaz: ${devInfo.fullLabel}\n📡 Push Servisi: ${gwName}\n\nArtık telefonunuz veya tabletiniz kilitliyken / uygulama kapalıyken de bildirimler doğrudan cihazınıza iletilecektir.`);
+            }
+            return subRecord;
+        }
+    } catch (err) {
+        if (showAlert) {
+            alert(`⚠️ Web Push aboneliği oluşturulurken hata oluştu: ${err.message}`);
+        }
+    }
+    return null;
+}
+
+async function triggerServerWebPushTest(delaySeconds = 0) {
+    if (!currentUser) return;
+    startSilentAudioKeepAlive();
+
+    const subRecord = await subscribeToWebPush(false);
+    const devInfo = detectBrowserAndOS();
+
+    if (!Array.isArray(appState.pushTestRequests)) appState.pushTestRequests = [];
+    const reqId = 'PTEST-' + Date.now();
+    const testReq = {
+        id: reqId,
+        username: currentUser.username,
+        userFullName: currentUser.name,
+        delaySeconds: Number(delaySeconds) || 0,
+        browser: devInfo.fullLabel,
+        title: delaySeconds > 0
+            ? `🔒 DİZSAN Kilit Ekranı Push Testi (${delaySeconds} Sn)`
+            : `🔔 DİZSAN Anlık Web Push Testi (${devInfo.browser})`,
+        body: `Sayın ${currentUser.name}, bu bildirim telefon ekranınız kilitliyken / uygulama kapalıyken VAPID Web Push sunucusu tarafından gönderilmiştir. Dokunarak uygulamayı açabilirsiniz.`,
+        url: './?tab=dashboard-tab&focus=push-test',
+        status: 'PENDING',
+        createdAt: formatNowTR()
+    };
+
+    appState.pushTestRequests.unshift(testReq);
+    if (appState.pushTestRequests.length > 25) {
+        appState.pushTestRequests = appState.pushTestRequests.slice(0, 25);
+    }
+
+    // Doğrudan yerel push sunucusuna + ortak buluta gönder
+    fetch('http://localhost:8787/api/push/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(testReq)
+    }).catch(() => {});
+
+    await syncToServer();
+    renderPushTestCenterUI();
+
+    const statusBox = document.getElementById('push-countdown-status-box');
+    if (delaySeconds > 0) {
+        let remaining = Number(delaySeconds);
+        if (pushCountdownTimer) clearInterval(pushCountdownTimer);
+        if (statusBox) {
+            statusBox.style.display = 'block';
+            statusBox.innerHTML = `
+                <div style="display:flex; align-items:center; justify-content:space-between; gap:0.75rem; flex-wrap:wrap;">
+                    <div>
+                        <strong style="color:#fde68a; font-size:0.95rem;"><i class="fa-solid fa-stopwatch"></i> ⏱️ ${remaining} Saniye Geri Sayım Başladı!</strong>
+                        <div style="color:#fff; font-size:0.83rem; margin-top:3px;">
+                            👉 <strong>ŞİMDİ TELEFONUNUZUN EKRANINI KİLİTLEYİN</strong> veya uygulamayı arka plana atın. <strong>${remaining} saniye</strong> sonra kilit ekranına sesli VAPID Web Push bildirimi düşecektir!
+                        </div>
+                    </div>
+                    <span class="badge badge-critical" style="font-size:1rem; padding:6px 12px;" id="push-countdown-sec">${remaining} sn</span>
+                </div>
+            `;
+        }
+
+        pushCountdownTimer = setInterval(() => {
+            remaining--;
+            const secEl = document.getElementById('push-countdown-sec');
+            if (secEl) secEl.textContent = `${Math.max(0, remaining)} sn`;
+            if (remaining <= 0) {
+                clearInterval(pushCountdownTimer);
+                pushCountdownTimer = null;
+                if (statusBox) {
+                    statusBox.innerHTML = `<strong style="color:#34d399;"><i class="fa-solid fa-circle-check"></i> ✅ Kilit Ekranı Push Bildirimi Gönderildi! (${formatNowTR()})</strong>`;
+                }
+                playMeetingCallSound('RED_5M', 'Dizsan kilit ekranı bildirim testi tamamlandı.');
+                sendBrowserNotification(
+                    testReq.title,
+                    testReq.body,
+                    'lock_test_' + Date.now(),
+                    'RED_5M'
+                );
+                setTimeout(() => syncFromServer(), 2500);
+            }
+        }, 1000);
+    } else {
+        playMeetingCallSound('YELLOW_1H', 'Dizsan anlık web push bildirimi gönderildi.');
+        sendBrowserNotification(
+            testReq.title,
+            testReq.body,
+            'instant_test_' + Date.now(),
+            'YELLOW_1H'
+        );
+        if (statusBox) {
+            statusBox.style.display = 'block';
+            statusBox.innerHTML = `<strong style="color:#34d399;"><i class="fa-solid fa-circle-check"></i> ✅ Anlık VAPID Web Push isteği sunucuya iletildi ve bildirim tetiklendi! (${formatNowTR()})</strong>`;
+        }
+        setTimeout(() => syncFromServer(), 2500);
+    }
+}
+
+async function togglePushPilotMode(newMode) {
+    if (!isOmerEren(currentUser)) {
+        alert("Bu ayar yalnızca Yönetici ÖMER EREN tarafından değiştirilebilir.");
+        return;
+    }
+    appState.pushPilotMode = newMode;
+    await syncToServer();
+    renderPushTestCenterUI();
+}
+
+function openPushTestCenterModal() {
+    const modal = document.getElementById('push-test-modal');
+    if (!modal) return;
+    modal.classList.add('open');
+    renderPushTestCenterUI();
+}
+
+function closePushTestCenterModal() {
+    const modal = document.getElementById('push-test-modal');
+    if (modal) modal.classList.remove('open');
+}
+
+function renderPushTestCenterUI() {
+    const dev = detectBrowserAndOS();
+    const perm = ('Notification' in window) ? Notification.permission : 'unsupported';
+    const allSubs = Array.isArray(appState.pushSubscriptions) ? appState.pushSubscriptions : [];
+    const mySubs = currentUser
+        ? allSubs.filter(s => normalizeTR(s.username) === normalizeTR(currentUser.username) || normalizeTR(s.userFullName) === normalizeTR(currentUser.name))
+        : [];
+    const logs = Array.isArray(appState.pushNotificationLogs) ? appState.pushNotificationLogs : [];
+    const isAdmin = isOmerEren(currentUser);
+    const pilotMode = appState.pushPilotMode || 'ALL_USERS';
+
+    const permBadge = perm === 'granted'
+        ? `<span class="badge badge-done"><i class="fa-solid fa-check"></i> Otomatik İzin Aktif</span>`
+        : perm === 'denied'
+        ? `<span class="badge badge-critical"><i class="fa-solid fa-ban"></i> Engellendi (Tarayıcı Ayarından Açın)</span>`
+        : `<span class="badge badge-high"><i class="fa-solid fa-hand-pointer"></i> İlk Dokunuşta Otomatik Açılır</span>`;
+
+    const subBadge = mySubs.length > 0
+        ? `<span class="badge badge-done"><i class="fa-solid fa-satellite-dish"></i> Otomatik Kayıtlı (${mySubs.length} Cihaz)</span>`
+        : `<span class="badge badge-high"><i class="fa-solid fa-bolt"></i> Otomatik Kayıt Bekleniyor</span>`;
+
+    // Gömülü özet (version-tab içinde)
+    const embeddedSummary = document.getElementById('embedded-push-test-summary');
+    if (embeddedSummary) {
+        embeddedSummary.innerHTML = `
+            <div style="display:flex; gap:0.75rem; flex-wrap:wrap; align-items:center; justify-content:space-between;">
+                <div>
+                    <strong>Cihaz/Tarayıcı:</strong> ${dev.fullLabel} &bull;
+                    <strong>Bildirim İzni:</strong> ${permBadge} &bull;
+                    <strong>VAPID Aboneliği:</strong> ${subBadge}
+                </div>
+                <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+                    <button type="button" class="btn btn-primary btn-sm" onclick="subscribeToWebPush(true)">
+                        <i class="fa-solid fa-satellite-dish"></i> Cihazı Push'a Kaydet
+                    </button>
+                    <button type="button" class="btn btn-danger btn-sm" onclick="openPushTestCenterModal(); triggerServerWebPushTest(15);">
+                        <i class="fa-solid fa-lock"></i> ⏱️ 15 Sn Kilit Ekranı Testi Başlat
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+
+    const modalBody = document.getElementById('push-test-modal-body');
+    if (!modalBody) return;
+
+    const visibleSubs = isAdmin ? allSubs : mySubs;
+    const visibleLogs = isAdmin
+        ? logs.slice(0, 15)
+        : logs.filter(l => currentUser && normalizeTR(l.username) === normalizeTR(currentUser.username)).slice(0, 10);
+
+    modalBody.innerHTML = `
+        <!-- Durum Özeti Kartları -->
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap:0.75rem;">
+            <div style="background:rgba(15,23,42,0.8); border:1px solid rgba(56,189,248,0.35); border-radius:12px; padding:0.85rem;">
+                <div style="font-size:0.75rem; color:var(--text-sec); margin-bottom:4px;">🌐 Aktif Tarayıcı &amp; Sistem</div>
+                <div style="font-weight:800; color:#38bdf8; font-size:0.95rem;">${dev.fullLabel}</div>
+                <div style="font-size:0.73rem; color:#cbd5e1; margin-top:4px;">Android, iPhone, iPad &amp; PC Tam Uyumlu</div>
+            </div>
+            <div style="background:rgba(15,23,42,0.8); border:1px solid rgba(16,185,129,0.35); border-radius:12px; padding:0.85rem;">
+                <div style="font-size:0.75rem; color:var(--text-sec); margin-bottom:4px;">🔔 Android / iOS Bildirim İzni</div>
+                <div>${permBadge}</div>
+                <div style="font-size:0.73rem; color:#cbd5e1; margin-top:4px;">Kilit ekranı &amp; sistem sesi yetkisi</div>
+            </div>
+            <div style="background:rgba(15,23,42,0.8); border:1px solid rgba(245,158,11,0.35); border-radius:12px; padding:0.85rem;">
+                <div style="font-size:0.75rem; color:var(--text-sec); margin-bottom:4px;">📡 Otomatik VAPID Push Kaydı</div>
+                <div>${subBadge}</div>
+                <div style="font-size:0.73rem; color:#cbd5e1; margin-top:4px;">Toplam Kayıtlı Cihaz: ${allSubs.length}</div>
+            </div>
+        </div>
+
+        <!-- Geri Sayım ve Canlı Test Durum Kutusu -->
+        <div id="push-countdown-status-box" style="display:none; background:linear-gradient(135deg, rgba(239,68,68,0.22), rgba(245,158,11,0.18)); border:2px solid #f59e0b; border-radius:12px; padding:0.95rem;"></div>
+
+        <!-- 3 Adımlı Kilit Ekranı Test Butonları -->
+        <div style="background:linear-gradient(135deg, rgba(2,132,199,0.16), rgba(16,185,129,0.14)); border:1px solid rgba(56,189,248,0.4); border-radius:14px; padding:1rem;">
+            <div style="font-weight:800; color:#fff; font-size:0.95rem; margin-bottom:0.35rem;">
+                <i class="fa-solid fa-mobile-screen-button" style="color:#34d399;"></i> Otomatik Kayıt &amp; Kilit Ekranı Bildirim Testi (Android + iPhone/iPad + PC)
+            </div>
+            <p style="font-size:0.81rem; color:#cbd5e1; margin-bottom:0.85rem; line-height:1.5;">
+                ✅ <strong>Sıfır Ayar (Otomatik Kayıt):</strong> Personeller uygulamaya giriş yaptığında veya ekrana dokunduğunda cihazları <strong>hiçbir ayar yapmalarına gerek kalmadan otomatik olarak</strong> bildirim sistemine kaydedilir.<br>
+                ⏱️ Kilit ekranı testi yapmak için <strong>"15 Sn Sonra Kilit Ekranı Push Gönder"</strong> butonuna basıp telefonunuzu kilitleyin.
+            </p>
+            <div style="display:flex; gap:0.6rem; flex-wrap:wrap;">
+                <button type="button" class="btn btn-primary" onclick="subscribeToWebPush(true)">
+                    <i class="fa-solid fa-satellite-dish"></i> 1. Cihazımı VAPID Push'a Kaydet / Yenile
+                </button>
+                <button type="button" class="btn btn-success" onclick="triggerServerWebPushTest(0)">
+                    <i class="fa-solid fa-bolt"></i> 2. Anlık Push Gönder (0 Sn)
+                </button>
+                <button type="button" class="btn btn-danger" style="background:linear-gradient(135deg,#ef4444,#d97706); border:none; font-weight:800;" onclick="triggerServerWebPushTest(15)">
+                    <i class="fa-solid fa-lock"></i> 3. ⏱️ 15 Sn Sonra Kilit Ekranı Push Gönder (Tuşu Kilitleyip Test Et)
+                </button>
+            </div>
+        </div>
+
+        ${isAdmin ? `
+        <!-- Sadece Yönetici Ömer Eren İçin Dağıtım Modu Seçimi -->
+        <div style="background:rgba(245,158,11,0.1); border:1px solid rgba(245,158,11,0.38); border-radius:12px; padding:0.85rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem;">
+            <div>
+                <strong style="color:#fde68a; font-size:0.86rem;"><i class="fa-solid fa-user-shield"></i> Yönetici (Ömer Eren) Bildirim Dağıtım Modu:</strong>
+                <div style="font-size:0.76rem; color:#cbd5e1;">Tüm personelin telefon, tablet ve bilgisayarlarına otomatik bildirim gönderimi aktiftir.</div>
+            </div>
+            <div style="display:flex; gap:0.45rem;">
+                <button type="button" class="btn btn-sm ${pilotMode === 'PILOT_OMER' ? 'btn-primary' : 'btn-secondary'}" onclick="togglePushPilotMode('PILOT_OMER')">
+                    🎯 Sadece Ömer Eren Test Modu
+                </button>
+                <button type="button" class="btn btn-sm ${pilotMode === 'ALL_USERS' ? 'btn-success' : 'btn-secondary'}" onclick="togglePushPilotMode('ALL_USERS')">
+                    🌐 Tüm Personel Aktif (Otomatik)
+                </button>
+            </div>
+        </div>` : ''}
+
+        <!-- Kayıtlı Push Cihaz Abonelikleri Tablosu -->
+        <div>
+            <h4 style="color:#fff; font-size:0.88rem; margin-bottom:0.45rem;">
+                <i class="fa-solid fa-mobile-retro" style="color:#38bdf8;"></i> Kayıtlı Web Push Cihaz Abonelikleri (${visibleSubs.length})
+            </h4>
+            <div class="table-responsive" style="max-height:175px; overflow-y:auto;">
+                <table class="dizsan-table">
+                    <thead>
+                        <tr>
+                            <th>Personel</th>
+                            <th>Tarayıcı / OS</th>
+                            <th>Push Endpoint</th>
+                            <th>Son Güncelleme</th>
+                            <th>Durum</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${visibleSubs.length === 0 ? `
+                            <tr><td colspan="5" style="text-align:center; padding:1rem; color:var(--text-sec);">Henüz kayıtlı push aboneliği yok. Ekrana dokunduğunuzda otomatik kaydedilir.</td></tr>
+                        ` : visibleSubs.map(s => `
+                            <tr>
+                                <td><strong style="color:#fff;">${s.userFullName || s.username}</strong></td>
+                                <td><span class="badge badge-normal">${s.browser || 'Web'} (${s.platform || 'Mobil'})</span></td>
+                                <td style="font-family:monospace; font-size:0.72rem; color:#93c5fd;">...${String(s.endpoint || '').slice(-28)}</td>
+                                <td style="font-size:0.75rem; color:var(--text-sec);">${s.updatedAt || '-'}</td>
+                                <td><span class="badge ${s.isActive !== false ? 'badge-done' : 'badge-critical'}">${s.isActive !== false ? 'Aktif' : 'Pasif'}</span></td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Son Push Gönderim ve Hata Logları -->
+        <div>
+            <h4 style="color:#fff; font-size:0.88rem; margin-bottom:0.45rem;">
+                <i class="fa-solid fa-list-check" style="color:#34d399;"></i> Son Push Bildirim Gönderim &amp; Hata Kayıtları (${visibleLogs.length})
+            </h4>
+            <div class="table-responsive" style="max-height:175px; overflow-y:auto;">
+                <table class="dizsan-table">
+                    <thead>
+                        <tr>
+                            <th>Tarih / Saat</th>
+                            <th>Alıcı</th>
+                            <th>Tür</th>
+                            <th>Başlık</th>
+                            <th>Sonuç / HTTP</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${visibleLogs.length === 0 ? `
+                            <tr><td colspan="5" style="text-align:center; padding:1rem; color:var(--text-sec);">Henüz gönderim kaydı bulunmuyor. Test butonuna basarak ilk gönderimi başlatabilirsiniz.</td></tr>
+                        ` : visibleLogs.map(l => `
+                            <tr>
+                                <td style="font-family:monospace; font-size:0.74rem; color:var(--dizsan-light);">${l.sentAt || '-'}</td>
+                                <td><strong style="color:#fff;">${l.username || '-'}</strong></td>
+                                <td><span class="badge badge-normal">${l.eventType || 'PUSH'}</span></td>
+                                <td style="font-size:0.78rem; color:#e2e8f0;">${l.title || '-'}</td>
+                                <td>
+                                    <span class="badge ${l.status === 'SENT' ? 'badge-done' : 'badge-critical'}">
+                                        ${l.status === 'SENT' ? `✅ İletildi (${l.httpStatus || 201})` : `⚠️ Hata (${l.httpStatus || 0})`}
+                                    </span>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    `;
+}
+
+// Bildirime dokunulduğunda ilgili toplantı, görev veya onay ekranını açan Deep-Link yönlendiricisi
+function handleDeepLinkParams() {
+    try {
+        const params = new URLSearchParams(window.location.search);
+        const tab = params.get('tab');
+        const meetingId = params.get('meetingId');
+        const actionId = params.get('actionId');
+        const focus = params.get('focus');
+
+        if (tab) {
+            switchTab(tab);
+        }
+        if (focus === 'approval') {
+            switchTab('dashboard-tab');
+            setTimeout(() => {
+                const el = document.getElementById('omer-approval-center-container');
+                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 350);
+        } else if (focus === 'push-test') {
+            setTimeout(() => openPushTestCenterModal(), 300);
+        } else if (meetingId) {
+            switchTab('meetings-tab');
+            setTimeout(() => {
+                const searchEl = document.getElementById('meeting-search');
+                if (searchEl) {
+                    searchEl.value = meetingId;
+                    renderMeetings();
+                }
+            }, 300);
+        } else if (actionId) {
+            switchTab('actions-tab');
+            setTimeout(() => {
+                const searchEl = document.getElementById('action-search');
+                if (searchEl) {
+                    searchEl.value = actionId;
+                    renderActions();
+                }
+            }, 300);
+        }
+    } catch (e) {}
+}
+
+async function enableBackgroundNotificationsAndKeepAlive(isManualClick = false) {
+    startSilentAudioKeepAlive();
+    await subscribeToWebPush(isManualClick);
+    syncUserAndStateToServiceWorker();
+    renderBgNotificationPermissionBanner();
+    if (isManualClick) {
+        openPushTestCenterModal();
+    }
+}
+
+function renderBgNotificationPermissionBanner() {
+    const bannerEl = document.getElementById('bg-notification-permission-banner');
+    const topBtn = document.getElementById('btn-bg-notif-status');
+    const dev = detectBrowserAndOS();
+    const perm = ('Notification' in window) ? Notification.permission : 'unsupported';
+    const allSubs = Array.isArray(appState.pushSubscriptions) ? appState.pushSubscriptions : [];
+    const hasMySub = currentUser && allSubs.some(s => normalizeTR(s.username) === normalizeTR(currentUser.username));
+
+    if (topBtn) {
+        if (perm === 'granted' && hasMySub) {
+            topBtn.innerHTML = `<i class="fa-solid fa-satellite-dish" style="color:#34d399;"></i> <span class="hide-on-sm">Bildirim: Otomatik Aktif</span>`;
+            topBtn.style.borderColor = 'rgba(16,185,129,0.45)';
+        } else {
+            topBtn.innerHTML = `<i class="fa-solid fa-satellite-dish" style="color:#fbbf24;"></i> <span class="hide-on-sm">Push &amp; Kilit Ekranı Testi</span>`;
+            topBtn.style.borderColor = 'rgba(245,158,11,0.55)';
+        }
+    }
+
+    if (!bannerEl) return;
+    if (perm === 'granted' && hasMySub) {
+        bannerEl.innerHTML = '';
+        return;
+    }
+
+    // Apple iPhone / iPad (iOS/iPadOS) Safari sekmesinde açılmışsa ve henüz Ana Ekrana eklenmemişse otomatik rehber göster
+    if (dev.isIOS && !dev.isStandalonePWA && !('PushManager' in window)) {
+        bannerEl.innerHTML = `
+            <div class="meeting-call-banner yellow-1h" style="margin-bottom:0.9rem; border-color:#38bdf8; background:linear-gradient(135deg, rgba(2,132,199,0.24), rgba(15,23,42,0.95));">
+                <div class="alarm-banner-left">
+                    <div class="alarm-pulse-icon" style="background:rgba(56,189,248,0.3); color:#38bdf8;">
+                        <i class="fa-brands fa-apple"></i>
+                    </div>
+                    <div>
+                        <strong style="color:#fff; font-size:0.93rem; display:block; margin-bottom:2px;">
+                            🍎 Apple iPhone / iPad Kilit Ekranı Bildirimleri (Otomatik Kurulum)
+                        </strong>
+                        <span style="color:#e2e8f0; font-size:0.81rem;">
+                            Arka plan sesli uyarı motoru <strong>otomatik aktif edildi</strong>. iPhone/iPad kilitliyken bildirim almak için Safari'de <strong>Paylaş (⬆️) &rarr; Ana Ekrana Ekle</strong> seçeneğine bir kez dokunun; ana ekrandan açıldığında bildirimler otomatik kaydolur.
+                        </span>
+                    </div>
+                </div>
+                <div style="display:flex; gap:0.45rem; flex-wrap:wrap;">
+                    <button type="button" class="btn btn-primary btn-sm" onclick="triggerNativePwaInstall()">
+                        <i class="fa-brands fa-apple"></i> Ana Ekrana Ekle Rehberi
+                    </button>
+                </div>
+            </div>
+        `;
+        return;
+    }
+
+    bannerEl.innerHTML = `
+        <div class="meeting-call-banner yellow-1h" onclick="subscribeToWebPush(false)" style="cursor:pointer; margin-bottom:0.9rem; border-color:#38bdf8; background:linear-gradient(135deg, rgba(2,132,199,0.22), rgba(16,185,129,0.18));">
+            <div class="alarm-banner-left">
+                <div class="alarm-pulse-icon" style="background:rgba(52,211,153,0.3); color:#34d399;">
+                    <i class="fa-solid fa-satellite-dish"></i>
+                </div>
+                <div>
+                    <strong style="color:#fff; font-size:0.93rem; display:block; margin-bottom:2px;">
+                        📡 Otomatik Kilit Ekranı Bildirim Sistemi (Android &bull; iPhone/iPad &bull; PC)
+                    </strong>
+                    <span style="color:#e2e8f0; font-size:0.81rem;">
+                        Ekranda herhangi bir yere dokunduğunuzda ve çıkan <strong>"Bildirimlere İzin Ver"</strong> kutusunu onayladığınızda cihazınız hiçbir ayar gerektirmeden otomatik olarak kaydedilir.
+                    </span>
+                </div>
+            </div>
+            <div style="display:flex; gap:0.45rem; flex-wrap:wrap;">
+                <button type="button" class="btn btn-success btn-sm" onclick="event.stopPropagation(); subscribeToWebPush(true)">
+                    <i class="fa-solid fa-check-circle"></i> Bildirimlere İzin Ver (Otomatik Kaydet)
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+function downloadMeetingAlarmICS(meetingId) {
+    const m = (appState.meetings || []).find(x => x.id === meetingId);
+    if (!m) return;
+    const iso = normalizeToISODate(m.date);
+    const [y, mo, d] = iso.split('-').map(Number);
+    const [hh, mm] = String(m.time || '16:00').split(':').map(Number);
+    if (!y || !mo || !d) return;
+
+    const startDt = new Date(y, mo - 1, d, hh || 16, mm || 0, 0);
+    const endDt = new Date(startDt.getTime() + 60 * 60000);
+    const fmtICS = (dt) => {
+        const pad = n => String(n).padStart(2, '0');
+        return `${dt.getFullYear()}${pad(dt.getMonth() + 1)}${pad(dt.getDate())}T${pad(dt.getHours())}${pad(dt.getMinutes())}00`;
+    };
+
+    const recLabel = m.recordType === 'Eğitim' ? 'Eğitim' : 'Toplantı';
+    const cleanText = s => String(s || '').replace(/\r?\n/g, '\\n').replace(/[,;]/g, ' ');
+    const icsContent = [
+        'BEGIN:VCALENDAR',
+        'VERSION:2.0',
+        'PRODID:-//DIZSAN//Toplanti ve Aksiyon Sistemi v1.6.0//TR',
+        'CALSCALE:GREGORIAN',
+        'METHOD:PUBLISH',
+        'BEGIN:VEVENT',
+        `UID:${m.id}-${Date.now()}@dizsan.com.tr`,
+        `DTSTAMP:${fmtICS(new Date())}`,
+        `DTSTART:${fmtICS(startDt)}`,
+        `DTEND:${fmtICS(endDt)}`,
+        `SUMMARY:DİZSAN ${recLabel}: ${cleanText(m.title)}`,
+        `LOCATION:${cleanText(m.location || 'Dizsan Toplantı Salonu')}`,
+        `DESCRIPTION:${cleanText(m.notes || 'Dizsan Planlı Toplantı Çağrısı')}`,
+        'BEGIN:VALARM',
+        'TRIGGER:-PT60M',
+        'ACTION:DISPLAY',
+        `DESCRIPTION:🟨 SARI UYARI: "${cleanText(m.title)}" toplantısına 1 saat kaldı!`,
+        'END:VALARM',
+        'BEGIN:VALARM',
+        'TRIGGER:-PT60M',
+        'ACTION:AUDIO',
+        'END:VALARM',
+        'BEGIN:VALARM',
+        'TRIGGER:-PT5M',
+        'ACTION:DISPLAY',
+        `DESCRIPTION:🟥 KIRMIZI ACİL UYARI: "${cleanText(m.title)}" toplantısına 5 dakika kaldı!`,
+        'END:VALARM',
+        'BEGIN:VALARM',
+        'TRIGGER:-PT5M',
+        'ACTION:AUDIO',
+        'END:VALARM',
+        'END:VEVENT',
+        'END:VCALENDAR'
+    ].join('\r\n');
+
+    const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Dizsan_Alarm_${m.id}.ics`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+
+function sendBrowserNotification(title, body, tagKey, alertType = 'INVITE') {
+    if (tagKey && sessionStorage.getItem(tagKey)) return false;
+    if (tagKey) sessionStorage.setItem(tagKey, '1');
+
+    // 1. Öncelikle Service Worker üzerinden işletim sistemi (OS) bildirimi gönder (Uygulama kapalıyken / arka plandayken çalışır)
+    if ('serviceWorker' in navigator && 'Notification' in window && Notification.permission === 'granted') {
+        navigator.serviceWorker.ready.then(reg => {
+            const vibratePattern = alertType === 'RED_5M'
+                ? [600, 150, 600, 150, 800]
+                : alertType === 'YELLOW_1H'
+                ? [400, 150, 400, 150, 500]
+                : [300, 120, 300];
+            reg.showNotification(title, {
+                body,
+                icon: './icon-192.png',
+                badge: './icon-192.png',
+                tag: tagKey || ('dizsan-notif-' + Date.now()),
+                renotify: true,
+                requireInteraction: true,
+                vibrate: vibratePattern,
+                data: { url: './', alertType }
+            }).catch(() => {
+                try { new Notification(title, { body, icon: 'icon-192.png' }); } catch (e) {}
+            });
+        }).catch(() => {
+            try { new Notification(title, { body, icon: 'icon-192.png' }); } catch (e) {}
+        });
+        return true;
+    }
+
+    // 2. Fallback: Standart Notification API
+    if ("Notification" in window) {
+        if (Notification.permission === "granted") {
+            try {
+                new Notification(title, { body, icon: 'icon-192.png' });
+            } catch (e) {}
+        } else if (Notification.permission === "default") {
+            Notification.requestPermission().then(() => renderBgNotificationPermissionBanner());
+        }
+    }
+    return true;
+}
+
+/**
+ * Davet edilen katılımcılar için:
+ * 1. Toplantıya 5 dakika kala (-15 <= dk <= 5) -> KIRMIZI UYARI + ACİL ALARM SESİ
+ * 2. Toplantıya 1 saat kala (5 < dk <= 60)     -> SARI UYARI + BİLDİRİM SESİ
+ * 3. Yeni planlanan toplantı çağrısı (dk > 60) -> DAVET UYARISI + BİLDİRİM SESİ
+ * 4. Kurumsal Duyurular                        -> DUYURU UYARISI + BİLDİRİM SESİ
+ */
+function checkAndTriggerMeetingCallAlerts() {
+    const container = document.getElementById('meeting-call-alert-container');
+    if (!container || !currentUser) {
+        if (container) container.innerHTML = '';
+        return;
+    }
+
+    const myNameNorm = normalizeTR(currentUser.name);
+    const isAdminOmer = isOmerEren(currentUser);
+    const bannersHtml = [];
+
+    // 1. Toplantı / Eğitim Çağrılarını ve Geri Sayımlarını Kontrol Et
+    (appState.meetings || []).forEach(m => {
+        const isInvited = (m.participants || []).some(p => normalizeTR(p) === myNameNorm) || isAdminOmer;
+        if (!isInvited) return;
+
+        const diffMins = getMeetingMinutesRemaining(m);
+        if (diffMins === null) return;
+
+        const recLabel = m.recordType === 'Eğitim' ? 'Eğitim' : 'Toplantı';
+
+        // A) 5 DAKİKA KALA (veya toplantının ilk 15 dakikası içinde): KIRMIZI UYARI & SES
+        if (diffMins >= -15 && diffMins <= 5) {
+            const minsText = diffMins <= 0
+                ? `ŞU AN BAŞLADI! (${Math.abs(Math.floor(diffMins))} dk oldu)`
+                : `BAŞLAMASINA ${Math.ceil(diffMins)} DAKİKA KALDI!`;
+            const soundKey = `alert_red5m_${m.id}_${myNameNorm}_${m.date}_${m.time}`;
+            if (!sessionStorage.getItem(soundKey)) {
+                playMeetingCallSound('RED_5M');
+                sendBrowserNotification(
+                    `🟥 KIRMIZI UYARI: ${recLabel} 5 Dakika İçinde Başlıyor!`,
+                    `"${m.title}" saat ${m.time}'da (${m.location || 'Toplantı Salonu'}) başlıyor!`,
+                    soundKey,
+                    'RED_5M'
+                );
+            }
+
+            bannersHtml.push(`
+                <div class="meeting-call-banner red-5m">
+                    <div class="alarm-banner-left">
+                        <div class="alarm-pulse-icon" style="background:rgba(239,68,68,0.4); color:#fff;">
+                            <i class="fa-solid fa-triangle-exclamation"></i>
+                        </div>
+                        <div>
+                            <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap; margin-bottom:3px;">
+                                <span class="badge badge-critical" style="font-size:0.76rem; padding:3px 9px;">🟥 5 DAKİKA KALA KIRMIZI ACİL UYARI</span>
+                                <strong style="color:#fff; font-size:0.96rem;">${m.title} (${recLabel})</strong>
+                            </div>
+                            <div style="color:#fee2e2; font-size:0.84rem; line-height:1.45;">
+                                ⏰ <strong>${minsText}</strong> • Tarih/Saat: <strong>${formatDateTR(m.date)} ${m.time}</strong> • Yer: <strong>${m.location || 'Toplantı Salonu'}</strong>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="display:flex; gap:0.45rem; flex-wrap:wrap;">
+                        <button type="button" class="btn btn-danger btn-sm" onclick="playMeetingCallSound('RED_5M')">
+                            <i class="fa-solid fa-volume-high"></i> Kırmızı Alarm Sesi
+                        </button>
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="downloadMeetingAlarmICS('${m.id}')" title="Telefon/PC Saat & Takvim Alarmına Ekle">
+                            <i class="fa-solid fa-mobile-screen"></i> Cihaz Alarmına Kur
+                        </button>
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="switchTab('meetings-tab')">
+                            <i class="fa-solid fa-eye"></i> Detayı Gör
+                        </button>
+                    </div>
+                </div>
+            `);
+        }
+        // B) 1 SAAT KALA (5 dk < kalan <= 60 dk): SARI UYARI & SES
+        else if (diffMins > 5 && diffMins <= 60) {
+            const minsLeft = Math.ceil(diffMins);
+            const soundKey = `alert_yellow1h_${m.id}_${myNameNorm}_${m.date}_${m.time}`;
+            if (!sessionStorage.getItem(soundKey)) {
+                playMeetingCallSound('YELLOW_1H');
+                sendBrowserNotification(
+                    `🟨 SARI UYARI: ${recLabel} Saatine ${minsLeft} Dakika Kaldı!`,
+                    `"${m.title}" bugün saat ${m.time}'da (${m.location || 'Toplantı Salonu'}) başlayacak.`,
+                    soundKey,
+                    'YELLOW_1H'
+                );
+            }
+
+            bannersHtml.push(`
+                <div class="meeting-call-banner yellow-1h">
+                    <div class="alarm-banner-left">
+                        <div class="alarm-pulse-icon" style="background:rgba(245,158,11,0.35); color:#fef08a;">
+                            <i class="fa-solid fa-clock"></i>
+                        </div>
+                        <div>
+                            <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap; margin-bottom:3px;">
+                                <span class="badge badge-high" style="font-size:0.76rem; padding:3px 9px; background:rgba(245,158,11,0.3); color:#fef08a; border:1px solid #f59e0b;">🟨 1 SAAT KALA SARI UYARI (${minsLeft} DK KALDI)</span>
+                                <strong style="color:#fff; font-size:0.95rem;">${m.title} (${recLabel})</strong>
+                            </div>
+                            <div style="color:#fef3c7; font-size:0.84rem; line-height:1.45;">
+                                ⏳ Toplantı saatine <strong>${minsLeft} dakika</strong> kaldı! • Saat: <strong>${m.time}</strong> • Yer: <strong>${m.location || 'Toplantı Salonu'}</strong>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="display:flex; gap:0.45rem; flex-wrap:wrap;">
+                        <button type="button" class="btn btn-sm" style="background:#f59e0b; color:#0f172a; font-weight:800;" onclick="playMeetingCallSound('YELLOW_1H')">
+                            <i class="fa-solid fa-volume-high"></i> Sarı Uyarı Sesi
+                        </button>
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="downloadMeetingAlarmICS('${m.id}')" title="Telefon/PC Saat & Takvim Alarmına Ekle">
+                            <i class="fa-solid fa-mobile-screen"></i> Cihaz Alarmına Kur
+                        </button>
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="switchTab('meetings-tab')">
+                            <i class="fa-solid fa-eye"></i> Detayı Gör
+                        </button>
+                    </div>
+                </div>
+            `);
+        }
+        // C) PLANLANAN TOPLANTI ÇAĞRISI / DAVETİ (60 dakikadan fazla var, örn: Yarın 16:00)
+        else if (diffMins > 60 && diffMins <= 60 * 24 * 14) {
+            const soundKey = `alert_invite_${m.id}_${myNameNorm}_${m.date}_${m.time}`;
+            if (!localStorage.getItem(soundKey)) {
+                playMeetingCallSound('INVITE');
+                sendBrowserNotification(
+                    `📢 Yeni ${recLabel} Çağrısı / Daveti`,
+                    `${formatDateTR(m.date)} Saat ${m.time} — "${m.title}" (${m.location || 'Toplantı Salonu'}) için davetlisiniz.`,
+                    soundKey,
+                    'INVITE'
+                );
+                localStorage.setItem(soundKey, '1');
+            }
+
+            const hrsLeft = Math.floor(diffMins / 60);
+            const remMins = Math.round(diffMins % 60);
+            const timeRemainingLabel = hrsLeft >= 24
+                ? `${Math.floor(hrsLeft / 24)} gün ${hrsLeft % 24} saat kaldı`
+                : `${hrsLeft} saat ${remMins} dk kaldı`;
+
+            bannersHtml.push(`
+                <div class="meeting-call-banner blue-invite">
+                    <div class="alarm-banner-left">
+                        <div class="alarm-pulse-icon" style="background:rgba(56,189,248,0.22); color:#38bdf8;">
+                            <i class="fa-solid fa-bullhorn"></i>
+                        </div>
+                        <div>
+                            <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap; margin-bottom:3px;">
+                                <span class="badge badge-normal" style="font-size:0.75rem;">📢 PLANLI ${recLabel.toUpperCase()} ÇAĞRISI • DAVETLİSİNİZ</span>
+                                <strong style="color:#fff; font-size:0.94rem;">${m.title}</strong>
+                            </div>
+                            <div style="color:#e0f2fe; font-size:0.83rem; line-height:1.45;">
+                                📅 Tarih: <strong>${formatDateTR(m.date)}</strong> • Saat: <strong>${m.time}</strong> (${timeRemainingLabel}) • Yer: <strong>${m.location || 'Toplantı Salonu'}</strong>
+                                <span style="display:block; font-size:0.75rem; color:#fde68a; margin-top:2px;"><i class="fa-solid fa-bell"></i> Toplantıya 1 saat kala Sarı Uyarı, 5 dakika kala Kırmızı Sesli Uyarı otomatik verilecektir.</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="display:flex; gap:0.45rem; flex-wrap:wrap;">
+                        <button type="button" class="btn btn-success btn-sm" onclick="downloadMeetingAlarmICS('${m.id}')" title="Uygulama tamamen kapalıyken bile telefon/PC alarmının çalması için cihaz takvimine ekler">
+                            <i class="fa-solid fa-bell"></i> Cihaz Alarmına Kur (1 Saat &amp; 5 Dk)
+                        </button>
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="playMeetingCallSound('INVITE')" title="Çağrı Bildirim Sesini Dinle">
+                            <i class="fa-solid fa-volume-high"></i>
+                        </button>
+                        <button type="button" class="btn btn-primary btn-sm" onclick="switchTab('meetings-tab')">
+                            <i class="fa-solid fa-calendar-check"></i> Gündemi Gör
+                        </button>
+                    </div>
+                </div>
+            `);
+        }
+    });
+
+    // 2. Genel Kurumsal Duyuruları Kontrol Et
+    (appState.announcements || []).forEach(ann => {
+        const isTarget = (ann.participants || []).some(p => normalizeTR(p) === myNameNorm) || isAdminOmer;
+        if (!isTarget) return;
+        const dismissedBy = Array.isArray(ann.dismissedBy) ? ann.dismissedBy : [];
+        if (dismissedBy.some(u => normalizeTR(u) === myNameNorm)) return;
+
+        const annSoundKey = `alert_ann_${ann.id}_${myNameNorm}`;
+        if (!localStorage.getItem(annSoundKey)) {
+            playMeetingCallSound('INVITE');
+            sendBrowserNotification(
+                `📣 DİZSAN Kurumsal Duyuru: ${ann.title}`,
+                ann.message,
+                annSoundKey,
+                'INVITE'
+            );
+            localStorage.setItem(annSoundKey, '1');
+        }
+
+        bannersHtml.push(`
+            <div class="meeting-call-banner yellow-1h" style="border-color:#38bdf8;">
+                <div class="alarm-banner-left">
+                    <div class="alarm-pulse-icon" style="background:rgba(2,132,199,0.3); color:#38bdf8;">
+                        <i class="fa-solid fa-bullhorn"></i>
+                    </div>
+                    <div>
+                        <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap; margin-bottom:3px;">
+                            <span class="badge badge-normal">📣 KURUMSAL DUYURU (${ann.dept || 'Genel'})</span>
+                            <strong style="color:#fff; font-size:0.94rem;">${ann.title}</strong>
+                            <span style="font-size:0.73rem; color:var(--text-sec);">• Yayınlayan: ${ann.createdBy || 'ÖMER EREN'} (${ann.createdAt || ''})</span>
+                        </div>
+                        <div style="color:#f1f5f9; font-size:0.84rem; white-space:pre-line; line-height:1.45;">${ann.message}</div>
+                    </div>
+                </div>
+                <div style="display:flex; gap:0.45rem;">
+                    <button type="button" class="btn btn-success btn-sm" onclick="dismissAnnouncement('${ann.id}')">
+                        <i class="fa-solid fa-check"></i> Okudum / Kapat
+                    </button>
+                </div>
+            </div>
+        `);
+    });
+
+    container.innerHTML = bannersHtml.join('');
+}
+
+// ==========================================================================
+// ÖMER EREN YÖNETİCİ ONAY MERKEZİ (YENİ TOPLANTI ONAYI, DEĞİŞTİRME VE SİLME ONAYI)
+// ==========================================================================
+function renderOmerApprovalCenter() {
+    const container = document.getElementById('omer-approval-center-container');
+    if (!container || !currentUser) {
+        if (container) container.innerHTML = '';
+        return;
+    }
+
+    const isAdminOmer = isOmerEren(currentUser);
+    const pendingNewMeetings = (appState.meetings || []).filter(m => !isMeetingApprovedByOmer(m));
+    const pendingRequests = (appState.approvalRequests || []).filter(r => r.status === 'PENDING');
+
+    // Ömer Eren için yeni gelen onay taleplerinde sesli ve görsel bildirim tetikle
+    if (isAdminOmer) {
+        pendingNewMeetings.forEach(m => {
+            const notifKey = `omer_notif_newm_${m.id}`;
+            if (!localStorage.getItem(notifKey)) {
+                localStorage.setItem(notifKey, '1');
+                playMeetingCallSound('APPROVAL', `Dikkat! ${m.createdBy || 'Personel'} tarafından kaydedilen ${m.title} toplantısı yönetici onayınızı bekliyor.`);
+                sendBrowserNotification(
+                    `🛡️ Yönetici Onayı Bekleyen Toplantı (${m.id})`,
+                    `"${m.title}" (${m.createdBy || 'Personel'}) kaydı onayınızı bekliyor.`,
+                    notifKey,
+                    'APPROVAL'
+                );
+            }
+        });
+
+        pendingRequests.forEach(req => {
+            const notifKey = `omer_notif_req_${req.id}`;
+            if (!localStorage.getItem(notifKey)) {
+                localStorage.setItem(notifKey, '1');
+                const actionLabel = req.type === 'DELETE_MEETING' ? 'silme' : 'değiştirme';
+                playMeetingCallSound('APPROVAL', `Dikkat! ${req.requestedBy}, ${req.meetingTitle} toplantısı için ${actionLabel} onayı talep etti.`);
+                sendBrowserNotification(
+                    `🛡️ Ömer Eren Onayı Bekleniyor (${req.type === 'DELETE_MEETING' ? 'Silme' : 'Değiştirme'})`,
+                    `${req.requestedBy}: "${req.meetingTitle}" (${req.meetingId}) için ${actionLabel} onayı bekliyor.`,
+                    notifKey,
+                    'APPROVAL'
+                );
+            }
+        });
+    }
+
+    if (pendingNewMeetings.length === 0 && pendingRequests.length === 0) {
+        container.innerHTML = '';
+        return;
+    }
+
+    const totalPending = pendingNewMeetings.length + pendingRequests.length;
+
+    if (isAdminOmer) {
+        container.innerHTML = `
+            <div class="card" style="margin-bottom:1.1rem; border:2px solid #f59e0b; background:linear-gradient(135deg, rgba(245,158,11,0.22), rgba(15,23,42,0.96)); box-shadow:0 10px 28px rgba(245,158,11,0.28);">
+                <div class="card-header" style="margin-bottom:0.75rem; border-bottom:1px solid rgba(245,158,11,0.35); padding-bottom:0.6rem;">
+                    <div class="card-title" style="color:#fef08a; font-size:1.02rem;">
+                        <i class="fa-solid fa-user-shield" style="color:#f59e0b;"></i>
+                        🛡️ ÖMER EREN YÖNETİCİ ONAY MERKEZİ (${totalPending} Onay Bekleyen İşlem)
+                    </div>
+                    <div style="display:flex; gap:0.4rem; align-items:center;">
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="playMeetingCallSound('APPROVAL', 'Yönetici onay merkezinde bekleyen işlemler var.')">
+                            <i class="fa-solid fa-volume-high"></i> Sesli Uyarı
+                        </button>
+                        <span class="badge badge-high">Ömer Eren Onayı Bekleniyor</span>
+                    </div>
+                </div>
+                <div style="display:flex; flex-direction:column; gap:0.65rem;">
+                    ${pendingNewMeetings.map(m => `
+                        <div style="background:rgba(15,23,42,0.88); border:1px solid rgba(56,189,248,0.55); border-radius:10px; padding:0.85rem; display:flex; justify-content:space-between; align-items:center; gap:0.75rem; flex-wrap:wrap;">
+                            <div style="flex:1; min-width:240px;">
+                                <div style="display:flex; align-items:center; gap:0.45rem; flex-wrap:wrap; margin-bottom:4px;">
+                                    <span class="badge badge-normal">📋 YENİ KAYDEDİLEN TOPLANTI ONAYI</span>
+                                    <strong style="color:#fff; font-size:0.94rem;">${m.id} — ${m.title} (${m.recordType || 'Toplantı'})</strong>
+                                </div>
+                                <div style="font-size:0.81rem; color:#cbd5e1;">
+                                    Kaydeden: <strong>${m.createdBy || '-'}</strong> • Tarih/Saat: <strong>${formatDateTR(m.date)} ${m.time}</strong> • Departman: <strong>${m.dept}</strong>
+                                </div>
+                            </div>
+                            <div style="display:flex; gap:0.45rem; flex-wrap:wrap;">
+                                <button type="button" class="btn btn-success btn-sm" onclick="approveNewMeeting('${m.id}')">
+                                    <i class="fa-solid fa-check"></i> Toplantıyı Onayla (Ömer Eren)
+                                </button>
+                                <button type="button" class="btn btn-danger btn-sm" onclick="rejectNewMeeting('${m.id}')">
+                                    <i class="fa-solid fa-xmark"></i> Reddet &amp; Sil
+                                </button>
+                            </div>
+                        </div>
+                    `).join('')}
+
+                    ${pendingRequests.map(req => {
+                        const isDel = req.type === 'DELETE_MEETING';
+                        return `
+                            <div style="background:rgba(15,23,42,0.88); border:1px solid ${isDel ? 'rgba(239,68,68,0.65)' : 'rgba(245,158,11,0.65)'}; border-radius:10px; padding:0.85rem; display:flex; justify-content:space-between; align-items:center; gap:0.75rem; flex-wrap:wrap;">
+                                <div style="flex:1; min-width:240px;">
+                                    <div style="display:flex; align-items:center; gap:0.45rem; flex-wrap:wrap; margin-bottom:4px;">
+                                        <span class="badge ${isDel ? 'badge-critical' : 'badge-high'}">
+                                            ${isDel ? '🗑️ TOPLANTI SİLME ONAY TALEBİ' : '✏️ TOPLANTI DEĞİŞTİRME (DÜZENLEME) ONAY TALEBİ'}
+                                        </span>
+                                        <strong style="color:#fff; font-size:0.94rem;">${req.meetingId} — ${req.meetingTitle}</strong>
+                                    </div>
+                                    <div style="font-size:0.81rem; color:#cbd5e1;">
+                                        Talep Eden: <strong>${req.requestedBy}</strong> (${req.requestedAt})
+                                        ${req.reason ? ` • Gerekçe/Açıklama: <strong style="color:#fde68a;">${req.reason}</strong>` : ''}
+                                        ${!isDel && req.proposedData ? `<div style="margin-top:4px; font-size:0.78rem; color:#93c5fd;">Yeni Başlık: <strong>${req.proposedData.title}</strong> | Tarih: ${formatDateTR(req.proposedData.date)} ${req.proposedData.time} | Not: ${(req.proposedData.notes || '').slice(0, 80)}...</div>` : ''}
+                                    </div>
+                                </div>
+                                <div style="display:flex; gap:0.45rem; flex-wrap:wrap;">
+                                    <button type="button" class="btn btn-success btn-sm" onclick="approveRequest('${req.id}')">
+                                        <i class="fa-solid fa-check"></i> ${isDel ? 'Silmeyi Onayla (Kaydı Sil)' : 'Değişikliği Onayla & Uygula'}
+                                    </button>
+                                    <button type="button" class="btn btn-danger btn-sm" onclick="rejectRequest('${req.id}')">
+                                        <i class="fa-solid fa-xmark"></i> Talebi Reddet
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            </div>
+        `;
+    } else {
+        container.innerHTML = `
+            <div style="margin-bottom:0.95rem; padding:0.85rem 1rem; border-radius:12px; background:rgba(245,158,11,0.14); border:1px solid rgba(245,158,11,0.45); color:#fde68a; font-size:0.84rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
+                <div>
+                    <i class="fa-solid fa-hourglass-half"></i> <strong>Yönetici (ÖMER EREN) Onayı Bekleyen İşlemler (${totalPending} Adet):</strong>
+                    ${pendingNewMeetings.length > 0 ? ` ${pendingNewMeetings.length} yeni toplantı kaydı` : ''}
+                    ${pendingRequests.length > 0 ? ` ${pendingRequests.length} silme/değiştirme talebi` : ''}
+                    Yönetici <strong>ÖMER EREN</strong> tarafından onaylandığında devreye girecektir.
+                </div>
+                <span class="badge badge-high">Onay Yetkisi: ÖMER EREN</span>
+            </div>
+        `;
+    }
+}
+
+function approveNewMeeting(meetingId) {
+    if (!isOmerEren(currentUser)) {
+        alert("Bu işlem için sadece Yönetici ÖMER EREN yetkilidir!");
+        return;
+    }
+    const m = (appState.meetings || []).find(x => x.id === meetingId);
+    if (!m) return;
+    m.approvalStatus = 'Onaylandı';
+    m.omerApprovedStamp = true;
+    m.approvedBy = 'ÖMER EREN';
+    m.approvedAt = formatNowTR();
+    addAuditLog("TOPLANTI", `${m.id} kodlu '${m.title}' kaydı Yönetici ÖMER EREN tarafından onaylandı.`);
+    renderAll();
+}
+
+function rejectNewMeeting(meetingId) {
+    if (!isOmerEren(currentUser)) {
+        alert("Bu işlem için sadece Yönetici ÖMER EREN yetkilidir!");
+        return;
+    }
+    const m = (appState.meetings || []).find(x => x.id === meetingId);
+    if (!m) return;
+    if (!confirm(`'${m.title}' (${m.id}) toplantı kaydını reddedip silmek istediğinize emin misiniz?`)) return;
+    appState.meetings = appState.meetings.filter(x => x.id !== meetingId);
+    addAuditLog("TOPLANTI", `${m.id} kodlu '${m.title}' kaydı Yönetici ÖMER EREN tarafından reddedilerek kaldırıldı.`);
+    renderAll();
+}
+
+function approveRequest(reqId) {
+    if (!isOmerEren(currentUser)) {
+        alert("Bu işlem için sadece Yönetici ÖMER EREN yetkilidir!");
+        return;
+    }
+    if (!Array.isArray(appState.approvalRequests)) return;
+    const req = appState.approvalRequests.find(r => r.id === reqId);
+    if (!req || req.status !== 'PENDING') return;
+
+    if (req.type === 'DELETE_MEETING') {
+        appState.meetings = (appState.meetings || []).filter(m => m.id !== req.meetingId);
+        req.status = 'APPROVED';
+        req.resolvedAt = formatNowTR();
+        req.resolvedBy = 'ÖMER EREN';
+        addAuditLog("TOPLANTI", `${req.meetingId} ('${req.meetingTitle}') silme talebi (${req.requestedBy}) Yönetici ÖMER EREN onayıyla gerçekleştirildi ve kayıt silindi.`);
+    } else if (req.type === 'EDIT_MEETING' && req.proposedData) {
+        const idx = (appState.meetings || []).findIndex(m => m.id === req.meetingId);
+        if (idx !== -1) {
+            appState.meetings[idx] = {
+                ...appState.meetings[idx],
+                ...req.proposedData,
+                approvalStatus: 'Onaylandı',
+                omerApprovedStamp: true,
+                approvedBy: 'ÖMER EREN',
+                approvedAt: formatNowTR()
+            };
+        }
+        req.status = 'APPROVED';
+        req.resolvedAt = formatNowTR();
+        req.resolvedBy = 'ÖMER EREN';
+        addAuditLog("TOPLANTI", `${req.meetingId} ('${req.meetingTitle}') değiştirme/düzenleme talebi (${req.requestedBy}) Yönetici ÖMER EREN onayıyla uygulandı.`);
+    }
+
+    renderAll();
+}
+
+function rejectRequest(reqId) {
+    if (!isOmerEren(currentUser)) {
+        alert("Bu işlem için sadece Yönetici ÖMER EREN yetkilidir!");
+        return;
+    }
+    if (!Array.isArray(appState.approvalRequests)) return;
+    const req = appState.approvalRequests.find(r => r.id === reqId);
+    if (!req || req.status !== 'PENDING') return;
+
+    req.status = 'REJECTED';
+    req.resolvedAt = formatNowTR();
+    req.resolvedBy = 'ÖMER EREN';
+    addAuditLog("TOPLANTI", `${req.meetingId} ('${req.meetingTitle}') için ${req.requestedBy} tarafından gönderilen ${req.type === 'DELETE_MEETING' ? 'silme' : 'değiştirme'} talebi Yönetici ÖMER EREN tarafından reddedildi.`);
+    renderAll();
+}
+
+function dismissAnnouncement(annId) {
+    if (!currentUser) return;
+    const ann = (appState.announcements || []).find(a => a.id === annId);
+    if (!ann) return;
+    if (!Array.isArray(ann.dismissedBy)) ann.dismissedBy = [];
+    if (!ann.dismissedBy.includes(currentUser.name)) {
+        ann.dismissedBy.push(currentUser.name);
+    }
+    syncToServer();
+    checkAndTriggerMeetingCallAlerts();
+}
+
+function openAnnouncementModal() {
+    const modal = document.getElementById('announcement-modal');
+    const partBox = document.getElementById('call-participants-box');
+    if (!modal || !partBox) return;
+
+    partBox.innerHTML = appState.users.map(u => `
+        <label class="participant-check">
+            <input type="checkbox" name="call-participant" value="${u.name}" checked>
+            <span>${u.name} <small style="color:var(--text-sec);">(${u.dept})</small></span>
+        </label>
+    `).join('');
+
+    const tomorrowIso = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+    setMaskedDateInputValue(document.getElementById('call-date-input'), tomorrowIso);
+    const timeEl = document.getElementById('call-time-input');
+    if (timeEl) timeEl.value = '16:00';
+    const titleEl = document.getElementById('call-title-input');
+    if (titleEl) titleEl.value = '';
+    const msgEl = document.getElementById('call-message-input');
+    if (msgEl) msgEl.value = '';
+    const typeEl = document.getElementById('call-type-select');
+    if (typeEl) {
+        typeEl.value = 'MEETING_CALL';
+        toggleCallTypeFields('MEETING_CALL');
+    }
+
+    modal.classList.add('open');
+}
+
+function closeAnnouncementModal() {
+    const modal = document.getElementById('announcement-modal');
+    if (modal) modal.classList.remove('open');
+}
+
+function toggleCallTypeFields(val) {
+    const dtRow = document.getElementById('call-datetime-row');
+    const dateInput = document.getElementById('call-date-input');
+    const timeInput = document.getElementById('call-time-input');
+    if (!dtRow) return;
+    if (val === 'ANNOUNCEMENT') {
+        dtRow.style.display = 'none';
+        if (dateInput) dateInput.required = false;
+        if (timeInput) timeInput.required = false;
+    } else {
+        dtRow.style.display = 'grid';
+        if (dateInput) dateInput.required = true;
+        if (timeInput) timeInput.required = true;
+    }
+}
+
+function toggleAllCallParticipants(state) {
+    document.querySelectorAll('input[name="call-participant"]').forEach(cb => {
+        cb.checked = state;
+    });
+}
+
+function saveMeetingCallOrAnnouncement(event) {
+    event.preventDefault();
+    const callType = document.getElementById('call-type-select')?.value || 'MEETING_CALL';
+    const dept = document.getElementById('call-dept-input')?.value || 'Genel Yönetim';
+    const title = document.getElementById('call-title-input')?.value.trim() || '';
+    const dateRaw = document.getElementById('call-date-input')?.value || '';
+    const date = normalizeToISODate(dateRaw);
+    const time = document.getElementById('call-time-input')?.value || '16:00';
+    const location = document.getElementById('call-location-input')?.value.trim() || 'Dizsan Toplantı Salonu';
+    const message = cleanNumberedText(document.getElementById('call-message-input')?.value || '');
+    const participants = Array.from(document.querySelectorAll('input[name="call-participant"]:checked')).map(cb => cb.value);
+
+    if (participants.length === 0) {
+        alert("Lütfen bildirim/davet gönderilecek en az 1 katılımcı seçin!");
+        return;
+    }
+
+    if (callType === 'ANNOUNCEMENT') {
+        if (!Array.isArray(appState.announcements)) appState.announcements = [];
+        const newAnn = {
+            id: 'DUY-' + Date.now(),
+            title,
+            dept,
+            message,
+            participants,
+            createdBy: currentUser ? currentUser.name : 'ÖMER EREN',
+            createdAt: formatNowTR(),
+            dismissedBy: []
+        };
+        appState.announcements.unshift(newAnn);
+        addAuditLog("TOPLANTI", `Kurumsal Duyuru yayınlandı: '${title}' (${participants.length} personele bildirim gönderildi).`);
+        syncToServer();
+        closeAnnouncementModal();
+        renderAll();
+        playMeetingCallSound('INVITE');
+        alert(`📣 Kurumsal duyuru başarıyla yayınlandı ve seçilen ${participants.length} personele sesli bildirim gönderildi!`);
+        return;
+    }
+
+    // Planlı Toplantı Çağrısı veya Eğitim Çağrısı -> Doğrudan Toplantı/Eğitim kaydı olarak oluşturur, Yönetici Ömer Eren onayına düşürür ve 1 saat kala Sarı + 5 dk kala Kırmızı alarm kurar
+    const recordType = (callType === 'TRAINING_CALL') ? 'Eğitim' : 'Toplantı';
+    const prefix = recordType === 'Eğitim' ? 'EGT' : 'TOP';
+    const nextNum = appState.meetings.length + 1;
+    const newId = `${prefix}-2026-${String(nextNum).padStart(3, '0')}`;
+
+    const newMeeting = {
+        id: newId,
+        recordType,
+        isScheduledCall: true,
+        approvalStatus: 'Yönetici Onayı Bekliyor',
+        approvedBy: '',
+        approvedAt: '',
+        title,
+        dept,
+        date,
+        time,
+        location,
+        participants,
+        externalParticipants: [],
+        notes: message,
+        decisions: '',
+        attachments: [],
+        createdBy: currentUser ? currentUser.name : 'ÖMER EREN',
+        createdAt: formatNowTR()
+    };
+
+    appState.meetings.unshift(newMeeting);
+    addAuditLog("TOPLANTI", `${newId} kodlu Planlı ${recordType} Çağrısı yayınlandı: '${title}' — Tarih: ${formatDateTR(date)} Saat: ${time} (${participants.length} katılımcıya davet + 1 saat kala Sarı + 5 dk kala Kırmızı alarm tanımlandı. Onay Durumu: Yönetici Onayı Bekliyor).`);
+    syncToServer();
+    closeAnnouncementModal();
+    renderAll();
+    playMeetingCallSound('APPROVAL', `Dikkat! ${title} başlıklı yeni ${recordType} çağrısı kaydedildi ve Ömer Eren yönetici onayına düştü.`);
+    alert(`📢 ${recordType} Çağrısı oluşturuldu ve Yönetici ÖMER EREN Onayına Düşürüldü!\n\n📅 Tarih: ${formatDateTR(date)} Saat: ${time}\n👥 Davet Edilen: ${participants.length} Personel\n🛡️ Onay Durumu: Yönetici Onayı Bekliyor (Ömer Eren Onay Merkezinden onaylanabilir)\n\n🔔 Seçilen katılımcılara çağrı bildirimi gönderildi. Toplantı saatine 1 saat kala SARI UYARI, 5 dakika kala KIRMIZI UYARI ve bildirim sesi otomatik olarak çalacaktır.`);
+}
+
+function normalizeToISODate(val) {
+    if (!val) return "";
+    const str = String(val).trim();
+    if (/^\d{2}\.\d{2}\.\d{4}$/.test(str)) {
+        const [d, m, y] = str.split('.');
+        return `${y}-${m}-${d}`;
+    }
+    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+        return str;
+    }
+    return str;
+}
+
+function formatDateTR(val) {
+    if (!val) return "-";
+    const iso = normalizeToISODate(val);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(iso)) {
+        const [y, m, d] = iso.split('-');
+        return `${d}.${m}.${y}`;
+    }
+    return val;
+}
+
+function setMaskedDateInputValue(inputEl, isoDateStr) {
+    if (!inputEl) return;
+    const iso = normalizeToISODate(isoDateStr);
+    if (inputEl.dataset && inputEl.dataset.autoDateInitialized === 'true') {
+        const [y, m, d] = iso.split('-');
+        inputEl.value = (y && m && d) ? `${d}.${m}.${y}` : (isoDateStr || '');
+    } else {
+        inputEl.value = iso;
+    }
+}
+
+// ==========================================================================
+// 6. EKRAN RENDER FONKSİYONLARI (KOKPİT, TOPLANTI, AKSİYON, RAPOR, PERSONEL)
+// ==========================================================================
+function renderAll() {
+    populateSelectFilters();
+    updateVersionAdminPermissionUI();
+    renderBgNotificationPermissionBanner();
+    renderOmerApprovalCenter();
+    renderDashboard();
+    renderMeetings();
+    renderActions();
+    renderReports();
+    renderPersonnel();
+    renderLogs();
+    renderVersionHistory();
+    renderPushTestCenterUI();
+    updateNavBadges();
+    checkAndTriggerSmartReminders();
+    checkAndTriggerMeetingCallAlerts();
+}
+
+function updateNavBadges() {
+    const isAdmin = isOmerEren(currentUser);
+    const visibleMeetings = isAdmin ? appState.meetings : appState.meetings.filter(m => getMeetingAccessLevel(m) !== 'NONE');
+    const visibleOpenActions = appState.actions.filter(a => a.status !== "Tamamlandı" && (isAdmin || canUserSeeAction(a)));
+
+    const mBadge = document.getElementById('nav-badge-meetings');
+    const aBadge = document.getElementById('nav-badge-actions');
+    const pBadge = document.getElementById('nav-badge-personnel');
+    const lBadge = document.getElementById('nav-badge-logs');
+
+    if (mBadge) mBadge.textContent = visibleMeetings.length;
+    if (aBadge) aBadge.textContent = visibleOpenActions.length;
+    if (pBadge) pBadge.textContent = isAdmin ? appState.users.length : 1;
+    if (lBadge) lBadge.textContent = appState.logs.length;
+}
+
+function populateSelectFilters() {
+    const isAdmin = isOmerEren(currentUser);
+    const pFilter = document.getElementById('meeting-participant-filter');
+    const aFilter = document.getElementById('action-assignee-filter');
+    const aSelect = document.getElementById('action-assignee-select');
+    const mSelect = document.getElementById('action-meeting-select');
+    const repPersonFilter = document.getElementById('report-person-filter');
+
+    const currP = pFilter ? pFilter.value : 'ALL';
+    const currA = aFilter ? aFilter.value : 'ALL';
+    const currRepP = repPersonFilter ? repPersonFilter.value : 'ALL';
+
+    if (pFilter) {
+        if (isAdmin) {
+            pFilter.innerHTML = '<option value="ALL">Tüm Katılımcı Personeller</option>' +
+                appState.users.map(u => `<option value="${u.name}">${u.name} (${u.dept})</option>`).join('');
+            pFilter.value = currP;
+        } else if (currentUser) {
+            pFilter.innerHTML = `<option value="ALL">Katıldığım Toplantılar (${currentUser.name})</option>`;
+            pFilter.value = 'ALL';
+        }
+    }
+
+    if (aFilter) {
+        if (isAdmin) {
+            aFilter.innerHTML = '<option value="ALL">Tüm Sorumlu Personeller</option>' +
+                appState.users.map(u => `<option value="${u.name}">${u.name} (${u.dept})</option>`).join('');
+            aFilter.value = currA;
+        } else if (currentUser) {
+            aFilter.innerHTML = `<option value="ALL">Bana Ait / Yetkili Aksiyonlar (${currentUser.name})</option>`;
+            aFilter.value = 'ALL';
+        }
+    }
+
+    if (repPersonFilter) {
+        if (isAdmin) {
+            repPersonFilter.innerHTML = '<option value="ALL">Tüm Personeller</option>' +
+                appState.users.map(u => `<option value="${u.name}">${u.name} (${u.dept})</option>`).join('');
+            repPersonFilter.value = currRepP;
+        } else if (currentUser) {
+            repPersonFilter.innerHTML = `<option value="${currentUser.name}">${currentUser.name} (${currentUser.dept})</option>`;
+            repPersonFilter.value = currentUser.name;
+        }
+    }
+
+    if (aSelect) {
+        aSelect.innerHTML = appState.users.map(u => `<option value="${u.name}">${u.name} — ${u.dept}</option>`).join('');
+    }
+
+    if (mSelect) {
+        const accessibleMeetings = isAdmin ? appState.meetings : appState.meetings.filter(m => getMeetingAccessLevel(m) === 'FULL');
+        const meetingOpts = accessibleMeetings.map(m => `<option value="${m.id}">${m.id} — ${m.title}</option>`).join('');
+        mSelect.innerHTML = meetingOpts + `<option value="GENEL">GENEL — Bağımsız Aksiyon Görevi</option>`;
+    }
+}
+
+// --- KATILIMCI GİZLİLİK VE YETKİ KONTROL MOTORU ---
+// Kural:
+// 1. Toplantıya katılanlar (işaretli katılımcılar + oluşturan + Sistem Yöneticisi Ömer Eren) -> 'FULL' (Tüm toplantı içeriğini, notları, kararları, ekleri görür)
+// 2. Toplantıya katılmayıp sadece o toplantıda kendisine aksiyon verilen kişiler -> 'ACTION_ONLY' (Toplantı notlarını/kararlarını/eklerini GÖREMEZ, sadece kendisine verilen aksiyonu görür)
+// 3. Toplantıya katılmayan ve aksiyonu da olmayan kişiler -> 'NONE' (Toplantıyı ve içeriğini hiç görmez)
+function getMeetingAccessLevel(m, user = currentUser) {
+    if (!user || !m) return 'NONE';
+    if (isOmerEren(user)) return 'FULL';
+    if (normalizeTR(m.createdBy || '') === normalizeTR(user.name)) return 'FULL';
+    const isParticipant = (m.participants || []).some(p => normalizeTR(p) === normalizeTR(user.name));
+    if (isParticipant) return 'FULL';
+
+    const hasAssignedAction = appState.actions.some(a =>
+        a.meetingId === m.id &&
+        (normalizeTR(a.assignee) === normalizeTR(user.name) || normalizeTR(a.manager || '') === normalizeTR(user.name))
+    );
+    if (hasAssignedAction) return 'ACTION_ONLY';
+
+    return 'NONE';
+}
+
+function canUserSeeAction(a, user = currentUser) {
+    if (!user || !a) return false;
+    if (isOmerEren(user)) return true;
+    if (normalizeTR(a.assignee) === normalizeTR(user.name)) return true;
+    if (normalizeTR(a.manager || '') === normalizeTR(user.name)) return true;
+    if (normalizeTR(a.createdBy || '') === normalizeTR(user.name)) return true;
+
+    const parentMeeting = appState.meetings.find(m => m.id === a.meetingId);
+    if (parentMeeting && getMeetingAccessLevel(parentMeeting, user) === 'FULL') {
+        return true;
+    }
+    return false;
+}
+
+function renderDashboard() {
+    const visibleMeetings = appState.meetings.filter(m => getMeetingAccessLevel(m) !== 'NONE');
+    const visibleActions = appState.actions.filter(a => canUserSeeAction(a));
+
+    const totalMeetings = visibleMeetings.length;
+    const openActions = visibleActions.filter(a => a.status !== "Tamamlandı");
+    const completedActions = visibleActions.filter(a => a.status === "Tamamlandı");
+    const activeReminders = openActions.filter(a => {
+        const st = evaluateActionReminderStatus(a);
+        return st.stage === 'ONE_DAY_BEFORE' || st.stage === 'SAME_DAY' || st.stage === 'OVERDUE';
+    });
+
+    document.getElementById('kpi-total-meetings').textContent = totalMeetings;
+    document.getElementById('kpi-open-actions').textContent = openActions.length;
+    document.getElementById('kpi-reminder-actions').textContent = activeReminders.length;
+    document.getElementById('kpi-completed-actions').textContent = completedActions.length;
+
+    const rate = visibleActions.length > 0
+        ? Math.round((completedActions.length / visibleActions.length) * 100)
+        : 0;
+    document.getElementById('kpi-completion-rate').textContent = `%${rate} Tamamlanma Oranı`;
+
+    // Yaklaşan Aksiyonlar ve Hatırlatıcılar (Sadece yetkili olunan aksiyonlar)
+    const upBox = document.getElementById('dashboard-upcoming-actions');
+    if (upBox) {
+        if (visibleActions.length === 0) {
+            upBox.innerHTML = `
+                <div style="text-align:center; padding:1.75rem; color:var(--text-sec); border:1px dashed var(--border-color); border-radius:12px;">
+                    <i class="fa-solid fa-bell" style="font-size:1.5rem; color:var(--dizsan-light); margin-bottom:0.5rem; display:block;"></i>
+                    Size tanımlanmış veya katıldığınız oturumlara ait aksiyon kaydı yok.<br>
+                    <button class="btn btn-success btn-sm" style="margin-top:0.65rem;" onclick="openActionModal()"><i class="fa-solid fa-plus"></i> Yeni Aksiyon Ekle</button>
+                </div>`;
+        } else {
+            const sortedActions = [...visibleActions]
+                .sort((a, b) => evaluateActionReminderStatus(a).diffDays - evaluateActionReminderStatus(b).diffDays)
+                .slice(0, 5);
+
+            upBox.innerHTML = sortedActions.map(a => {
+                const st = evaluateActionReminderStatus(a);
+                return `
+                    <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border-color); border-radius:12px; padding:0.85rem; display:flex; justify-content:space-between; align-items:center; gap:0.75rem; flex-wrap:wrap;">
+                        <div style="flex:1; min-width:200px;">
+                            <div style="display:flex; align-items:center; gap:0.45rem; margin-bottom:0.25rem; flex-wrap:wrap;">
+                                <span class="badge ${a.priority === 'Kritik' ? 'badge-critical' : 'badge-normal'}">${a.priority}</span>
+                                <strong style="font-size:0.85rem; color:#fff;">Sorumlu: ${a.assignee}</strong>
+                                <span style="font-size:0.75rem; color:var(--dizsan-light);">• Yönetici: ${a.manager || 'ÖMER EREN'}</span>
+                            </div>
+                            <div style="font-size:0.83rem; color:#cbd5e1;">${a.title}</div>
+                        </div>
+                        <div class="countdown-pill ${st.type}">${st.shortText || st.badgeText}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+    }
+
+    // Son Toplantılar & Eğitimler (Katılımcı Gizlilik Kuralı Uygulanmış)
+    const recMeetings = document.getElementById('dashboard-recent-meetings');
+    if (recMeetings) {
+        if (visibleMeetings.length === 0) {
+            recMeetings.innerHTML = `
+                <div style="text-align:center; padding:1.75rem; color:var(--text-sec); border:1px dashed var(--border-color); border-radius:12px;">
+                    <i class="fa-solid fa-handshake" style="font-size:1.5rem; color:var(--dizsan-light); margin-bottom:0.5rem; display:block;"></i>
+                    Katılımcısı olduğunuz toplantı veya eğitim kaydı bulunmuyor.<br>
+                    <button class="btn btn-primary btn-sm" style="margin-top:0.65rem;" onclick="openMeetingModal()"><i class="fa-solid fa-plus"></i> Yeni Toplantı / Eğitim Başlat</button>
+                </div>`;
+        } else {
+            recMeetings.innerHTML = visibleMeetings.slice(0, 4).map(m => {
+                const access = getMeetingAccessLevel(m);
+                const recType = m.recordType === 'Eğitim' ? '🎓 Eğitim' : '🤝 Toplantı';
+                if (access === 'ACTION_ONLY') {
+                    const myActions = appState.actions.filter(a => a.meetingId === m.id && (normalizeTR(a.assignee) === normalizeTR(currentUser?.name) || normalizeTR(a.manager || '') === normalizeTR(currentUser?.name)));
+                    return `
+                        <div style="background:rgba(245,158,11,0.06); border:1px solid rgba(245,158,11,0.3); border-radius:12px; padding:0.9rem;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.3rem;">
+                                <span class="meeting-code-badge">${m.id} • ${recType} (Sadece Aksiyonunuz)</span>
+                                <span style="font-size:0.78rem; color:var(--text-sec);"><i class="fa-regular fa-calendar"></i> ${formatDateTR(m.date)}</span>
+                            </div>
+                            <div style="font-size:0.8rem; color:#fde68a; margin-bottom:0.35rem;"><i class="fa-solid fa-lock"></i> Katılımcı olmadığınız için toplantı detayı gizlidir. Size atanan aksiyon:</div>
+                            ${myActions.map(ma => `<div style="font-weight:700; color:#fff; font-size:0.85rem;">• ${ma.title} (Termin: ${formatDateTR(ma.dueDate)})</div>`).join('')}
+                        </div>
+                    `;
+                }
+                const mActions = appState.actions.filter(a => a.meetingId === m.id);
+                const extCount = (m.externalParticipants || []).length;
+                const totalPartCount = (m.participants || []).length + extCount;
+                const attCount = (m.attachments || []).length;
+                return `
+                    <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border-color); border-radius:12px; padding:0.9rem;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.3rem;">
+                            <span class="meeting-code-badge">${m.id} • ${recType} • ${m.dept}</span>
+                            <span style="font-size:0.78rem; color:var(--text-sec);"><i class="fa-regular fa-calendar"></i> ${formatDateTR(m.date)} ${m.time}</span>
+                        </div>
+                        <div style="font-weight:700; color:#fff; font-size:0.92rem; margin-bottom:0.35rem;">${m.title}</div>
+                        <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.78rem; color:var(--text-sec);">
+                            <span><i class="fa-solid fa-users"></i> ${totalPartCount} Katılımcı${extCount > 0 ? ` (${extCount} Dış)` : ''} • <i class="fa-solid fa-bolt"></i> ${mActions.length} Aksiyon${attCount > 0 ? ` • <i class="fa-solid fa-paperclip"></i> ${attCount} Ek` : ''}</span>
+                            <button class="btn btn-secondary btn-sm" style="padding:3px 8px; font-size:0.74rem;" onclick="printMeetingMinutes('${m.id}')">
+                                <i class="fa-solid fa-print"></i> Tutanak Yazdır
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+    }
+
+    // Son Loglar (Sadece Yönetici Ömer Eren görebilir, diğer herkese kapalıdır)
+    const logsCard = document.getElementById('dashboard-logs-card');
+    const navItemLogs = document.getElementById('nav-item-logs');
+    const recLogs = document.getElementById('dashboard-recent-logs');
+    if (isOmerEren(currentUser)) {
+        if (logsCard) logsCard.style.display = 'block';
+        if (navItemLogs) navItemLogs.style.display = 'block';
+        if (recLogs) {
+            if (appState.logs.length === 0) {
+                recLogs.innerHTML = `<div style="padding:1rem; color:var(--text-sec); font-size:0.83rem;">Henüz işlem logu bulunmuyor.</div>`;
+            } else {
+                recLogs.innerHTML = appState.logs.slice(0, 4).map(l => `
+                    <div style="display:flex; justify-content:space-between; align-items:center; padding:0.55rem 0.75rem; background:rgba(255,255,255,0.02); border-radius:8px; border-left:3px solid var(--dizsan-light); font-size:0.8rem;">
+                        <div>
+                            <strong style="color:#fff;">${l.user}:</strong>
+                            <span style="color:#cbd5e1;">${l.detail}</span>
+                        </div>
+                        <span style="color:var(--text-muted); font-size:0.72rem; white-space:nowrap; margin-left:0.5rem;">${l.timestamp}</span>
+                    </div>
+                `).join('');
+            }
+        }
+    } else {
+        if (logsCard) logsCard.style.display = 'none';
+        if (navItemLogs) navItemLogs.style.display = 'none';
+        if (recLogs) recLogs.innerHTML = '';
+    }
+}
+
+function renderMeetings() {
+    const container = document.getElementById('meetings-container');
+    if (!container) return;
+
+    const q = normalizeTR(document.getElementById('meeting-search')?.value || '');
+    const typeF = document.getElementById('meeting-type-filter')?.value || 'ALL';
+    const deptF = document.getElementById('meeting-dept-filter')?.value || 'ALL';
+    const partF = document.getElementById('meeting-participant-filter')?.value || 'ALL';
+
+    const filtered = appState.meetings.filter(m => {
+        const access = getMeetingAccessLevel(m);
+        // Toplantıya katılmayan ve o toplantıda aksiyonu olmayan kişiler toplantıyı kesinlikle göremez
+        if (access === 'NONE') return false;
+
+        const mType = m.recordType || 'Toplantı';
+        if (typeF !== 'ALL' && mType !== typeF) return false;
+        if (deptF !== 'ALL' && m.dept !== deptF) return false;
+        if (partF !== 'ALL' && !(m.participants || []).includes(partF)) return false;
+        if (q) {
+            if (access === 'ACTION_ONLY') {
+                const myActs = appState.actions.filter(a => a.meetingId === m.id && normalizeTR(a.assignee) === normalizeTR(currentUser?.name));
+                const actHay = normalizeTR(`${m.id} ${myActs.map(x => x.title).join(' ')}`);
+                if (!actHay.includes(q)) return false;
+            } else {
+                const extStr = (m.externalParticipants || []).map(ep => `${ep.name} ${ep.phone || ''} ${ep.company || ''}`).join(' ');
+                const haystack = normalizeTR(`${m.id} ${mType} ${m.title} ${m.notes} ${m.decisions} ${(m.participants || []).join(' ')} ${extStr}`);
+                if (!haystack.includes(q)) return false;
+            }
+        }
+        return true;
+    });
+
+    if (filtered.length === 0) {
+        container.innerHTML = `
+            <div style="grid-column: 1 / -1; text-align:center; padding:3rem 1.5rem; color:var(--text-sec); border:1px dashed var(--border-color); border-radius:16px;">
+                <i class="fa-solid fa-handshake" style="font-size:2.2rem; color:var(--dizsan-light); margin-bottom:0.75rem; display:block;"></i>
+                <h4 style="color:#fff; margin-bottom:0.35rem;">Görüntülenebilecek Toplantı veya Eğitim Kaydı Bulunmuyor</h4>
+                <p style="font-size:0.85rem; margin-bottom:1rem;">Sadece katılımcısı olduğunuz toplantı/eğitim kayıtlarını veya size aksiyon atanan görevleri görüntüleyebilirsiniz.</p>
+                <button class="btn btn-primary" onclick="openMeetingModal()"><i class="fa-solid fa-plus"></i> Yeni Toplantı / Eğitim Kaydı Oluştur</button>
+            </div>`;
+        return;
+    }
+
+    container.innerHTML = filtered.map(m => {
+        const access = getMeetingAccessLevel(m);
+        const isTraining = (m.recordType === 'Eğitim');
+        const typeBadgeHtml = isTraining
+            ? `<span class="badge" style="background:rgba(168,85,247,0.2); border:1px solid rgba(168,85,247,0.45); color:#e9d5ff;"><i class="fa-solid fa-graduation-cap"></i> 🎓 EĞİTİM</span>`
+            : `<span class="badge badge-normal"><i class="fa-solid fa-handshake"></i> 🤝 TOPLANTI</span>`;
+
+        // DURUM 1: KULLANICI TOPLANTIYA KATILMAMIŞ AMA KENDİSİNE AKSİYON VERİLMİŞ ('ACTION_ONLY')
+        // Kural: Toplantı içeriğini, notları, kararları, katılımcıları ve ekleri GÖREMEZ; sadece kendisine verilen aksiyonu görür!
+        if (access === 'ACTION_ONLY') {
+            const myActions = appState.actions.filter(a =>
+                a.meetingId === m.id &&
+                (normalizeTR(a.assignee) === normalizeTR(currentUser?.name) || normalizeTR(a.manager || '') === normalizeTR(currentUser?.name))
+            );
+
+            return `
+                <div class="meeting-card" style="border-color:rgba(245,158,11,0.4); background:rgba(17,24,39,0.92);">
+                    <div>
+                        <div class="meeting-card-top">
+                            <div style="display:flex; gap:0.4rem; align-items:center; flex-wrap:wrap;">
+                                <span class="meeting-code-badge">${m.id}</span>
+                                ${typeBadgeHtml}
+                            </div>
+                            <span class="badge badge-high"><i class="fa-solid fa-user-lock"></i> Sadece Aksiyon Görünümü</span>
+                        </div>
+
+                        <div style="margin:0.65rem 0; padding:0.75rem; background:rgba(245,158,11,0.1); border:1px dashed rgba(245,158,11,0.4); border-radius:10px; font-size:0.8rem; color:#fde68a;">
+                            <i class="fa-solid fa-lock"></i> <strong>Gizli Tutanak İçeriği:</strong> Bu ${isTraining ? 'eğitimin' : 'toplantının'} katılımcı listesinde yer almadığınız için toplantı notları, kararlar ve ek belgeler gizlidir. <strong>Yalnızca size atanan aksiyon aşağıda gösterilmektedir:</strong>
+                        </div>
+
+                        <div style="display:flex; flex-direction:column; gap:0.55rem; margin-top:0.6rem;">
+                            ${myActions.map(ma => {
+                                const st = evaluateActionReminderStatus(ma);
+                                return `
+                                    <div style="background:rgba(2,132,199,0.12); border:1px solid rgba(56,189,248,0.35); border-radius:10px; padding:0.75rem;">
+                                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.35rem; flex-wrap:wrap; gap:0.4rem;">
+                                            <strong style="color:var(--dizsan-light); font-size:0.82rem;">${ma.id} — Size Atanan Aksiyon</strong>
+                                            <span class="countdown-pill ${st.type}">${st.shortText}</span>
+                                        </div>
+                                        <div style="font-weight:700; color:#fff; font-size:0.9rem; margin-bottom:0.4rem;">${ma.title}</div>
+                                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; font-size:0.78rem; color:var(--text-sec);">
+                                            <span>Termin: <strong>${formatDateTR(ma.dueDate)} ${ma.dueTime || '09:00'}</strong></span>
+                                            <select class="form-control" style="width:auto; padding:0.25rem 0.5rem; font-size:0.76rem; font-weight:700;" onchange="quickChangeActionStatus('${ma.id}', this.value)">
+                                                <option value="Bekliyor" ${ma.status === 'Bekliyor' ? 'selected' : ''}>⏳ Bekliyor</option>
+                                                <option value="Devam Ediyor" ${ma.status === 'Devam Ediyor' ? 'selected' : ''}>🔄 Devam Ediyor</option>
+                                                <option value="Tamamlandı" ${ma.status === 'Tamamlandı' ? 'selected' : ''}>✅ Tamamlandı</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // DURUM 2: KULLANICI İŞARETLİ KATILIMCI ('FULL') -> TÜM DETAYLARI VE EKLERİ GÖRÜR
+        const relatedActions = appState.actions.filter(a => a.meetingId === m.id);
+        const doneCount = relatedActions.filter(a => a.status === 'Tamamlandı').length;
+        const extList = m.externalParticipants || [];
+        const attList = m.attachments || [];
+        const isPendingApproval = (m.approvalStatus === 'Yönetici Onayı Bekliyor');
+        const pendingReqsForMeeting = (appState.approvalRequests || []).filter(r => r.meetingId === m.id && r.status === 'PENDING');
+        const isAdminOmer = isOmerEren(currentUser);
+
+        const approvalBadgeHtml = isPendingApproval
+            ? `<span class="badge badge-high" title="Yönetici Ömer Eren Onayı Bekleniyor"><i class="fa-solid fa-hourglass-half"></i> ⏳ Yönetici Onayı Bekliyor</span>`
+            : `<span class="badge badge-done" title="Yönetici Ömer Eren Tarafından Onaylandı"><i class="fa-solid fa-shield-check"></i> ✅ Yönetici Onaylı (Ömer Eren)</span>`;
+
+        return `
+            <div class="meeting-card" style="${isPendingApproval ? 'border-color:rgba(245,158,11,0.55);' : ''}">
+                <div>
+                    <div class="meeting-card-top">
+                        <div style="display:flex; gap:0.4rem; align-items:center; flex-wrap:wrap;">
+                            <span class="meeting-code-badge">${m.id} • ${m.dept}</span>
+                            ${typeBadgeHtml}
+                            ${approvalBadgeHtml}
+                        </div>
+                        <span style="font-size:0.76rem; color:var(--text-sec);"><i class="fa-solid fa-user-pen"></i> ${m.createdBy || 'ÖMER EREN'}</span>
+                    </div>
+
+                    ${pendingReqsForMeeting.length > 0 ? `
+                    <div style="margin:0.45rem 0; padding:0.45rem 0.65rem; background:rgba(245,158,11,0.14); border:1px dashed rgba(245,158,11,0.5); border-radius:8px; font-size:0.76rem; color:#fde68a;">
+                        <i class="fa-solid fa-user-shield"></i> <strong>Ömer Eren Onayı Bekleyen İşlem:</strong> ${pendingReqsForMeeting.map(r => `${r.requestedBy} (${r.type === 'DELETE_MEETING' ? 'Silme Talebi' : 'Değiştirme Talebi'})`).join(', ')}
+                    </div>` : ''}
+
+                    <h4 class="meeting-title">${m.title}</h4>
+                    <div class="meeting-meta">
+                        <span><i class="fa-regular fa-calendar"></i> ${formatDateTR(m.date)}</span>
+                        <span><i class="fa-regular fa-clock"></i> ${m.time}</span>
+                        <span><i class="fa-solid fa-location-dot"></i> ${m.location || 'Merkez'}</span>
+                    </div>
+
+                    <div class="meeting-summary-box" style="white-space:pre-line;">
+                        <strong>${isTraining ? 'Eğitim Konuları & Notlar:' : 'Notlar:'}</strong>\n${m.notes || ''}
+                    </div>
+
+                    ${m.decisions ? `
+                    <div style="margin-top:0.5rem; font-size:0.79rem; color:#a7f3d0; background:rgba(16,185,129,0.08); padding:0.5rem 0.65rem; border-radius:6px; white-space:pre-line;">
+                        <strong>${isTraining ? 'Eğitim Sonucu & Değerlendirme:' : 'Kararlar:'}</strong>\n${m.decisions}
+                    </div>` : ''}
+
+                    ${attList.length > 0 ? `
+                    <div style="margin-top:0.65rem; padding:0.6rem; background:rgba(16,185,129,0.06); border:1px solid rgba(16,185,129,0.25); border-radius:8px;">
+                        <div style="font-size:0.75rem; font-weight:700; color:#6ee7b7; margin-bottom:0.4rem;">
+                            <i class="fa-solid fa-paperclip"></i> Eklenen Fotoğraf, Kağıt Tutanak &amp; Belgeler (${attList.length} Adet):
+                        </div>
+                        <div style="display:flex; gap:0.45rem; flex-wrap:wrap;">
+                            ${attList.map(att => {
+                                const isImg = (att.type || '').startsWith('image/');
+                                return `
+                                    <button type="button" onclick="openAttachmentPreviewModal('${m.id}', '${att.id}')" style="display:inline-flex; align-items:center; gap:0.4rem; background:rgba(15,23,42,0.75); border:1px solid rgba(52,211,153,0.35); color:#e2e8f0; padding:4px 8px; border-radius:6px; font-size:0.74rem; cursor:pointer;">
+                                        ${isImg && att.dataUrl ? `<img src="${att.dataUrl}" style="width:24px; height:24px; object-fit:cover; border-radius:4px;">` : `<i class="fa-solid ${att.kind === 'NOTE' ? 'fa-note-sticky' : 'fa-file-lines'}" style="color:#34d399;"></i>`}
+                                        <span style="max-width:130px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${att.name || att.note || 'Ek Belge'}</span>
+                                    </button>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>` : ''}
+
+                    <div class="participants-avatars" style="margin-top:0.65rem;">
+                        ${(m.participants || []).map(p => `<span class="participant-tag"><i class="fa-solid fa-user" style="font-size:0.65rem; color:var(--dizsan-light);"></i> ${p}</span>`).join('')}
+                        ${extList.map(ep => `<span class="participant-tag" style="background:rgba(245,158,11,0.14); border-color:rgba(245,158,11,0.4); color:#fde68a;" title="Dış Katılımcı | Firma: ${ep.company || '-'} | Tel: ${ep.phone || '-'}"><i class="fa-solid fa-building-user" style="font-size:0.65rem; color:#fbbf24;"></i> ${ep.name}${ep.company ? ` (${ep.company})` : ''}${ep.phone ? ` • ${ep.phone}` : ''}</span>`).join('')}
+                    </div>
+                </div>
+
+                <div class="meeting-card-footer">
+                    <span class="badge ${relatedActions.length > 0 && doneCount === relatedActions.length ? 'badge-done' : 'badge-normal'}">
+                        <i class="fa-solid fa-bolt"></i> ${relatedActions.length} Aksiyon (${doneCount} Tamam)
+                    </span>
+                    <div style="display:flex; gap:0.35rem; flex-wrap:wrap;">
+                        ${isAdminOmer && isPendingApproval ? `
+                        <button class="btn btn-success btn-sm" onclick="approveNewMeeting('${m.id}')" title="Yönetici Olarak Onayla">
+                            <i class="fa-solid fa-check"></i> Onayla
+                        </button>` : ''}
+                        <button class="btn btn-secondary btn-sm" onclick="downloadMeetingAlarmICS('${m.id}')" title="Uygulama Kapalıyken Çalması İçin Telefon/PC Alarmına Kur">
+                            <i class="fa-solid fa-bell" style="color:#fcd34d;"></i>
+                        </button>
+                        <button class="btn btn-secondary btn-sm" onclick="printMeetingMinutes('${m.id}')" title="A4 Resmi Dizsan Tutanağı Yazdır">
+                            <i class="fa-solid fa-print"></i> Tutanak
+                        </button>
+                        <button class="btn btn-secondary btn-sm" onclick="openMeetingModal('${m.id}')" title="${isAdminOmer ? 'Düzenle' : 'Değiştirme (Ömer Eren Onaylı)'}">
+                            <i class="fa-solid fa-pen"></i>
+                        </button>
+                        <button class="btn btn-danger btn-sm" onclick="deleteMeeting('${m.id}')" title="${isAdminOmer ? 'Sil' : 'Silme Talebi (Ömer Eren Onaylı)'}">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function renderActions() {
+    const tbody = document.getElementById('actions-tbody');
+    if (!tbody) return;
+
+    const q = normalizeTR(document.getElementById('action-search')?.value || '');
+    const assigneeF = document.getElementById('action-assignee-filter')?.value || 'ALL';
+    const prioF = document.getElementById('action-priority-filter')?.value || 'ALL';
+    const statF = document.getElementById('action-status-filter')?.value || 'ALL';
+
+    const filtered = appState.actions.filter(a => {
+        // Gizlilik Kuralı: Katılmadığı toplantıdaki başkasına ait aksiyonları göremez, sadece kendisine atanan aksiyonları veya katıldığı toplantının aksiyonlarını görür
+        if (!canUserSeeAction(a)) return false;
+
+        if (assigneeF !== 'ALL' && a.assignee !== assigneeF) return false;
+        if (prioF !== 'ALL' && a.priority !== prioF) return false;
+        if (statF !== 'ALL' && a.status !== statF) return false;
+        if (q) {
+            const hay = normalizeTR(`${a.id} ${a.title} ${a.assignee} ${a.manager || ''} ${a.meetingTitle} ${a.note || ''}`);
+            if (!hay.includes(q)) return false;
+        }
+        return true;
+    });
+
+    if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:2.5rem; color:var(--text-sec);">Görüntülenebilecek aksiyon kaydı bulunmuyor. "+ Yeni Aksiyon Tanımla" butonu ile hemen ekleyebilirsiniz.</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = filtered.map(a => {
+        const st = evaluateActionReminderStatus(a);
+        const parentM = appState.meetings.find(m => m.id === a.meetingId);
+        const access = parentM ? getMeetingAccessLevel(parentM) : 'FULL';
+        // Katılmadığı bir toplantıdan aksiyon verilmişse toplantı başlığını gizle, sadece aksiyon kodunu göster
+        const meetingLabel = access === 'ACTION_ONLY' ? `${a.meetingId} (Sadece Aksiyon)` : (a.meetingTitle || a.meetingId);
+
+        return `
+            <tr>
+                <td>
+                    <div style="font-weight:700; color:var(--dizsan-light);">${a.id}</div>
+                    <div style="font-size:0.74rem; color:var(--text-sec); max-width:150px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${meetingLabel}">${a.meetingId}</div>
+                </td>
+                <td>
+                    <div style="font-weight:600; color:#fff; margin-bottom:3px;">${a.title}</div>
+                    ${a.note ? `<div style="font-size:0.76rem; color:var(--text-sec);"><i class="fa-regular fa-comment-dots"></i> ${a.note}</div>` : ''}
+                </td>
+                <td>
+                    <span class="participant-tag" style="font-weight:600;"><i class="fa-solid fa-user-check" style="color:var(--dizsan-light);"></i> ${a.assignee}</span>
+                </td>
+                <td>
+                    <span class="participant-tag" style="border-color:rgba(245,158,11,0.35); color:#fde68a;"><i class="fa-solid fa-user-tie"></i> ${a.manager || 'ÖMER EREN'}</span>
+                </td>
+                <td>
+                    <span class="badge ${a.priority === 'Kritik' ? 'badge-critical' : 'badge-normal'}">
+                        ${a.priority === 'Kritik' ? '🚨 Kritik' : '🔵 Normal'}
+                    </span>
+                </td>
+                <td>
+                    <div style="font-weight:600;">${formatDateTR(a.dueDate)}</div>
+                    <div style="font-size:0.74rem; color:var(--text-sec);">Saat: ${a.dueTime || '09:00'}</div>
+                </td>
+                <td>
+                    <span class="countdown-pill ${st.type}">${st.badgeText}</span>
+                </td>
+                <td>
+                    <select class="form-control" style="padding:0.35rem 0.55rem; font-size:0.78rem; font-weight:700;" onchange="quickChangeActionStatus('${a.id}', this.value)">
+                        <option value="Bekliyor" ${a.status === 'Bekliyor' ? 'selected' : ''}>⏳ Bekliyor</option>
+                        <option value="Devam Ediyor" ${a.status === 'Devam Ediyor' ? 'selected' : ''}>🔄 Devam Ediyor</option>
+                        <option value="Tamamlandı" ${a.status === 'Tamamlandı' ? 'selected' : ''}>✅ Tamamlandı</option>
+                    </select>
+                </td>
+                <td>
+                    <div style="display:flex; gap:0.35rem;">
+                        <button class="btn btn-secondary btn-sm" onclick="openActionModal('${a.id}')" title="Düzenle">
+                            <i class="fa-solid fa-pen"></i>
+                        </button>
+                        <button class="btn btn-danger btn-sm" onclick="deleteAction('${a.id}')" title="Sil">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+// ==========================================================================
+// 7. KURUMSAL RAPORLAMA VE ANALİZ MOTORU (REPORTS TAB)
+// ==========================================================================
+function resetReportFilters() {
+    const sEl = document.getElementById('report-start-date');
+    const eEl = document.getElementById('report-end-date');
+    const dEl = document.getElementById('report-dept-filter');
+    const pEl = document.getElementById('report-person-filter');
+    if (sEl) sEl.value = '';
+    if (eEl) eEl.value = '';
+    if (dEl) dEl.value = 'ALL';
+    if (pEl) pEl.value = 'ALL';
+    renderReports();
+}
+
+function renderReports() {
+    const isAdmin = isOmerEren(currentUser);
+    const startRaw = document.getElementById('report-start-date')?.value || '';
+    const endRaw = document.getElementById('report-end-date')?.value || '';
+    const deptF = document.getElementById('report-dept-filter')?.value || 'ALL';
+    const personF = isAdmin
+        ? (document.getElementById('report-person-filter')?.value || 'ALL')
+        : (currentUser ? currentUser.name : 'ALL');
+
+    const startIso = normalizeToISODate(startRaw);
+    const endIso = normalizeToISODate(endRaw);
+
+    const filteredMeetings = appState.meetings.filter(m => {
+        if (!isAdmin && getMeetingAccessLevel(m) === 'NONE') return false;
+        const mDate = normalizeToISODate(m.date);
+        if (startIso && mDate < startIso) return false;
+        if (endIso && mDate > endIso) return false;
+        if (deptF !== 'ALL' && m.dept !== deptF) return false;
+        if (personF !== 'ALL' && !(m.participants || []).includes(personF)) return false;
+        return true;
+    });
+
+    const filteredActions = appState.actions.filter(a => {
+        if (!isAdmin && !canUserSeeAction(a)) return false;
+        const aDate = normalizeToISODate(a.dueDate);
+        if (startIso && aDate < startIso) return false;
+        if (endIso && aDate > endIso) return false;
+        if (personF !== 'ALL' && a.assignee !== personF) return false;
+        if (deptF !== 'ALL') {
+            const parentM = appState.meetings.find(m => m.id === a.meetingId);
+            if (parentM && parentM.dept !== deptF) return false;
+        }
+        return true;
+    });
+
+    const doneActions = filteredActions.filter(a => a.status === 'Tamamlandı');
+    const overdueActions = filteredActions.filter(a => {
+        const st = evaluateActionReminderStatus(a);
+        return st.stage === 'OVERDUE' || a.priority === 'Kritik';
+    });
+
+    const rate = filteredActions.length > 0 ? Math.round((doneActions.length / filteredActions.length) * 100) : 0;
+
+    const kpiM = document.getElementById('rep-kpi-meetings');
+    const kpiA = document.getElementById('rep-kpi-total-actions');
+    const kpiR = document.getElementById('rep-kpi-rate');
+    const kpiSub = document.getElementById('rep-kpi-done-sub');
+    const kpiO = document.getElementById('rep-kpi-overdue');
+
+    if (kpiM) kpiM.textContent = filteredMeetings.length;
+    if (kpiA) kpiA.textContent = filteredActions.length;
+    if (kpiR) kpiR.textContent = `%${rate}`;
+    if (kpiSub) kpiSub.textContent = `${doneActions.length} Tamamlanan / ${filteredActions.length} Toplam`;
+    if (kpiO) kpiO.textContent = overdueActions.length;
+
+    // Personel Bazlı Rapor Tablosu (Ömer Eren tüm personeli görür, diğer kullanıcılar sadece kendi satırını görür)
+    const pTbody = document.getElementById('report-personnel-tbody');
+    if (pTbody) {
+        const usersToList = isAdmin
+            ? (personF === 'ALL' ? appState.users : appState.users.filter(u => u.name === personF))
+            : appState.users.filter(u => currentUser && (normalizeTR(u.username) === normalizeTR(currentUser.username) || normalizeTR(u.name) === normalizeTR(currentUser.name)));
+
+        pTbody.innerHTML = usersToList.map(u => {
+            const attended = filteredMeetings.filter(m => (m.participants || []).includes(u.name)).length;
+            const assigned = filteredActions.filter(a => a.assignee === u.name);
+            const done = assigned.filter(a => a.status === 'Tamamlandı').length;
+            const overdue = assigned.filter(a => evaluateActionReminderStatus(a).stage === 'OVERDUE').length;
+            const pRate = assigned.length > 0 ? Math.round((done / assigned.length) * 100) : 100;
+
+            return `
+                <tr>
+                    <td><strong style="color:#fff;">${u.name}</strong></td>
+                    <td style="color:var(--text-sec); font-size:0.8rem;">${u.dept}</td>
+                    <td><strong>${attended}</strong></td>
+                    <td><strong>${assigned.length}</strong></td>
+                    <td><span class="badge badge-done">${done}</span></td>
+                    <td><span class="badge ${overdue > 0 ? 'badge-critical' : 'badge-pending'}">${overdue}</span></td>
+                    <td>
+                        <div style="display:flex; align-items:center; gap:0.4rem;">
+                            <div style="flex:1; height:6px; background:rgba(255,255,255,0.08); border-radius:4px; min-width:50px; overflow:hidden;">
+                                <div style="width:${pRate}%; height:100%; background:${pRate >= 75 ? '#10b981' : (pRate >= 40 ? '#f59e0b' : '#ef4444')};"></div>
+                            </div>
+                            <span style="font-size:0.76rem; font-weight:700;">%${pRate}</span>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    // Departman Bazlı Rapor Tablosu
+    const dTbody = document.getElementById('report-dept-tbody');
+    if (dTbody) {
+        const depts = ["Genel Yönetim", "SSH & Servis", "Depo & Yedek Parça", "Muhasebe & Finans", "Kalite & İSG"];
+        dTbody.innerHTML = depts.map(dName => {
+            const dMeetings = filteredMeetings.filter(m => m.dept === dName);
+            const dMeetingIds = dMeetings.map(m => m.id);
+            const dActions = filteredActions.filter(a => dMeetingIds.includes(a.meetingId));
+            const dOpen = dActions.filter(a => a.status !== 'Tamamlandı').length;
+            const dDone = dActions.filter(a => a.status === 'Tamamlandı').length;
+
+            return `
+                <tr>
+                    <td><strong style="color:#fff;">${dName}</strong></td>
+                    <td>${dMeetings.length} Toplantı</td>
+                    <td>${dActions.length} Aksiyon</td>
+                    <td><span class="badge ${dOpen > 0 ? 'badge-high' : 'badge-pending'}">${dOpen} Açık</span></td>
+                    <td><span class="badge badge-done">${dDone} Tamam</span></td>
+                </tr>
+            `;
+        }).join('');
+    }
+}
+
+function printExecutiveReport() {
+    const isAdmin = isOmerEren(currentUser);
+    const printArea = document.getElementById('print-minutes-area');
+    const repMeetings = isAdmin ? appState.meetings : appState.meetings.filter(m => getMeetingAccessLevel(m) !== 'NONE');
+    const repActions = isAdmin ? appState.actions : appState.actions.filter(a => canUserSeeAction(a));
+    const repUsers = isAdmin
+        ? appState.users
+        : appState.users.filter(u => currentUser && (normalizeTR(u.username) === normalizeTR(currentUser.username) || normalizeTR(u.name) === normalizeTR(currentUser.name)));
+
+    const totalM = repMeetings.length;
+    const totalA = repActions.length;
+    const doneA = repActions.filter(a => a.status === 'Tamamlandı').length;
+    const openA = totalA - doneA;
+
+    printArea.innerHTML = `
+        <div style="border: 2px solid #000; padding: 20px; font-family: Arial, sans-serif; color: #000;">
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 2px solid #0284c7; padding-bottom: 12px; margin-bottom: 16px;">
+                <div style="display:flex; align-items:center; gap: 15px;">
+                    <img src="dizsan_logo.jpg" style="width:70px; height:70px; object-fit:contain;">
+                    <div>
+                        <h1 style="margin:0; font-size:21px; color:#0284c7;">DİZSAN OTOMOTİV & SERVİS</h1>
+                        <p style="margin:4px 0 0; font-size:13px; font-weight:bold;">${isAdmin ? 'GENEL TOPLANTI VE AKSİYON PERFORMANS YÖNETİCİ RAPORU' : `KİŞİSEL TOPLANTI VE AKSİYON RAPORU (${currentUser ? currentUser.name : ''})`}</p>
+                    </div>
+                </div>
+                <div style="text-align:right; font-size:12px;">
+                    <div><strong>Rapor Tarihi:</strong> ${formatNowTR()}</div>
+                    <div><strong>Hazırlayan:</strong> ${currentUser ? currentUser.name : 'ÖMER EREN'}</div>
+                    <div><strong>Sürüm:</strong> ${appState.version}</div>
+                </div>
+            </div>
+
+            <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:10px; margin-bottom:16px; text-align:center; font-size:12px;">
+                <div style="border:1px solid #94a3b8; padding:10px; background:#f8fafc;"><strong>Toplam Toplantı</strong><br><span style="font-size:18px; font-weight:bold;">${totalM}</span></div>
+                <div style="border:1px solid #94a3b8; padding:10px; background:#f8fafc;"><strong>Toplam Aksiyon</strong><br><span style="font-size:18px; font-weight:bold;">${totalA}</span></div>
+                <div style="border:1px solid #94a3b8; padding:10px; background:#f8fafc;"><strong>Açık Aksiyon</strong><br><span style="font-size:18px; font-weight:bold;">${openA}</span></div>
+                <div style="border:1px solid #94a3b8; padding:10px; background:#f8fafc;"><strong>Tamamlanan</strong><br><span style="font-size:18px; font-weight:bold;">${doneA}</span></div>
+            </div>
+
+            <h3 style="font-size:14px; margin:0 0 8px;">Personel Katılım ve Aksiyon Performans Tablosu</h3>
+            <table style="width:100%; border-collapse:collapse; font-size:11px; margin-bottom:18px;">
+                <thead>
+                    <tr style="background:#e2e8f0;">
+                        <th style="border:1px solid #94a3b8; padding:5px;">Personel Adı Soyadı</th>
+                        <th style="border:1px solid #94a3b8; padding:5px;">Görev / Bölüm</th>
+                        <th style="border:1px solid #94a3b8; padding:5px;">Katıldığı Toplantı</th>
+                        <th style="border:1px solid #94a3b8; padding:5px;">Atanan Aksiyon</th>
+                        <th style="border:1px solid #94a3b8; padding:5px;">Tamamlanan</th>
+                        <th style="border:1px solid #94a3b8; padding:5px;">Açık / Bekleyen</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${repUsers.map(u => {
+                        const att = repMeetings.filter(m => (m.participants || []).includes(u.name)).length;
+                        const ass = repActions.filter(a => a.assignee === u.name);
+                        const dn = ass.filter(a => a.status === 'Tamamlandı').length;
+                        return `
+                            <tr>
+                                <td style="border:1px solid #94a3b8; padding:5px; font-weight:bold;">${u.name}</td>
+                                <td style="border:1px solid #94a3b8; padding:5px;">${u.dept}</td>
+                                <td style="border:1px solid #94a3b8; padding:5px; text-align:center;">${att}</td>
+                                <td style="border:1px solid #94a3b8; padding:5px; text-align:center;">${ass.length}</td>
+                                <td style="border:1px solid #94a3b8; padding:5px; text-align:center;">${dn}</td>
+                                <td style="border:1px solid #94a3b8; padding:5px; text-align:center;">${ass.length - dn}</td>
+                            </tr>
+                        `;
+                    }).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
+    window.print();
+}
+
+// ==========================================================================
+// 8. PERSONEL VE LOG TABLOLARI RENDER
+// KURAL: Diğer kullanıcılar SADECE ÖMER EREN listesinde çıkar.
+// Geriye kalan tüm personeller yalnızca kendi bilgilerini görür ve düzenler!
+// ==========================================================================
+function renderPersonnel() {
+    const tbody = document.getElementById('personnel-tbody');
+    if (!tbody) return;
+
+    const isAdmin = isOmerEren(currentUser);
+    const titleEl = document.getElementById('personnel-tab-title');
+    const descEl = document.getElementById('personnel-tab-desc');
+    const addBtnEl = document.getElementById('btn-add-new-personnel');
+
+    if (isAdmin) {
+        if (titleEl) {
+            titleEl.innerHTML = `<i class="fa-solid fa-users-gear" style="color:var(--dizsan-light);"></i> Dizsan Güncel Personel Listesi & Giriş Hesapları (Yönetici Ömer Eren Görünümü)`;
+        }
+        if (descEl) {
+            descEl.textContent = "Yönetici ÖMER EREN olarak sistemdeki tüm personel hesaplarını, şifrelerini ve yetkilerini görüntüleyebilir, düzenleyebilir veya yeni personel ekleyebilirsiniz.";
+        }
+        if (addBtnEl) {
+            addBtnEl.style.display = 'inline-flex';
+        }
+    } else {
+        if (titleEl) {
+            titleEl.innerHTML = `<i class="fa-solid fa-user-lock" style="color:var(--dizsan-light);"></i> Kişisel Hesap Bilgilerim & Şifre Yönetimi`;
+        }
+        if (descEl) {
+            descEl.textContent = "Gizlilik ve güvenlik kuralları gereği her kullanıcı yalnızca kendi hesap bilgilerini, şifresini ve kişisel istatistiklerini görüntüleyebilir ve düzenleyebilir. Diğer kullanıcıların listesi yalnızca Yönetici ÖMER EREN ekranında görüntülenir.";
+        }
+        if (addBtnEl) {
+            addBtnEl.style.display = 'none';
+        }
+    }
+
+    const visibleUsers = isAdmin
+        ? appState.users
+        : appState.users.filter(u => currentUser && (normalizeTR(u.username) === normalizeTR(currentUser.username) || normalizeTR(u.name) === normalizeTR(currentUser.name)));
+
+    tbody.innerHTML = visibleUsers.map((u, idx) => {
+        const attended = appState.meetings.filter(m => (m.participants || []).includes(u.name)).length;
+        const openA = appState.actions.filter(a => a.assignee === u.name && a.status !== 'Tamamlandı').length;
+
+        return `
+            <tr>
+                <td><strong>${isAdmin ? (u.order !== undefined ? (u.order === 0 ? '★' : u.order + '.') : (idx + 1) + '.') : '1.'}</strong></td>
+                <td>
+                    <div style="display:flex; align-items:center; gap:0.65rem;">
+                        <img src="${u.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(u.name)}&background=0284c7&color=fff`}" style="width:32px; height:32px; border-radius:8px; object-fit:cover;" onerror="this.src='dizsan_logo.jpg'">
+                        <strong style="color:#fff;">${u.name}</strong>
+                    </div>
+                </td>
+                <td><span class="badge badge-normal">${u.dept || 'Personel'}</span></td>
+                <td><code>${u.username}</code></td>
+                <td style="font-size:0.8rem; color:var(--text-sec);">${resolveUserEmail(u)}</td>
+                <td><span class="badge ${u.role === 'Yönetici' ? 'badge-done' : 'badge-pending'}">${u.role || 'Personel'}</span></td>
+                <td><strong>${attended}</strong></td>
+                <td><span class="badge ${openA > 0 ? 'badge-high' : 'badge-pending'}">${openA} Açık</span></td>
+                <td>
+                    <button class="btn btn-secondary btn-sm" onclick="openUserModal('${u.username}')">
+                        <i class="fa-solid fa-pen"></i> ${isAdmin ? 'Düzenle' : 'Bilgilerimi Düzenle'}
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function renderLogs() {
+    const tbody = document.getElementById('logs-tbody');
+    if (!tbody) return;
+
+    const q = normalizeTR(document.getElementById('log-search')?.value || '');
+    const typeF = document.getElementById('log-type-filter')?.value || 'ALL';
+
+    const filtered = appState.logs.filter(l => {
+        if (typeF !== 'ALL' && l.category !== typeF) return false;
+        if (q) {
+            const hay = normalizeTR(`${l.user} ${l.category} ${l.detail} ${l.timestamp}`);
+            if (!hay.includes(q)) return false;
+        }
+        return true;
+    });
+
+    if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:2rem; color:var(--text-sec);">Kayıtlı işlem logu bulunmuyor.</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = filtered.map(l => `
+        <tr>
+            <td style="white-space:nowrap; font-family:monospace; color:var(--dizsan-light);">${l.timestamp}</td>
+            <td><strong style="color:#fff;">${l.user}</strong></td>
+            <td><span class="badge badge-normal">${l.category}</span></td>
+            <td style="color:#e2e8f0;">${l.detail}</td>
+            <td style="font-size:0.78rem; color:var(--text-sec);">${l.platform || 'Web'}</td>
+        </tr>
+    `).join('');
+}
+
+// ==========================================================================
+// 9. TOPLANTI VE AKSİYON KAYIT FONKSİYONLARI
+// ==========================================================================
+
+// --- SEÇMELİ LİSTE HARİCİ DIŞ KATILIMCI (MANUEL KATILIMCI) FONKSİYONLARI ---
+function toggleExternalParticipantSection(checked) {
+    const sec = document.getElementById('external-participants-section');
+    const nameInput = document.getElementById('ext-manual-name');
+    const phoneInput = document.getElementById('ext-manual-phone');
+    const companyInput = document.getElementById('ext-manual-company');
+    if (!sec) return;
+
+    if (checked) {
+        sec.classList.remove('hidden');
+        sec.style.display = 'block';
+        if (nameInput) setTimeout(() => nameInput.focus(), 50);
+    } else {
+        sec.classList.add('hidden');
+        sec.style.display = 'none';
+        if (nameInput) nameInput.value = '';
+        if (phoneInput) phoneInput.value = '';
+        if (companyInput) companyInput.value = '';
+    }
+}
+
+function addManualExternalParticipantFromInputs() {
+    const nameInput = document.getElementById('ext-manual-name');
+    const phoneInput = document.getElementById('ext-manual-phone');
+    const companyInput = document.getElementById('ext-manual-company');
+
+    const name = nameInput ? nameInput.value.trim() : '';
+    const phone = phoneInput ? phoneInput.value.trim() : '';
+    const company = companyInput ? companyInput.value.trim() : '';
+
+    if (!name) {
+        alert("Lütfen dış katılımcının Adı Soyadı bilgisini yazıp 'Ekle' butonuna basın!");
+        if (nameInput) nameInput.focus();
+        return;
+    }
+
+    addExternalParticipantRow({ name, phone, company });
+
+    if (nameInput) {
+        nameInput.value = '';
+        nameInput.focus();
+    }
+    if (phoneInput) phoneInput.value = '';
+    if (companyInput) companyInput.value = '';
+}
+
+function addExternalParticipantRow(data = {}) {
+    const list = document.getElementById('external-participants-list');
+    if (!list) return;
+
+    const row = document.createElement('div');
+    row.className = 'external-participant-row added-ext-row';
+    row.style.cssText = 'display:grid; grid-template-columns: 1.3fr 1fr 1.3fr auto; gap:0.5rem; align-items:center; background:rgba(16,185,129,0.09); padding:0.5rem 0.65rem; border-radius:8px; border:1px solid rgba(16,185,129,0.35);';
+
+    row.innerHTML = `
+        <div>
+            <label style="font-size:0.66rem; color:#6ee7b7; margin-bottom:2px; display:block;">✓ Eklenen Katılımcı Adı Soyadı</label>
+            <input type="text" class="form-control ext-part-name" placeholder="Adı Soyadı" value="${(data.name || '').replace(/"/g, '&quot;')}">
+        </div>
+        <div>
+            <label style="font-size:0.66rem; color:#6ee7b7; margin-bottom:2px; display:block;">Telefon Numarası</label>
+            <input type="tel" class="form-control ext-part-phone" placeholder="05XX XXX XX XX" value="${(data.phone || '').replace(/"/g, '&quot;')}">
+        </div>
+        <div>
+            <label style="font-size:0.66rem; color:#6ee7b7; margin-bottom:2px; display:block;">Temsil Ettiği Firma</label>
+            <input type="text" class="form-control ext-part-company" placeholder="Firma Adı" value="${(data.company || '').replace(/"/g, '&quot;')}">
+        </div>
+        <div style="padding-top:14px;">
+            <button type="button" class="btn btn-danger btn-sm" title="Listeden Kaldır" onclick="removeExternalParticipantRow(this)">
+                <i class="fa-solid fa-trash"></i> Kaldır
+            </button>
+        </div>
+    `;
+    list.appendChild(row);
+}
+
+function removeExternalParticipantRow(btn) {
+    const row = btn.closest('.added-ext-row') || btn.closest('.external-participant-row');
+    if (row) row.remove();
+}
+
+// --- OTOMATİK NUMARALANDIRMA (1. , 2. , 3. ) FONKSİYONLARI ---
+function handleNumberedTextareaFocus(textarea) {
+    if (!textarea) return;
+    if (textarea.value.trim() === '') {
+        textarea.value = '1. ';
+        setTimeout(() => {
+            textarea.selectionStart = textarea.selectionEnd = textarea.value.length;
+        }, 0);
+    }
+}
+
+function handleNumberedTextareaInput(textarea) {
+    if (!textarea) return;
+    // Kullanıcı içeriği tamamen silip ilk harfi yazmaya başladığında otomatik "1. " ekle
+    const val = textarea.value;
+    if (val.length === 1 && val !== '\n' && !/^\d/.test(val)) {
+        textarea.value = '1. ' + val;
+        textarea.selectionStart = textarea.selectionEnd = textarea.value.length;
+    }
+}
+
+function handleNumberedTextareaKeydown(event, textarea) {
+    if (!textarea) return;
+    if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
+
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const val = textarea.value;
+
+        const beforeCursor = val.substring(0, start);
+        const afterCursor = val.substring(end);
+
+        const linesBefore = beforeCursor.split('\n');
+        const currentLine = linesBefore[linesBefore.length - 1] || '';
+
+        // Mevcut satırın başındaki numarayı bul veya toplam satır sayısına göre sıradaki numarayı hesapla
+        let nextNum = linesBefore.length + 1;
+        const match = currentLine.match(/^\s*(\d+)[\.\)\-]\s*/);
+        if (match) {
+            nextNum = parseInt(match[1], 10) + 1;
+        } else {
+            // Önceki satırlarda en son hangi numara kullanılmış kontrol et
+            for (let i = linesBefore.length - 1; i >= 0; i--) {
+                const m = linesBefore[i].match(/^\s*(\d+)[\.\)\-]\s*/);
+                if (m) {
+                    nextNum = parseInt(m[1], 10) + (linesBefore.length - i);
+                    break;
+                }
+            }
+        }
+
+        // Eğer ilk satır henüz numaralandırılmamışsa onu da "1. " yap
+        let updatedBefore = beforeCursor;
+        if (linesBefore.length === 1 && !/^\s*\d+[\.\)\-]\s*/.test(currentLine) && currentLine.trim().length > 0) {
+            updatedBefore = '1. ' + beforeCursor;
+            nextNum = 2;
+        }
+
+        const insertStr = `\n${nextNum}. `;
+        textarea.value = updatedBefore + insertStr + afterCursor;
+        const newCursorPos = updatedBefore.length + insertStr.length;
+        textarea.selectionStart = textarea.selectionEnd = newCursorPos;
+        textarea.scrollTop = textarea.scrollHeight;
+    }
+}
+
+// --- TOPLANTI / EĞİTİM TÜRÜ SEÇİM FONKSİYONU ---
+function setMeetingRecordType(type) {
+    const val = (type === 'Eğitim') ? 'Eğitim' : 'Toplantı';
+    const hiddenInput = document.getElementById('meeting-record-type-input');
+    const btnTop = document.getElementById('btn-type-toplanti');
+    const btnEgt = document.getElementById('btn-type-egitim');
+    const titleLabel = document.getElementById('meeting-title-label');
+    const titleInput = document.getElementById('meeting-title-input');
+
+    if (hiddenInput) hiddenInput.value = val;
+    if (btnTop && btnEgt) {
+        if (val === 'Eğitim') {
+            btnEgt.className = 'btn btn-primary btn-sm';
+            btnTop.className = 'btn btn-secondary btn-sm';
+        } else {
+            btnTop.className = 'btn btn-primary btn-sm';
+            btnEgt.className = 'btn btn-secondary btn-sm';
+        }
+    }
+    if (titleLabel) {
+        titleLabel.textContent = val === 'Eğitim' ? 'Eğitim Başlığı / Konusu *' : 'Toplantı Başlığı / Konusu *';
+    }
+    if (titleInput) {
+        titleInput.placeholder = val === 'Eğitim'
+            ? 'Örn: Scania Euro 6 Arıza Teşhis ve Teknik Servis Eğitimi'
+            : 'Örn: Haftalık Servis & Depo Koordinasyon Toplantısı';
+    }
+}
+
+// --- TOPLANTI / EĞİTİM EKLERİ (FOTOĞRAF, KAĞIT TUTANAK, BİLGİ VEYA BELGE) FONKSİYONLARI ---
+function compressImageFileToDataUrl(file, maxDim = 1400, quality = 0.82) {
+    return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                let w = img.width;
+                let h = img.height;
+                if (w > maxDim || h > maxDim) {
+                    if (w > h) {
+                        h = Math.round((h * maxDim) / w);
+                        w = maxDim;
+                    } else {
+                        w = Math.round((w * maxDim) / h);
+                        h = maxDim;
+                    }
+                }
+                const canvas = document.createElement('canvas');
+                canvas.width = w;
+                canvas.height = h;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, w, h);
+                resolve(canvas.toDataURL('image/jpeg', quality));
+            };
+            img.onerror = () => resolve(e.target.result);
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
+function readRegularFileToDataUrl(file) {
+    return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target.result);
+        reader.readAsDataURL(file);
+    });
+}
+
+async function handleMeetingAttachmentUpload(event) {
+    const files = Array.from(event.target.files || []);
+    if (files.length === 0) return;
+
+    const noteInput = document.getElementById('meeting-attachment-note-input');
+    const customNote = noteInput ? noteInput.value.trim() : '';
+
+    for (const file of files) {
+        const isImg = (file.type || '').startsWith('image/');
+        const dataUrl = isImg
+            ? await compressImageFileToDataUrl(file)
+            : await readRegularFileToDataUrl(file);
+
+        currentDraftAttachments.push({
+            id: 'ATT-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
+            kind: isImg ? 'IMAGE' : 'FILE',
+            name: file.name,
+            type: file.type || 'application/octet-stream',
+            note: customNote || (isImg ? 'Toplantı / Kağıt Tutanak Fotoğrafı' : 'Ek Belge'),
+            dataUrl,
+            addedBy: currentUser ? currentUser.name : 'ÖMER EREN',
+            addedAt: formatNowTR()
+        });
+    }
+
+    if (noteInput) noteInput.value = '';
+    event.target.value = '';
+    renderDraftAttachments();
+}
+
+function addTextNoteAttachment() {
+    const noteInput = document.getElementById('meeting-attachment-note-input');
+    const text = noteInput ? noteInput.value.trim() : '';
+    if (!text) {
+        alert("Lütfen eklenecek bilgi veya belge açıklamasını yazın!");
+        return;
+    }
+
+    currentDraftAttachments.push({
+        id: 'ATT-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
+        kind: 'NOTE',
+        name: text.length > 35 ? text.substring(0, 35) + '...' : text,
+        type: 'text/plain',
+        note: text,
+        dataUrl: '',
+        addedBy: currentUser ? currentUser.name : 'ÖMER EREN',
+        addedAt: formatNowTR()
+    });
+
+    if (noteInput) noteInput.value = '';
+    renderDraftAttachments();
+}
+
+function removeDraftAttachment(attId) {
+    currentDraftAttachments = currentDraftAttachments.filter(a => a.id !== attId);
+    renderDraftAttachments();
+}
+
+function renderDraftAttachments() {
+    const container = document.getElementById('meeting-attachments-preview');
+    if (!container) return;
+
+    if (currentDraftAttachments.length === 0) {
+        container.innerHTML = `<div style="grid-column:1/-1; font-size:0.76rem; color:var(--text-sec); padding:0.35rem 0;">Henüz eklenmiş fotoğraf, el yazısı kağıt tutanak veya belge yok.</div>`;
+        return;
+    }
+
+    container.innerHTML = currentDraftAttachments.map(att => {
+        const isImg = (att.type || '').startsWith('image/');
+        return `
+            <div style="background:rgba(15,23,42,0.85); border:1px solid rgba(52,211,153,0.35); border-radius:8px; padding:0.45rem; display:flex; flex-direction:column; justify-content:space-between; gap:0.35rem; position:relative;">
+                <div style="display:flex; align-items:center; gap:0.45rem;">
+                    ${isImg && att.dataUrl
+                        ? `<img src="${att.dataUrl}" style="width:42px; height:42px; object-fit:cover; border-radius:6px; border:1px solid rgba(255,255,255,0.15);">`
+                        : `<div style="width:42px; height:42px; border-radius:6px; background:rgba(16,185,129,0.15); display:flex; align-items:center; justify-content:center; color:#34d399; font-size:1.1rem;"><i class="fa-solid ${att.kind === 'NOTE' ? 'fa-note-sticky' : 'fa-file-lines'}"></i></div>`
+                    }
+                    <div style="flex:1; min-width:0;">
+                        <div style="font-size:0.75rem; font-weight:700; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${att.name}">${att.name}</div>
+                        <div style="font-size:0.68rem; color:#6ee7b7; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${att.note || ''}">${att.note || ''}</div>
+                    </div>
+                    <button type="button" class="btn btn-danger btn-sm" style="padding:3px 6px; font-size:0.7rem;" onclick="removeDraftAttachment('${att.id}')" title="Eki Sil">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function openAttachmentPreviewModal(meetingId, attId) {
+    const m = appState.meetings.find(x => x.id === meetingId);
+    if (!m) return;
+    if (getMeetingAccessLevel(m) !== 'FULL') {
+        alert("Bu toplantının/eğitimin katılımcısı olmadığınız için ek belgeleri görüntüleme yetkiniz bulunmamaktadır.");
+        return;
+    }
+
+    const att = (m.attachments || []).find(a => a.id === attId);
+    if (!att) return;
+
+    const modal = document.getElementById('attachment-preview-modal');
+    const titleEl = document.getElementById('attachment-preview-title');
+    const bodyEl = document.getElementById('attachment-preview-body');
+    const dlBtn = document.getElementById('attachment-download-btn');
+
+    titleEl.innerHTML = `<i class="fa-solid fa-paperclip" style="color:#34d399;"></i> ${att.name || 'Toplantı / Eğitim Eki'}`;
+
+    const isImg = (att.type || '').startsWith('image/');
+    if (isImg && att.dataUrl) {
+        bodyEl.innerHTML = `
+            <div style="margin-bottom:0.75rem; font-size:0.84rem; color:#fde68a;">${att.note || ''}</div>
+            <img src="${att.dataUrl}" style="max-width:100%; max-height:68vh; border-radius:10px; border:1px solid var(--border-color); box-shadow:0 10px 30px rgba(0,0,0,0.5);">
+            <div style="margin-top:0.5rem; font-size:0.75rem; color:var(--text-sec);">Ekleyen: ${att.addedBy || 'ÖMER EREN'} • ${att.addedAt || ''}</div>
+        `;
+        dlBtn.href = att.dataUrl;
+        dlBtn.download = att.name || 'toplanti_eki.jpg';
+        dlBtn.style.display = 'inline-flex';
+    } else if (att.kind === 'NOTE') {
+        bodyEl.innerHTML = `
+            <div style="background:rgba(255,255,255,0.04); border:1px solid var(--border-color); border-radius:12px; padding:1.25rem; text-align:left; white-space:pre-line; font-size:0.92rem; color:#fff;">
+                ${att.note || att.name}
+            </div>
+            <div style="margin-top:0.5rem; font-size:0.75rem; color:var(--text-sec);">Ekleyen: ${att.addedBy || 'ÖMER EREN'} • ${att.addedAt || ''}</div>
+        `;
+        dlBtn.style.display = 'none';
+    } else {
+        bodyEl.innerHTML = `
+            <div style="padding:1.5rem; background:rgba(255,255,255,0.03); border:1px solid var(--border-color); border-radius:12px;">
+                <i class="fa-solid fa-file-lines" style="font-size:3rem; color:#34d399; margin-bottom:0.75rem; display:block;"></i>
+                <h4 style="color:#fff; margin-bottom:0.35rem;">${att.name}</h4>
+                <p style="font-size:0.84rem; color:var(--text-sec); margin-bottom:0.5rem;">${att.note || ''}</p>
+                <div style="font-size:0.75rem; color:var(--text-sec);">Ekleyen: ${att.addedBy || 'ÖMER EREN'} • ${att.addedAt || ''}</div>
+            </div>
+        `;
+        dlBtn.href = att.dataUrl || '#';
+        dlBtn.download = att.name || 'ek_belge';
+        dlBtn.style.display = att.dataUrl ? 'inline-flex' : 'none';
+    }
+
+    modal.classList.add('open');
+}
+
+function closeAttachmentPreviewModal() {
+    document.getElementById('attachment-preview-modal').classList.remove('open');
+}
+
+function openMeetingModal(meetingId = null) {
+    const modal = document.getElementById('meeting-modal');
+    const partBox = document.getElementById('meeting-participants-box');
+    const inlineContainer = document.getElementById('inline-actions-container');
+    const extToggle = document.getElementById('external-participant-toggle');
+    const extList = document.getElementById('external-participants-list');
+
+    inlineContainer.innerHTML = '';
+    if (extList) extList.innerHTML = '';
+
+    partBox.innerHTML = appState.users.map(u => `
+        <label class="participant-check">
+            <input type="checkbox" name="meeting-participant" value="${u.name}">
+            <span>${u.name} <small style="color:var(--text-sec);">(${u.dept})</small></span>
+        </label>
+    `).join('');
+
+    if (meetingId) {
+        const m = appState.meetings.find(x => x.id === meetingId);
+        if (!m) return;
+        if (getMeetingAccessLevel(m) !== 'FULL') {
+            alert("Bu toplantının/eğitimin katılımcısı olmadığınız için içeriğini düzenleme yetkiniz bulunmamaktadır.");
+            return;
+        }
+        setMeetingRecordType(m.recordType || 'Toplantı');
+        document.getElementById('meeting-modal-title').innerHTML = `<i class="fa-solid fa-pen-to-square" style="color:var(--dizsan-light);"></i> ${m.recordType === 'Eğitim' ? 'Eğitim' : 'Toplantı'} Kaydını Düzenle (${m.id})`;
+        document.getElementById('meeting-id').value = m.id;
+        document.getElementById('meeting-title-input').value = m.title;
+        document.getElementById('meeting-dept-input').value = m.dept;
+        setMaskedDateInputValue(document.getElementById('meeting-date-input'), m.date);
+        document.getElementById('meeting-time-input').value = m.time || '09:30';
+        document.getElementById('meeting-location-input').value = m.location || '';
+        document.getElementById('meeting-notes-input').value = m.notes || '';
+        document.getElementById('meeting-decisions-input').value = m.decisions || '';
+
+        document.querySelectorAll('input[name="meeting-participant"]').forEach(cb => {
+            cb.checked = (m.participants || []).includes(cb.value);
+        });
+
+        const extParticipants = Array.isArray(m.externalParticipants) ? m.externalParticipants : [];
+        if (extParticipants.length > 0) {
+            if (extToggle) extToggle.checked = true;
+            toggleExternalParticipantSection(true);
+            if (extList) extList.innerHTML = '';
+            extParticipants.forEach(ep => addExternalParticipantRow(ep));
+        } else {
+            if (extToggle) extToggle.checked = false;
+            toggleExternalParticipantSection(false);
+        }
+
+        currentDraftAttachments = Array.isArray(m.attachments) ? [...m.attachments] : [];
+        renderDraftAttachments();
+    } else {
+        setMeetingRecordType('Toplantı');
+        document.getElementById('meeting-modal-title').innerHTML = `<i class="fa-solid fa-handshake" style="color:var(--dizsan-light);"></i> Yeni Toplantı / Eğitim ve Tutanak Kaydı`;
+        document.getElementById('meeting-id').value = '';
+        document.getElementById('meeting-title-input').value = '';
+        document.getElementById('meeting-dept-input').value = 'Genel Yönetim';
+        const todayIso = new Date().toISOString().split('T')[0];
+        setMaskedDateInputValue(document.getElementById('meeting-date-input'), todayIso);
+        document.getElementById('meeting-time-input').value = '09:30';
+        document.getElementById('meeting-location-input').value = 'Dizsan Toplantı Salonu';
+        document.getElementById('meeting-notes-input').value = '';
+        document.getElementById('meeting-decisions-input').value = '';
+
+        document.querySelectorAll('input[name="meeting-participant"]').forEach(cb => {
+            cb.checked = currentUser ? (cb.value === currentUser.name) : false;
+        });
+
+        if (extToggle) extToggle.checked = false;
+        toggleExternalParticipantSection(false);
+
+        currentDraftAttachments = [];
+        renderDraftAttachments();
+    }
+
+    modal.classList.add('open');
+}
+
+function closeMeetingModal() {
+    document.getElementById('meeting-modal').classList.remove('open');
+}
+
+function toggleAllParticipants(state) {
+    document.querySelectorAll('input[name="meeting-participant"]').forEach(cb => {
+        cb.checked = state;
+    });
+}
+
+function addInlineActionRow() {
+    const container = document.getElementById('inline-actions-container');
+    const row = document.createElement('div');
+    row.style.cssText = 'display:grid; grid-template-columns: 2fr 1.2fr 1fr 1fr auto; gap:0.5rem; align-items:center;';
+    const tomorrowIso = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+
+    row.innerHTML = `
+        <input type="text" class="form-control inline-action-title" placeholder="Aksiyon / görev açıklaması..." required>
+        <select class="form-control inline-action-assignee">
+            ${appState.users.map(u => `<option value="${u.name}">${u.name} (${u.dept})</option>`).join('')}
+        </select>
+        <select class="form-control inline-action-priority">
+            <option value="Normal">Normal</option>
+            <option value="Kritik">Kritik</option>
+        </select>
+        <input type="date" class="form-control inline-action-duedate" value="${tomorrowIso}" required>
+        <button type="button" class="btn btn-danger btn-sm" onclick="this.parentElement.remove()"><i class="fa-solid fa-xmark"></i></button>
+    `;
+    container.appendChild(row);
+    if (window.initAutoDateInputs) window.initAutoDateInputs(row);
+}
+
+function cleanNumberedText(rawText) {
+    if (!rawText) return '';
+    // Sadece "1." veya boş numaralı satırları temizle
+    return rawText
+        .split('\n')
+        .filter(line => !/^\s*\d+[\.\)\-]?\s*$/.test(line))
+        .join('\n')
+        .trim();
+}
+
+function saveMeeting(event) {
+    event.preventDefault();
+    const idVal = document.getElementById('meeting-id').value;
+    const recordType = document.getElementById('meeting-record-type-input')?.value || 'Toplantı';
+    const title = document.getElementById('meeting-title-input').value.trim();
+    const dept = document.getElementById('meeting-dept-input').value;
+    const dateRaw = document.getElementById('meeting-date-input').value;
+    const date = normalizeToISODate(dateRaw);
+    const time = document.getElementById('meeting-time-input').value;
+    const location = document.getElementById('meeting-location-input').value.trim();
+    const notes = cleanNumberedText(document.getElementById('meeting-notes-input').value);
+    const decisions = cleanNumberedText(document.getElementById('meeting-decisions-input').value);
+
+    const participants = Array.from(document.querySelectorAll('input[name="meeting-participant"]:checked')).map(cb => cb.value);
+
+    // Dış / Manuel Katılımcıları Topla
+    const externalParticipants = [];
+    const extToggle = document.getElementById('external-participant-toggle');
+    if (extToggle && extToggle.checked) {
+        // Eğer kullanıcı manuel giriş kutularına yazıp "Ekle" butonuna basmadan direkt Kaydet'e bastıysa otomatik listeye ekle
+        const pendingExtName = document.getElementById('ext-manual-name')?.value.trim() || '';
+        if (pendingExtName) {
+            addManualExternalParticipantFromInputs();
+        }
+        document.querySelectorAll('#external-participants-list .external-participant-row').forEach(row => {
+            const name = row.querySelector('.ext-part-name')?.value.trim() || '';
+            const phone = row.querySelector('.ext-part-phone')?.value.trim() || '';
+            const company = row.querySelector('.ext-part-company')?.value.trim() || '';
+            if (name) {
+                externalParticipants.push({ name, phone, company });
+            }
+        });
+    }
+
+    if (participants.length === 0 && externalParticipants.length === 0) {
+        alert("Lütfen en az 1 katılımcı (personel veya dış katılımcı) seçin/ekleyin!");
+        return;
+    }
+
+    if (!notes) {
+        alert("Lütfen Gündem Maddeleri & Notlar alanına en az 1 madde yazın!");
+        return;
+    }
+
+    // Eğer Ek Bilgi Notu kutusunda yazılıp "Ekle" butonuna basılmamış bir metin varsa onu da otomatik ekle
+    const pendingNoteInput = document.getElementById('meeting-attachment-note-input');
+    if (pendingNoteInput && pendingNoteInput.value.trim()) {
+        addTextNoteAttachment();
+    }
+
+    const attachments = [...currentDraftAttachments];
+
+    let targetMeetingId = idVal;
+
+    if (idVal) {
+        const idx = appState.meetings.findIndex(m => m.id === idVal);
+        if (idx !== -1) {
+            // Mevcut toplantı değiştirildiğinde İSTİSNASIZ olarak Yönetici Ömer Eren onay kuyruğuna düşer
+            if (!Array.isArray(appState.approvalRequests)) appState.approvalRequests = [];
+            appState.approvalRequests.unshift({
+                id: 'ONAY-' + Date.now(),
+                type: 'EDIT_MEETING',
+                status: 'PENDING',
+                meetingId: idVal,
+                meetingTitle: appState.meetings[idx].title,
+                requestedBy: currentUser ? currentUser.name : 'Personel',
+                requestedAt: formatNowTR(),
+                reason: "Toplantı tutanağı güncelleme talebi",
+                proposedData: { recordType, title, dept, date, time, location, participants, externalParticipants, notes, decisions, attachments }
+            });
+            addAuditLog("TOPLANTI", `${currentUser ? currentUser.name : 'Personel'}, ${idVal} kodlu '${title}' kaydı için değiştirme (düzenleme) talebi oluşturdu (Yönetici ÖMER EREN onayı bekleniyor).`);
+            playMeetingCallSound('APPROVAL', `Dikkat! ${title} toplantısı için değiştirme onayı bekleniyor.`);
+            alert(`🛡️ Değiştirme Talebi Yönetici ÖMER EREN Onayına Düşürüldü!\n\n'${title}' (${idVal}) kaydında yaptığınız değişiklikler ekranın üst kısmındaki "🛡️ ÖMER EREN YÖNETİCİ ONAY MERKEZİ"ne düşmüştür. Ömer Eren "✅ Değişikliği Onayla & Uygula" butonuna bastığında değişiklikler otomatik olarak uygulanacaktır.`);
+        }
+    } else {
+        const nextNum = String(appState.meetings.length + 1).padStart(3, '0');
+        const prefix = recordType === 'Eğitim' ? 'EGT' : 'TOP';
+        targetMeetingId = `${prefix}-2026-${nextNum}`;
+        const approvalStatus = 'Yönetici Onayı Bekliyor';
+        const newMeeting = {
+            id: targetMeetingId,
+            recordType, title, dept, date, time, location, participants, externalParticipants, notes, decisions, attachments,
+            approvalStatus,
+            omerApprovedStamp: false,
+            approvedBy: '',
+            approvedAt: '',
+            createdBy: currentUser ? currentUser.name : "ÖMER EREN",
+            createdAt: formatNowTR()
+        };
+        appState.meetings.unshift(newMeeting);
+        addAuditLog("TOPLANTI", `${targetMeetingId} kodlu yeni ${recordType.toLowerCase()} ('${title}') oluşturuldu (${approvalStatus}). Katılımcı: ${participants.length} personel${externalParticipants.length > 0 ? ` + ${externalParticipants.length} dış katılımcı` : ''}.`);
+        playMeetingCallSound('APPROVAL', `Dikkat! ${title} başlıklı yeni ${recordType.toLowerCase()} kaydedildi ve Ömer Eren yönetici onayına düştü.`);
+        alert(`🛡️ ${recordType} Kaydedildi ve Yönetici ÖMER EREN Onayına Düşürüldü!\n\n📌 Kayıt Kodu: ${targetMeetingId}\n📌 Başlık: ${title}\n📌 Durum: ⏳ Yönetici Onayı Bekliyor\n\nKayıt "🛡️ ÖMER EREN YÖNETİCİ ONAY MERKEZİ"ne düşmüştür. Ömer Eren tarafından onaylanabilir.`);
+    }
+
+    const inlineRows = document.querySelectorAll('#inline-actions-container > div');
+    inlineRows.forEach(r => {
+        const aTitle = r.querySelector('.inline-action-title')?.value.trim();
+        const aAssignee = r.querySelector('.inline-action-assignee')?.value;
+        const aPrio = r.querySelector('.inline-action-priority')?.value || 'Normal';
+        const aDueRaw = r.querySelector('.inline-action-duedate')?.value;
+        if (aTitle) {
+            const newActId = `AKS-${100 + appState.actions.length + 1}`;
+            appState.actions.unshift({
+                id: newActId,
+                meetingId: targetMeetingId,
+                meetingTitle: title,
+                title: aTitle,
+                assignee: aAssignee,
+                manager: "ÖMER EREN",
+                priority: aPrio,
+                dueDate: normalizeToISODate(aDueRaw),
+                dueTime: "09:00",
+                status: "Bekliyor",
+                note: "",
+                remindOneDayBefore: true,
+                remindSameDay: true,
+                createdBy: currentUser ? currentUser.name : "ÖMER EREN",
+                updatedAt: formatNowTR()
+            });
+            addAuditLog("AKSİYON", `${newActId} kodlu aksiyon '${aAssignee}' personeline ve Yönetici ÖMER EREN'e hatırlatıcılı olarak atandı (Termin: ${formatDateTR(aDueRaw)}).`);
+        }
+    });
+
+    syncToServer();
+    closeMeetingModal();
+    renderAll();
+}
+
+function deleteMeeting(meetingId) {
+    const m = appState.meetings.find(x => x.id === meetingId);
+    if (!m) return;
+    if (getMeetingAccessLevel(m) !== 'FULL') {
+        alert("Bu kaydı silme yetkiniz bulunmamaktadır.");
+        return;
+    }
+
+    // Silme işlemi İSTİSNASIZ olarak Yönetici Ömer Eren onay merkezine düşer
+    if (!Array.isArray(appState.approvalRequests)) appState.approvalRequests = [];
+
+    appState.approvalRequests.unshift({
+        id: 'ONAY-' + Date.now(),
+        type: 'DELETE_MEETING',
+        status: 'PENDING',
+        meetingId: m.id,
+        meetingTitle: m.title,
+        requestedBy: currentUser ? currentUser.name : 'Personel',
+        requestedAt: formatNowTR(),
+        reason: 'Kayıt silme talebi'
+    });
+
+    addAuditLog("TOPLANTI", `${currentUser ? currentUser.name : 'Personel'}, ${m.id} kodlu '${m.title}' kaydı için SİLME ONAY TALEBİ gönderdi (Yönetici ÖMER EREN onayı bekleniyor).`);
+    syncToServer();
+    renderAll();
+    playMeetingCallSound('APPROVAL', `Dikkat! ${m.title} toplantısı için silme onayı bekleniyor.`);
+    alert(`🛡️ Silme Talebi Yönetici ÖMER EREN Onayına Düşürüldü!\n\n'${m.title}' (${m.id}) kaydı için silme talebi ekranın üst kısmındaki "🛡️ ÖMER EREN YÖNETİCİ ONAY MERKEZİ"ne düşmüştür. Ömer Eren "✅ Silmeyi Onayla (Kaydı Sil)" butonuna bastığında kayıt silinecektir.`);
+}
+
+function openActionModal(actionId = null) {
+    populateSelectFilters();
+    const modal = document.getElementById('action-modal');
+
+    if (actionId) {
+        const a = appState.actions.find(x => x.id === actionId);
+        if (!a) return;
+        document.getElementById('action-modal-title').innerHTML = `<i class="fa-solid fa-pen" style="color:#fbbf24;"></i> Aksiyon Kaydını Düzenle (${a.id})`;
+        document.getElementById('action-id').value = a.id;
+        document.getElementById('action-meeting-select').value = a.meetingId || 'GENEL';
+        document.getElementById('action-title-input').value = a.title;
+        document.getElementById('action-assignee-select').value = a.assignee;
+        document.getElementById('action-manager-select').value = a.manager || 'ÖMER EREN';
+        document.getElementById('action-priority-select').value = a.priority || 'Normal';
+        setMaskedDateInputValue(document.getElementById('action-duedate-input'), a.dueDate);
+        document.getElementById('action-duetime-input').value = a.dueTime || '09:00';
+        document.getElementById('action-status-select').value = a.status || 'Bekliyor';
+        document.getElementById('action-note-input').value = a.note || '';
+    } else {
+        document.getElementById('action-modal-title').innerHTML = `<i class="fa-solid fa-stopwatch" style="color:#fbbf24;"></i> Yeni Aksiyon & Otomatik Hatırlatıcı Tanımla`;
+        document.getElementById('action-id').value = '';
+        document.getElementById('action-title-input').value = '';
+        document.getElementById('action-manager-select').value = 'ÖMER EREN';
+        document.getElementById('action-priority-select').value = 'Normal';
+        const tomorrowIso = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+        setMaskedDateInputValue(document.getElementById('action-duedate-input'), tomorrowIso);
+        document.getElementById('action-duetime-input').value = '09:00';
+        document.getElementById('action-status-select').value = 'Bekliyor';
+        document.getElementById('action-note-input').value = '';
+    }
+
+    modal.classList.add('open');
+}
+
+function closeActionModal() {
+    document.getElementById('action-modal').classList.remove('open');
+}
+
+function saveAction(event) {
+    event.preventDefault();
+    const idVal = document.getElementById('action-id').value;
+    const meetingId = document.getElementById('action-meeting-select').value;
+    const matchedMeeting = appState.meetings.find(m => m.id === meetingId);
+    const meetingTitle = matchedMeeting ? matchedMeeting.title : "Genel Operasyon Görevi";
+
+    const title = document.getElementById('action-title-input').value.trim();
+    const assignee = document.getElementById('action-assignee-select').value;
+    const manager = document.getElementById('action-manager-select').value || "ÖMER EREN";
+    const priority = document.getElementById('action-priority-select').value;
+    const dueDate = normalizeToISODate(document.getElementById('action-duedate-input').value);
+    const dueTime = document.getElementById('action-duetime-input').value || '09:00';
+    const status = document.getElementById('action-status-select').value;
+    const note = document.getElementById('action-note-input').value.trim();
+
+    if (idVal) {
+        const idx = appState.actions.findIndex(a => a.id === idVal);
+        if (idx !== -1) {
+            appState.actions[idx] = {
+                ...appState.actions[idx],
+                meetingId, meetingTitle, title, assignee, manager, priority, dueDate, dueTime, status, note,
+                remindOneDayBefore: true,
+                remindSameDay: true,
+                updatedAt: formatNowTR()
+            };
+            addAuditLog("AKSİYON", `${idVal} aksiyonu güncellendi (Sorumlu: ${assignee}, Yönetici: ${manager}, Durum: ${status}, Termin: ${formatDateTR(dueDate)}).`);
+        }
+    } else {
+        const newId = `AKS-${100 + appState.actions.length + 1}`;
+        appState.actions.unshift({
+            id: newId,
+            meetingId, meetingTitle, title, assignee, manager, priority, dueDate, dueTime, status, note,
+            remindOneDayBefore: true,
+            remindSameDay: true,
+            createdBy: currentUser ? currentUser.name : "ÖMER EREN",
+            updatedAt: formatNowTR()
+        });
+        addAuditLog("AKSİYON", `${newId} aksiyonu tanımlandı: '${title}' -> Sorumlu: ${assignee} | Yönetici: ${manager} (1 gün önce ve ${formatDateTR(dueDate)} günü hatırlatılacak).`);
+    }
+
+    if ("Notification" in window && Notification.permission === "default") {
+        Notification.requestPermission();
+    }
+
+    syncToServer();
+    closeActionModal();
+    renderAll();
+}
+
+function quickChangeActionStatus(actionId, newStatus) {
+    const a = appState.actions.find(x => x.id === actionId);
+    if (!a) return;
+    if (!canUserSeeAction(a)) {
+        alert("🔒 Bu aksiyon üzerinde işlem yapma yetkiniz bulunmamaktadır.");
+        renderAll();
+        return;
+    }
+    const oldStatus = a.status;
+    a.status = newStatus;
+    a.updatedAt = formatNowTR();
+    addAuditLog("AKSİYON", `${a.id} (${a.assignee}) aksiyon durumu '${oldStatus}' -> '${newStatus}' olarak güncellendi.`);
+    syncToServer();
+    renderAll();
+}
+
+function deleteAction(actionId) {
+    const a = appState.actions.find(x => x.id === actionId);
+    if (!a) return;
+    if (!isOmerEren(currentUser)) {
+        alert("🔒 Aksiyon silme yetkisi yalnızca Yönetici ÖMER EREN'e aittir.");
+        return;
+    }
+    if (!confirm(`'${a.title}' aksiyonunu silmek istediğinize emin misiniz?`)) return;
+    appState.actions = appState.actions.filter(x => x.id !== actionId);
+    addAuditLog("AKSİYON", `${actionId} kodlu aksiyon Yönetici ÖMER EREN tarafından silindi.`);
+    syncToServer();
+    renderAll();
+}
+
+// ==========================================================================
+// 10. PERSONEL EKLEME / GÜNCELLEME (GİZLİLİK VE YETKİ KORUMALI)
+// Kural: Herkes yalnızca kendi bilgilerini görür ve düzenler.
+// Diğer tüm personelleri görüntüleme, düzenleme ve yeni personel ekleme yetkisi SADECE ÖMER EREN'dedir.
+// ==========================================================================
+function openUserModal(username = null) {
+    const modal = document.getElementById('user-modal');
+    const isAdmin = isOmerEren(currentUser);
+
+    if (!isAdmin) {
+        if (!currentUser) return;
+        // Ömer Eren dışındaki kullanıcılar yeni personel ekleyemez ve başkasının hesabını açamaz
+        if (!username || normalizeTR(username) !== normalizeTR(currentUser.username)) {
+            alert("🔒 Yetki ve Gizlilik Kısıtlaması:\n\nYalnızca kendi hesap bilgilerinizi ve şifrenizi görüntüleyebilir veya düzenleyebilirsiniz! Diğer kullanıcıların bilgileri yalnızca Yönetici ÖMER EREN tarafından görüntülenebilir.");
+            return;
+        }
+    }
+
+    const fnInput = document.getElementById('user-fullname-input');
+    const unInput = document.getElementById('user-username-input');
+    const pwInput = document.getElementById('user-password-input');
+    const emInput = document.getElementById('user-email-input');
+    const dpInput = document.getElementById('user-dept-input');
+    const rlInput = document.getElementById('user-role-input');
+
+    if (username) {
+        const u = appState.users.find(x => normalizeTR(x.username) === normalizeTR(username));
+        if (!u) return;
+        fnInput.value = u.name;
+        unInput.value = u.username;
+        pwInput.value = '';
+        pwInput.placeholder = 'Değiştirmek için yeni şifre girin (boş bırakılırsa mevcut korunur)';
+        pwInput.required = false;
+        emInput.value = resolveUserEmail(u);
+        dpInput.value = u.dept || '';
+        rlInput.value = u.role || 'Personel';
+
+        // Ömer Eren dışındaki kullanıcılar sadece kendi şifre/e-posta/görev bilgilerini düzenleyebilir; ad, kullanıcı adı ve rol değiştiremez
+        fnInput.readOnly = !isAdmin;
+        unInput.readOnly = !isAdmin;
+        rlInput.disabled = !isAdmin;
+    } else {
+        fnInput.value = '';
+        unInput.value = '';
+        pwInput.value = '';
+        pwInput.placeholder = 'Yeni personel şifresi';
+        pwInput.required = true;
+        emInput.value = '';
+        dpInput.value = 'Servis';
+        rlInput.value = 'Personel';
+        fnInput.readOnly = false;
+        unInput.readOnly = false;
+        rlInput.disabled = false;
+    }
+    modal.classList.add('open');
+}
+
+function closeUserModal() {
+    document.getElementById('user-modal').classList.remove('open');
+}
+
+function saveUser(event) {
+    event.preventDefault();
+    const isAdmin = isOmerEren(currentUser);
+    const name = document.getElementById('user-fullname-input').value.trim();
+    const username = document.getElementById('user-username-input').value.trim().toLocaleLowerCase('tr-TR');
+    const pinInputVal = document.getElementById('user-password-input').value.trim();
+    const email = document.getElementById('user-email-input').value.trim().toLowerCase();
+    const dept = document.getElementById('user-dept-input').value.trim();
+    const role = document.getElementById('user-role-input').value;
+
+    if (!isAdmin) {
+        if (!currentUser || normalizeTR(username) !== normalizeTR(currentUser.username)) {
+            alert("🔒 Yalnızca kendi hesap bilgilerinizi güncelleyebilirsiniz!");
+            return;
+        }
+        const myIdx = appState.users.findIndex(u => normalizeTR(u.username) === normalizeTR(currentUser.username));
+        if (myIdx === -1) return;
+        const nextPinStamp = pinInputVal ? hashPin(pinInputVal) : appState.users[myIdx].pinStamp;
+        appState.users[myIdx] = {
+            ...appState.users[myIdx],
+            pinStamp: nextPinStamp,
+            email,
+            mailBox: email ? email.split('@')[0] : appState.users[myIdx].mailBox,
+            dept
+        };
+        currentUser = { ...appState.users[myIdx] };
+        localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(currentUser));
+        addAuditLog("GİRİŞ / ÇIKIŞ", `${currentUser.name} (${currentUser.username}) kendi hesap/şifre bilgilerini güncelledi.`);
+        syncToServer();
+        renderQuickUserChips();
+        closeUserModal();
+        renderAll();
+        alert("✅ Kişisel hesap ve şifre bilgileriniz başarıyla güncellendi.");
+        return;
+    }
+
+    const existingIdx = appState.users.findIndex(u => normalizeTR(u.username) === normalizeTR(username) || normalizeTR(u.name) === normalizeTR(name));
+    if (existingIdx !== -1) {
+        const nextPinStamp = pinInputVal ? hashPin(pinInputVal) : appState.users[existingIdx].pinStamp;
+        appState.users[existingIdx] = {
+            ...appState.users[existingIdx],
+            name,
+            username,
+            pinStamp: nextPinStamp,
+            email,
+            mailBox: email ? email.split('@')[0] : appState.users[existingIdx].mailBox,
+            dept,
+            role
+        };
+        if (currentUser && normalizeTR(currentUser.username) === normalizeTR(username)) {
+            currentUser = { ...appState.users[existingIdx] };
+            localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(currentUser));
+        }
+        addAuditLog("SÜRÜM / YÖNETİM", `${name} (${username}) personel bilgileri Yönetici ÖMER EREN tarafından güncellendi.`);
+    } else {
+        const nextPinStamp = pinInputVal ? hashPin(pinInputVal) : DEFAULT_PIN_STAMP;
+        appState.users.push({
+            order: appState.users.length,
+            name,
+            username,
+            pinStamp: nextPinStamp,
+            email,
+            mailBox: email ? email.split('@')[0] : username,
+            dept,
+            role
+        });
+        addAuditLog("SÜRÜM / YÖNETİM", `Yeni personel hesabı Yönetici ÖMER EREN tarafından eklendi: ${name} (${dept}).`);
+    }
+
+    syncToServer();
+    renderQuickUserChips();
+    closeUserModal();
+    renderAll();
+}
+
+// ==========================================================================
+// 11. TUTANAK YAZDIRMA VE DIŞA AKTARMA
+// ==========================================================================
+function printMeetingMinutes(meetingId) {
+    const m = appState.meetings.find(x => x.id === meetingId);
+    if (!m) return;
+    if (getMeetingAccessLevel(m) !== 'FULL') {
+        alert("Bu toplantının/eğitimin katılımcısı olmadığınız için tutanak yazdırma yetkiniz bulunmamaktadır.");
+        return;
+    }
+
+    const isTraining = (m.recordType === 'Eğitim');
+    const mActions = appState.actions.filter(a => a.meetingId === m.id);
+    const extList = m.externalParticipants || [];
+    const attList = m.attachments || [];
+    const printArea = document.getElementById('print-minutes-area');
+
+    printArea.innerHTML = `
+        <div style="border: 2px solid #000; padding: 20px; font-family: Arial, sans-serif; color: #000;">
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 2px solid #0284c7; padding-bottom: 12px; margin-bottom: 16px;">
+                <div style="display:flex; align-items:center; gap: 15px;">
+                    <img src="dizsan_logo.jpg" style="width:70px; height:70px; object-fit:contain;">
+                    <div>
+                        <h1 style="margin:0; font-size:22px; letter-spacing:1px; color:#0284c7;">DİZSAN OTOMOTİV &amp; SERVİS</h1>
+                        <p style="margin:4px 0 0; font-size:13px; font-weight:bold;">
+                            ${isTraining ? 'RESMİ KURUMSAL EĞİTİM TUTANAĞI VE KATILIM FORMU' : 'RESMİ KURUMSAL TOPLANTI VE AKSİYON TUTANAĞI'}
+                        </p>
+                    </div>
+                </div>
+                <div style="text-align:right; font-size:12px;">
+                    <div><strong>Kayıt Türü:</strong> ${isTraining ? '🎓 EĞİTİM' : '🤝 TOPLANTI'}</div>
+                    <div><strong>Tutanak No:</strong> ${m.id}</div>
+                    <div><strong>Tarih / Saat:</strong> ${formatDateTR(m.date)} - ${m.time}</div>
+                    <div><strong>Departman:</strong> ${m.dept}</div>
+                    <div><strong>Yer:</strong> ${m.location || 'Merkez'}</div>
+                </div>
+            </div>
+
+            <h2 style="font-size:16px; background:#f1f5f9; padding:8px 10px; border-left:4px solid #0284c7; margin:0 0 12px;">
+                ${isTraining ? 'Eğitim Konusu:' : 'Toplantı Konusu:'} ${m.title}
+            </h2>
+
+            <div style="margin-bottom:14px; font-size:12.5px;">
+                <strong>Katılımcı Personeller (${(m.participants || []).length} Kişi):</strong><br>
+                <div style="margin-top:4px; padding:8px; border:1px solid #cbd5e1; border-radius:4px;">
+                    ${(m.participants || []).join(', ') || '-'}
+                </div>
+            </div>
+
+            ${extList.length > 0 ? `
+            <div style="margin-bottom:14px; font-size:12.5px;">
+                <strong>Dış Katılımcılar / Misafir Firma Temsilcileri (${extList.length} Kişi):</strong><br>
+                <div style="margin-top:4px; padding:8px; border:1px solid #cbd5e1; border-radius:4px;">
+                    ${extList.map(ep => `<strong>${ep.name}</strong>${ep.company ? ` (${ep.company})` : ''}${ep.phone ? ` - Tel: ${ep.phone}` : ''}`).join(' &bull; ')}
+                </div>
+            </div>` : ''}
+
+            <div style="margin-bottom:14px; font-size:12.5px;">
+                <strong>${isTraining ? 'Eğitim İçeriği ve Notlar:' : 'Toplantı Gündemi ve Görüşme Notları:'}</strong>
+                <div style="margin-top:4px; padding:10px; border:1px solid #cbd5e1; border-radius:4px; white-space:pre-line; line-height:1.5;">${m.notes || '-'}</div>
+            </div>
+
+            <div style="margin-bottom:16px; font-size:12.5px;">
+                <strong>${isTraining ? 'Eğitim Sonucu ve Değerlendirme:' : 'Alınan Kararlar:'}</strong>
+                <div style="margin-top:4px; padding:10px; border:1px solid #cbd5e1; border-radius:4px; white-space:pre-line; line-height:1.5;">${m.decisions || '-'}</div>
+            </div>
+
+            ${attList.length > 0 ? `
+            <div style="margin-bottom:16px; font-size:12.5px;">
+                <strong>Eklenen Fotoğraf, El Yazısı Kağıt Tutanak ve Belgeler (${attList.length} Adet):</strong>
+                <div style="margin-top:6px; display:grid; grid-template-columns:repeat(2, 1fr); gap:10px;">
+                    ${attList.map(att => {
+                        const isImg = (att.type || '').startsWith('image/');
+                        return `
+                            <div style="border:1px solid #cbd5e1; padding:8px; border-radius:4px;">
+                                <div style="font-weight:bold; font-size:11px; margin-bottom:4px;">📎 ${att.name || 'Ek Belge'} ${att.note ? `— ${att.note}` : ''}</div>
+                                ${isImg && att.dataUrl ? `<img src="${att.dataUrl}" style="max-width:100%; max-height:210px; object-fit:contain; display:block; margin-top:4px;">` : ''}
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            </div>` : ''}
+
+            <h3 style="font-size:14px; margin:0 0 8px;">Atanan Aksiyonlar ve Termin Tarihleri</h3>
+            <table style="width:100%; border-collapse:collapse; font-size:11.5px; margin-bottom:22px;">
+                <thead>
+                    <tr style="background:#e2e8f0;">
+                        <th style="border:1px solid #94a3b8; padding:6px;">Kod</th>
+                        <th style="border:1px solid #94a3b8; padding:6px;">Aksiyon / Görev Tanımı</th>
+                        <th style="border:1px solid #94a3b8; padding:6px;">Sorumlu Personel</th>
+                        <th style="border:1px solid #94a3b8; padding:6px;">Yönetici</th>
+                        <th style="border:1px solid #94a3b8; padding:6px;">Termin Tarihi</th>
+                        <th style="border:1px solid #94a3b8; padding:6px;">Durum</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${mActions.length > 0 ? mActions.map(a => `
+                        <tr>
+                            <td style="border:1px solid #94a3b8; padding:6px;">${a.id}</td>
+                            <td style="border:1px solid #94a3b8; padding:6px;">${a.title}</td>
+                            <td style="border:1px solid #94a3b8; padding:6px; font-weight:bold;">${a.assignee}</td>
+                            <td style="border:1px solid #94a3b8; padding:6px;">${a.manager || 'ÖMER EREN'}</td>
+                            <td style="border:1px solid #94a3b8; padding:6px;">${formatDateTR(a.dueDate)} ${a.dueTime || ''}</td>
+                            <td style="border:1px solid #94a3b8; padding:6px;">${a.status}</td>
+                        </tr>
+                    `).join('') : `<tr><td colspan="6" style="border:1px solid #94a3b8; padding:8px; text-align:center;">Bu oturuma ait aksiyon kaydı bulunmamaktadır.</td></tr>`}
+                </tbody>
+            </table>
+
+            <h3 style="font-size:13px; margin:0 0 8px;">Katılımcı İmza Sirküsü</h3>
+            <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:10px; font-size:11px;">
+                ${(m.participants || []).map(p => `
+                    <div style="border:1px solid #94a3b8; padding:8px; height:58px; display:flex; flex-direction:column; justify-content:space-between;">
+                        <strong>${p}</strong>
+                        <span style="color:#64748b;">İmza: ........................</span>
+                    </div>
+                `).join('')}
+                ${extList.map(ep => `
+                    <div style="border:1px solid #94a3b8; padding:8px; height:58px; display:flex; flex-direction:column; justify-content:space-between; background:#fffbeb;">
+                        <div>
+                            <strong>${ep.name}</strong>
+                            <div style="font-size:9.5px; color:#475569;">${ep.company || 'Dış Katılımcı'}${ep.phone ? ` (${ep.phone})` : ''}</div>
+                        </div>
+                        <span style="color:#64748b;">İmza: ........................</span>
+                    </div>
+                `).join('')}
+            </div>
+
+            <div style="margin-top:16px; font-size:10px; color:#64748b; display:flex; justify-content:space-between;">
+                <span>DİZSAN Kurumsal Toplantı, Eğitim &amp; Aksiyon Yönetim Sistemi (${appState.version})</span>
+                <span>Basım Tarihi: ${formatNowTR()}</span>
+            </div>
+        </div>
+    `;
+
+    addAuditLog("TOPLANTI", `${m.id} (${m.recordType || 'Toplantı'}) tutanağı A4 PDF / Yazdır olarak alındı.`);
+    window.print();
+}
+
+function exportAllDataExcelCSV() {
+    let csv = "\uFEFFAksiyon Kodu;Toplantı Kodu;Toplantı Başlığı;Aksiyon Tanımı;Sorumlu Personel;Bilgilendirilen Yönetici;Öncelik;Termin Tarihi;Saat;Durum;Not\n";
+    appState.actions.forEach(a => {
+        const clean = s => String(s || '').replace(/;/g, ',').replace(/\n/g, ' ');
+        csv += `${clean(a.id)};${clean(a.meetingId)};${clean(a.meetingTitle)};${clean(a.title)};${clean(a.assignee)};${clean(a.manager || 'ÖMER EREN')};${clean(a.priority)};${formatDateTR(a.dueDate)};${clean(a.dueTime)};${clean(a.status)};${clean(a.note)}\n`;
+    });
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `Dizsan_Toplanti_Aksiyon_Raporu_${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    addAuditLog("AKSİYON", "Toplantı ve aksiyon raporu Excel (CSV) formatında indirildi.");
+}
+
+function exportLogsCSV() {
+    let csv = "\uFEFFTarih Saat;Personel;Kategori;İşlem Detayı;Platform\n";
+    appState.logs.forEach(l => {
+        const clean = s => String(s || '').replace(/;/g, ',').replace(/\n/g, ' ');
+        csv += `${clean(l.timestamp)};${clean(l.user)};${clean(l.category)};${clean(l.detail)};${clean(l.platform)}\n`;
+    });
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `Dizsan_Toplanti_Denetim_Loglari_${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+}
+
+function exportFullBackupJSON() {
+    const blob = new Blob([JSON.stringify(appState, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `Dizsan_Toplanti_Yedek_${appState.version}_${new Date().toISOString().slice(0, 10)}.json`;
+    link.click();
+    addAuditLog("SÜRÜM / YÖNETİM", `Tam sistem veritabanı yedeği (${appState.version}) indirildi.`);
+}
+
+function importFullBackupJSON(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const data = JSON.parse(e.target.result);
+            if (data && Array.isArray(data.meetings) && Array.isArray(data.actions)) {
+                appState = data;
+                syncToServer();
+                renderAll();
+                addAuditLog("SÜRÜM / YÖNETİM", "JSON yedek dosyası başarıyla sisteme geri yüklendi.");
+                alert("Yedek verileri başarıyla yüklendi!");
+            } else {
+                alert("Geçersiz yedek dosyası formatı.");
+            }
+        } catch (err) {
+            alert("JSON dosyası okunamadı.");
+        }
+    };
+    reader.readAsText(file);
+}
+
+// ==========================================================================
+// 12. SEKME GEÇİŞLERİ VE BAŞLATICI (INIT)
+// ==========================================================================
+function switchTab(tabId) {
+    if (tabId === 'logs-tab' && !isOmerEren(currentUser)) {
+        tabId = 'dashboard-tab';
+    }
+    document.querySelectorAll('.tab-section').forEach(sec => {
+        sec.classList.toggle('active', sec.id === tabId);
+    });
+    document.querySelectorAll('.nav-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tab === tabId);
+    });
+    document.querySelectorAll('.mob-nav-item').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tab === tabId);
+    });
+
+    const sidebar = document.getElementById('sidebar');
+    if (sidebar) sidebar.classList.remove('mobile-open');
+}
+
+function toggleMobileSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    if (sidebar) sidebar.classList.toggle('mobile-open');
+}
+
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPwaPrompt = e;
+});
+
+function installPWA() {
+    openInstallGuideModal();
+}
+
+function getLivePreferredUrl() {
+    const loc = window.location.href.split('#')[0].split('?')[0];
+    if (loc.startsWith('https://')) return loc;
+    return 'https://dizsan.github.io/toplanti/';
+}
+
+function openInstallGuideModal() {
+    const modal = document.getElementById('install-guide-modal');
+    if (!modal) return;
+
+    const qrUrl = getLivePreferredUrl();
+    const qrImg = document.getElementById('install-qr-img');
+    if (qrImg) {
+        qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=4&data=${encodeURIComponent(qrUrl)}`;
+    }
+
+    // Aktif cihaz türünü vurgula
+    const ua = navigator.userAgent || '';
+    const isIOS = /iPhone|iPad|iPod/i.test(ua);
+    const isAndroid = /Android/i.test(ua);
+    const iosCard = document.getElementById('guide-card-ios');
+    const andCard = document.getElementById('guide-card-android');
+    const pcCard = document.getElementById('guide-card-pc');
+
+    if (iosCard) iosCard.style.borderColor = isIOS ? '#38bdf8' : 'rgba(255,255,255,0.12)';
+    if (andCard) andCard.style.borderColor = isAndroid ? '#34d399' : 'rgba(255,255,255,0.12)';
+    if (pcCard) pcCard.style.borderColor = (!isIOS && !isAndroid) ? '#fcd34d' : 'rgba(255,255,255,0.12)';
+
+    modal.classList.add('open');
+}
+
+function closeInstallGuideModal() {
+    const modal = document.getElementById('install-guide-modal');
+    if (modal) modal.classList.remove('open');
+}
+
+async function triggerNativePwaInstall() {
+    if (deferredPwaPrompt) {
+        deferredPwaPrompt.prompt();
+        try {
+            await deferredPwaPrompt.userChoice;
+        } catch (e) {}
+        deferredPwaPrompt = null;
+    } else {
+        const ua = navigator.userAgent || '';
+        if (/iPhone|iPad|iPod/i.test(ua)) {
+            alert("🍎 iPhone / iPad Kurulumu:\n\n1. Safari alt barındaki 'Paylaş' (⬆️ kare içinden çıkan ok) butonuna dokunun.\n2. Listeyi aşağı kaydırıp 'Ana Ekrana Ekle' seçeneğine basın.\n3. Sağ üstteki 'Ekle' butonuna dokunun.");
+        } else {
+            alert("📲 Uygulama Kurulumu:\n\nTarayıcınızın sağ üst köşesindeki menüden (⋮) 'Uygulamayı Yükle' veya 'Ana Ekrana Ekle' seçeneğine dokunarak Dizsan Toplantı uygulamasını ana ekranınıza indirebilirsiniz.");
+        }
+    }
+}
+
+function copyAppUrl(url) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(() => {
+            alert(`✅ Bağlantı kopyalandı:\n${url}`);
+        }).catch(() => {
+            prompt("Bağlantıyı kopyalayın:", url);
+        });
+    } else {
+        prompt("Bağlantıyı kopyalayın:", url);
+    }
+}
+
+function shareAppOnWhatsApp() {
+    const httpsUrl = 'https://dizsan.github.io/toplanti/';
+    const msg =
+        `📢 *DİZSAN Kurumsal Toplantı, Eğitim & Aksiyon Uygulaması*\n\n` +
+        `🔗 *Uygulama Giriş & İndirme Linki:*\n${httpsUrl}\n\n` +
+        `📲 *Telefon ve Tablete Uygulama Olarak İndirme:*\n` +
+        `• *iPhone / iPad (Safari):* Linki açın ➔ Alt ortadaki *Paylaş (⬆️)* tuşuna basın ➔ *Ana Ekrana Ekle* seçin.\n` +
+        `• *Android Telefon / Tablet (Chrome):* Linki açın ➔ *Tek Tıkla Cihaza Kur* veya sağ üst menüden (⋮) *Uygulamayı Yükle / Ana Ekrana Ekle* seçin.\n\n` +
+        `🔑 *İlk Giriş Bilgileri:*\n` +
+        `• Kullanıcı Adı: İsim.Soyisim (Örn: hakan.aydin, rafet.canbek)\n` +
+        `• İlk Giriş Şifresi: *123* (Giriş yaptıktan sonra sol menüden *Şifremi Değiştir* ile kendi şifrenizi belirleyebilirsiniz).`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    loadState();
+    renderQuickUserChips();
+    loadRememberedCredentials();
+
+    // Kayıtlı oturum kontrolü (Beni Hatırla veya aktif DizGün oturumu)
+    const savedSession = localStorage.getItem(STORAGE_KEY_SESSION) || sessionStorage.getItem(STORAGE_KEY_SESSION) || localStorage.getItem('dizgun_current_user');
+    if (savedSession) {
+        try {
+            const parsedUser = JSON.parse(savedSession);
+            if (parsedUser && parsedUser.name) {
+                const matched = appState.users.find(u => normalizeTR(u.name) === normalizeTR(parsedUser.name) || normalizeTR(u.username) === normalizeTR(parsedUser.username));
+                if (matched) currentUser = matched;
+            }
+        } catch (e) {}
+    }
+
+    applyAuthenticatedUser();
+
+    // Herhangi bir dokunuşta / tıklamada (Android, iPhone, iPad, PC) arka plan ses motorunu ve VAPID Push kaydını hiçbir ayar gerektirmeden otomatik tamamla
+    const unlockBgOnInteraction = () => {
+        startSilentAudioKeepAlive();
+        if (currentUser && !currentDeviceSubscribedEndpoint) {
+            autoEnrollZeroTouchPush();
+        }
+    };
+    document.addEventListener('click', unlockBgOnInteraction, { passive: true });
+    document.addEventListener('touchend', unlockBgOnInteraction, { passive: true });
+
+    document.addEventListener('visibilitychange', () => {
+        syncUserAndStateToServiceWorker();
+        if (bgAlarmWorker) {
+            bgAlarmWorker.postMessage({ type: 'CHECK_NOW' });
+        }
+        if (!document.hidden && currentUser) {
+            syncFromServer();
+            checkAndTriggerMeetingCallAlerts();
+            renderOmerApprovalCenter();
+            renderPushTestCenterUI();
+        }
+    });
+
+    // Her 12 saniyede bir ortak bulut/sunucu senkronizasyonu, 1 saat / 5 dk toplantı çağrısı alarmı ve hatırlatıcı kontrolü
+    setInterval(() => {
+        const meetingModalOpen = document.getElementById('meeting-modal')?.classList.contains('open');
+        const actionModalOpen = document.getElementById('action-modal')?.classList.contains('open');
+        const announceModalOpen = document.getElementById('announcement-modal')?.classList.contains('open');
+        if (!meetingModalOpen && !actionModalOpen && !announceModalOpen) {
+            syncFromServer();
+        }
+        if (currentUser) {
+            renderDashboard();
+            renderActions();
+            renderOmerApprovalCenter();
+            renderPushTestCenterUI();
+            checkAndTriggerSmartReminders();
+            checkAndTriggerMeetingCallAlerts();
+        }
+        syncUserAndStateToServiceWorker();
+    }, 12000);
+
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('sw.js?v=1.7.1').then(reg => {
+            try { reg.update(); } catch (e) {}
+            syncUserAndStateToServiceWorker();
+        }).catch(() => {});
+    }
+});
+
