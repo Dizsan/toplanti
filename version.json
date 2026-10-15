@@ -1,9 +1,9 @@
 {
   "appId": "toplanti",
   "appName": "Dizsan Toplantı & Aksiyon",
-  "version": "1.7.2",
-  "build": 172,
-  "releasedAt": "2026-10-15 22:20:00",
-  "releaseNotes": "Dizsan Toplantı & Aksiyon sıfır temas otomatik güncelleme sistemi aktif edildi.",
+  "version": "1.8.0",
+  "build": 180,
+  "releasedAt": "2026-10-16 00:13:52",
+  "releaseNotes": "Mobil app tam ekran tasarımı, açılır pencere kaydırma düzeltmesi, telefon geri tuşu navigasyon kalkanı, iki yönlü anlık bildirim ve Yönetici Ömer Eren Onay Kalkanı tamamlandı",
   "author": "Ömer Eren & DİZSAN"
 }

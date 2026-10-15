@@ -1911,6 +1911,78 @@ async function triggerServerWebPushTest(delaySeconds = 0) {
     }
 }
 
+// ==========================================================================
+// DİZSAN İKİ YÖNLÜ ANLIK WEB PUSH VE MOBİL AKSİYON MOTORU
+// ==========================================================================
+async function dispatchPushToServer(targets, payload) {
+    try {
+        const payloadObj = {
+            targets: targets,
+            title: payload.title,
+            body: payload.body,
+            url: payload.url || './?tab=actions-tab',
+            tag: payload.tag || ('dizsan_toplanti_' + Date.now()),
+            sound: payload.sound || 'DEFAULT'
+        };
+        fetch('http://localhost:8787/api/push/send', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payloadObj)
+        }).catch(() => {});
+    } catch (e) {}
+}
+
+async function dispatchActionAssignedPush(action) {
+    if (!action || !action.assignee) return;
+    const title = `⚡ Size Yeni Görev/Aksiyon Atandı: ${action.title}`;
+    const body = `Toplantı: ${action.meetingTitle || 'Dizsan Toplantı'} | Termin: ${formatDateTR(action.dueDate)} ${action.dueTime || '09:00'} | Atayan: ${action.createdBy || (currentUser ? currentUser.name : 'Yönetici')}`;
+    const targets = [action.assignee];
+
+    dispatchPushToServer(targets, {
+        title,
+        body,
+        tag: `action_assigned_${action.id}`,
+        url: `./?tab=actions-tab&actionId=${encodeURIComponent(action.id)}`,
+        sound: 'INVITE'
+    });
+
+    if (currentUser && normalizeTR(currentUser.name) === normalizeTR(action.assignee)) {
+        sendBrowserNotification(title, body, `action_assign_${action.id}`, 'INVITE');
+    }
+}
+
+async function dispatchActionProgressPush(action, oldStatus, newStatus) {
+    if (!action) return;
+    const reporterName = currentUser ? currentUser.name : (action.assignee || 'Personel');
+    const title = `✅ Aksiyon Durum Bildirimi: ${reporterName}`;
+    const body = `'${action.title}' görevi '${newStatus}' olarak güncellendi. (Termin: ${formatDateTR(action.dueDate)} ${action.dueTime || ''})`;
+    const targets = ['omer', 'omer eren'];
+    if (action.manager && !targets.includes(normalizeTR(action.manager))) {
+        targets.push(action.manager);
+    }
+
+    dispatchPushToServer(targets, {
+        title,
+        body,
+        tag: `action_prog_${action.id}_${Date.now()}`,
+        url: `./?tab=actions-tab&actionId=${encodeURIComponent(action.id)}`,
+        sound: 'DONE'
+    });
+
+    if (currentUser && isOmerEren(currentUser)) {
+        sendBrowserNotification(title, body, `action_prog_${action.id}`, 'DONE');
+    }
+}
+
+function handleMobileFabClick() {
+    const currentTab = document.querySelector('.tab-section.active')?.id;
+    if (currentTab === 'actions-tab') {
+        openActionModal();
+    } else {
+        openMeetingModal();
+    }
+}
+
 async function togglePushPilotMode(newMode) {
     if (!isOmerEren(currentUser)) {
         alert("Bu ayar yalnızca Yönetici ÖMER EREN tarafından değiştirilebilir.");
@@ -2661,15 +2733,20 @@ function renderOmerApprovalCenter() {
                     `).join('')}
 
                     ${pendingRequests.map(req => {
-                        const isDel = req.type === 'DELETE_MEETING';
+                        const isDelMeeting = req.type === 'DELETE_MEETING';
+                        const isDelAction = req.type === 'DELETE_ACTION';
+                        const isDel = isDelMeeting || isDelAction;
+                        const badgeText = isDelMeeting ? '🗑️ TOPLANTI SİLME ONAY TALEBİ' : isDelAction ? '🗑️ AKSİYON SİLME ONAY TALEBİ' : '✏️ TOPLANTI DEĞİŞTİRME ONAY TALEBİ';
+                        const itemTitle = req.meetingTitle || req.actionTitle || 'Kayıt';
+                        const itemId = req.meetingId || req.actionId || '';
                         return `
                             <div style="background:rgba(15,23,42,0.88); border:1px solid ${isDel ? 'rgba(239,68,68,0.65)' : 'rgba(245,158,11,0.65)'}; border-radius:10px; padding:0.85rem; display:flex; justify-content:space-between; align-items:center; gap:0.75rem; flex-wrap:wrap;">
                                 <div style="flex:1; min-width:240px;">
                                     <div style="display:flex; align-items:center; gap:0.45rem; flex-wrap:wrap; margin-bottom:4px;">
                                         <span class="badge ${isDel ? 'badge-critical' : 'badge-high'}">
-                                            ${isDel ? '🗑️ TOPLANTI SİLME ONAY TALEBİ' : '✏️ TOPLANTI DEĞİŞTİRME (DÜZENLEME) ONAY TALEBİ'}
+                                            ${badgeText}
                                         </span>
-                                        <strong style="color:#fff; font-size:0.94rem;">${req.meetingId} — ${req.meetingTitle}</strong>
+                                        <strong style="color:#fff; font-size:0.94rem;">${itemId} — ${itemTitle}</strong>
                                     </div>
                                     <div style="font-size:0.81rem; color:#cbd5e1;">
                                         Talep Eden: <strong>${req.requestedBy}</strong> (${req.requestedAt})
@@ -2718,6 +2795,11 @@ function approveNewMeeting(meetingId) {
     m.approvedBy = 'ÖMER EREN';
     m.approvedAt = formatNowTR();
     addAuditLog("TOPLANTI", `${m.id} kodlu '${m.title}' kaydı Yönetici ÖMER EREN tarafından onaylandı.`);
+    dispatchPushToServer([m.createdBy || 'Personel'], {
+        title: `✅ Toplantı Kaydı Onaylandı`,
+        body: `'${m.title}' toplantısı Yönetici ÖMER EREN tarafından onaylandı.`,
+        tag: `appr_newm_${m.id}`
+    });
     renderAll();
 }
 
@@ -2731,6 +2813,11 @@ function rejectNewMeeting(meetingId) {
     if (!confirm(`'${m.title}' (${m.id}) toplantı kaydını reddedip silmek istediğinize emin misiniz?`)) return;
     appState.meetings = appState.meetings.filter(x => x.id !== meetingId);
     addAuditLog("TOPLANTI", `${m.id} kodlu '${m.title}' kaydı Yönetici ÖMER EREN tarafından reddedilerek kaldırıldı.`);
+    dispatchPushToServer([m.createdBy || 'Personel'], {
+        title: `❌ Toplantı Kaydı Reddedildi`,
+        body: `'${m.title}' toplantı kaydı onaylanmadı ve kaldırıldı.`,
+        tag: `appr_rej_${m.id}`
+    });
     renderAll();
 }
 
@@ -2749,6 +2836,22 @@ function approveRequest(reqId) {
         req.resolvedAt = formatNowTR();
         req.resolvedBy = 'ÖMER EREN';
         addAuditLog("TOPLANTI", `${req.meetingId} ('${req.meetingTitle}') silme talebi (${req.requestedBy}) Yönetici ÖMER EREN onayıyla gerçekleştirildi ve kayıt silindi.`);
+        dispatchPushToServer([req.requestedBy], {
+            title: `✅ Silme Talebiniz Onaylandı`,
+            body: `'${req.meetingTitle}' toplantısı silme talebiniz Yönetici ÖMER EREN tarafından onaylandı.`,
+            tag: `appr_ok_${req.id}`
+        });
+    } else if (req.type === 'DELETE_ACTION') {
+        appState.actions = (appState.actions || []).filter(a => a.id !== req.actionId);
+        req.status = 'APPROVED';
+        req.resolvedAt = formatNowTR();
+        req.resolvedBy = 'ÖMER EREN';
+        addAuditLog("AKSİYON", `${req.actionId} ('${req.actionTitle}') silme talebi (${req.requestedBy}) Yönetici ÖMER EREN onayıyla gerçekleştirildi ve aksiyon silindi.`);
+        dispatchPushToServer([req.requestedBy], {
+            title: `✅ Aksiyon Silme Talebiniz Onaylandı`,
+            body: `'${req.actionTitle}' aksiyonu silme talebiniz Yönetici ÖMER EREN tarafından onaylandı.`,
+            tag: `appr_ok_${req.id}`
+        });
     } else if (req.type === 'EDIT_MEETING' && req.proposedData) {
         const idx = (appState.meetings || []).findIndex(m => m.id === req.meetingId);
         if (idx !== -1) {
@@ -2765,6 +2868,11 @@ function approveRequest(reqId) {
         req.resolvedAt = formatNowTR();
         req.resolvedBy = 'ÖMER EREN';
         addAuditLog("TOPLANTI", `${req.meetingId} ('${req.meetingTitle}') değiştirme/düzenleme talebi (${req.requestedBy}) Yönetici ÖMER EREN onayıyla uygulandı.`);
+        dispatchPushToServer([req.requestedBy], {
+            title: `✅ Değişiklik Talebiniz Onaylandı`,
+            body: `'${req.meetingTitle}' güncelleme talebiniz Yönetici ÖMER EREN tarafından onaylandı ve uygulandı.`,
+            tag: `appr_ok_${req.id}`
+        });
     }
 
     renderAll();
@@ -2782,7 +2890,13 @@ function rejectRequest(reqId) {
     req.status = 'REJECTED';
     req.resolvedAt = formatNowTR();
     req.resolvedBy = 'ÖMER EREN';
-    addAuditLog("TOPLANTI", `${req.meetingId} ('${req.meetingTitle}') için ${req.requestedBy} tarafından gönderilen ${req.type === 'DELETE_MEETING' ? 'silme' : 'değiştirme'} talebi Yönetici ÖMER EREN tarafından reddedildi.`);
+    const targetTitle = req.meetingTitle || req.actionTitle || 'Kayıt';
+    addAuditLog("TOPLANTI", `${req.meetingId || req.actionId} ('${targetTitle}') için ${req.requestedBy} tarafından gönderilen talep Yönetici ÖMER EREN tarafından reddedildi.`);
+    dispatchPushToServer([req.requestedBy], {
+        title: `❌ Onay Talebiniz Reddedildi`,
+        body: `'${targetTitle}' için ilettiğiniz talep Yönetici ÖMER EREN tarafından reddedildi.`,
+        tag: `appr_no_${req.id}`
+    });
     renderAll();
 }
 
@@ -4537,6 +4651,11 @@ function saveAction(event) {
         addAuditLog("AKSİYON", `${newId} aksiyonu tanımlandı: '${title}' -> Sorumlu: ${assignee} | Yönetici: ${manager} (1 gün önce ve ${formatDateTR(dueDate)} günü hatırlatılacak).`);
     }
 
+    const targetAction = idVal ? appState.actions.find(a => a.id === idVal) : appState.actions[0];
+    if (targetAction) {
+        dispatchActionAssignedPush(targetAction);
+    }
+
     if ("Notification" in window && Notification.permission === "default") {
         Notification.requestPermission();
     }
@@ -4558,6 +4677,7 @@ function quickChangeActionStatus(actionId, newStatus) {
     a.status = newStatus;
     a.updatedAt = formatNowTR();
     addAuditLog("AKSİYON", `${a.id} (${a.assignee}) aksiyon durumu '${oldStatus}' -> '${newStatus}' olarak güncellendi.`);
+    dispatchActionProgressPush(a, oldStatus, newStatus);
     syncToServer();
     renderAll();
 }
@@ -4565,10 +4685,39 @@ function quickChangeActionStatus(actionId, newStatus) {
 function deleteAction(actionId) {
     const a = appState.actions.find(x => x.id === actionId);
     if (!a) return;
-    if (!isOmerEren(currentUser)) {
-        alert("🔒 Aksiyon silme yetkisi yalnızca Yönetici ÖMER EREN'e aittir.");
+    const isAdmin = isOmerEren(currentUser);
+
+    if (!isAdmin) {
+        const reason = prompt(`🔒 Aksiyon Silme Yetkisi Yalnızca Yönetici ÖMER EREN'e Aittir!\n\n'${a.title}' aksiyonunun silinmesi için Yönetici Onay Talebi oluşturulacaktır.\n\nLütfen silme gerekçenizi yazın:`);
+        if (!reason || !reason.trim()) return;
+
+        if (!Array.isArray(appState.approvalRequests)) appState.approvalRequests = [];
+        const reqId = 'ONAY-' + Date.now();
+        const approvalReq = {
+            id: reqId,
+            type: 'DELETE_ACTION',
+            status: 'PENDING',
+            actionId: a.id,
+            actionTitle: a.title,
+            assignee: a.assignee,
+            requestedBy: currentUser ? currentUser.name : 'Personel',
+            requestedAt: formatNowTR(),
+            reason: reason.trim()
+        };
+        appState.approvalRequests.unshift(approvalReq);
+        addAuditLog("AKSİYON", `${currentUser ? currentUser.name : 'Personel'}, '${a.title}' (${a.id}) aksiyonu için SİLME ONAY TALEBİ gönderdi (Yönetici ÖMER EREN onayı bekleniyor).`);
+        dispatchPushToServer(['omer', 'omer eren'], {
+            title: `🛡️ Aksiyon Silme Onayı Bekleniyor`,
+            body: `${currentUser ? currentUser.name : 'Personel'}, '${a.title}' aksiyonunun silinmesi için onay talep etti.`,
+            tag: `appr_del_act_${reqId}`,
+            sound: 'APPROVAL'
+        });
+        syncToServer();
+        renderAll();
+        alert(`🛡️ Silme Talebiniz Yönetici ÖMER EREN Onayına Gönderildi!\n\nÖmer Eren talebi onayladığında aksiyon sistemden kaldırılacaktır.`);
         return;
     }
+
     if (!confirm(`'${a.title}' aksiyonunu silmek istediğinize emin misiniz?`)) return;
     appState.actions = appState.actions.filter(x => x.id !== actionId);
     addAuditLog("AKSİYON", `${actionId} kodlu aksiyon Yönetici ÖMER EREN tarafından silindi.`);

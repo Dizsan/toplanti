@@ -21,7 +21,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-    <link rel="stylesheet" href="style.css?v=1.7.0">
+    <link rel="stylesheet" href="style.css?v=1.8.0">
 </head>
 <body>
 
@@ -34,7 +34,7 @@
                 <img src="dizsan_logo.jpg" alt="DİZSAN Logo" class="login-logo">
                 <h1>DİZSAN</h1>
                 <p>Kurumsal Toplantı, Eğitim, Çağrı, Aksiyon & Raporlama Sistemi</p>
-                <span class="version-pill"><i class="fa-solid fa-code-branch"></i> Sürüm <span class="dynamic-version-text">v1.7.0</span> • iOS / Android / Windows</span>
+                <span class="version-pill"><i class="fa-solid fa-code-branch"></i> Sürüm <span class="dynamic-version-text">v1.8.0</span> • iOS / Android / Windows</span>
             </div>
 
             <form id="login-form" onsubmit="handleLogin(event)">
@@ -152,32 +152,34 @@
                 <h3><i class="fa-solid fa-key" style="color:#34d399;"></i> Şifremi Değiştir & E-Posta Güncelle</h3>
                 <button class="modal-close" onclick="closeChangePasswordModal()">&times;</button>
             </div>
-            <form id="change-password-form" onsubmit="handleChangeOwnPassword(event)" class="modal-body">
-                <p style="font-size:0.83rem; color:var(--text-sec); margin-bottom:1rem; line-height:1.5;">
-                    Değiştirdiğiniz yeni şifre ve e-posta adresiniz <strong>otomatik olarak ortak sisteme, sunucuya ve DizGün veritabanına</strong> anında entegre edilir.
-                </p>
-                <div class="form-group" style="margin-bottom:0.85rem;">
-                    <label>Aktif Personel</label>
-                    <input type="text" id="cp-user-name" class="form-control" readonly style="opacity:0.75; cursor:not-allowed;">
+            <form id="change-password-form" onsubmit="handleChangeOwnPassword(event)">
+                <div class="modal-body">
+                    <p style="font-size:0.83rem; color:var(--text-sec); margin-bottom:1rem; line-height:1.5;">
+                        Değiştirdiğiniz yeni şifre ve e-posta adresiniz <strong>otomatik olarak ortak sisteme, sunucuya ve DizGün veritabanına</strong> anında entegre edilir.
+                    </p>
+                    <div class="form-group" style="margin-bottom:0.85rem;">
+                        <label>Aktif Personel</label>
+                        <input type="text" id="cp-user-name" class="form-control" readonly style="opacity:0.75; cursor:not-allowed;">
+                    </div>
+                    <div class="form-group" style="margin-bottom:0.85rem;">
+                        <label>Kayıtlı E-Posta Adresiniz (İsterseniz Güncelleyebilirsiniz)</label>
+                        <input type="email" id="cp-user-email" class="form-control" placeholder="Kişisel veya kurumsal e-posta adresiniz" required>
+                    </div>
+                    <div class="form-group" style="margin-bottom:0.85rem;">
+                        <label>Mevcut Şifreniz *</label>
+                        <input type="password" id="cp-current-password" class="form-control" placeholder="Mevcut şifrenizi girin" required>
+                    </div>
+                    <div class="form-group" style="margin-bottom:0.85rem;">
+                        <label>Yeni Şifreniz *</label>
+                        <input type="password" id="cp-new-password" class="form-control" placeholder="Yeni şifrenizi belirleyin" required>
+                    </div>
+                    <div class="form-group" style="margin-bottom:1rem;">
+                        <label>Yeni Şifre (Tekrar) *</label>
+                        <input type="password" id="cp-new-password-confirm" class="form-control" placeholder="Yeni şifrenizi tekrar girin" required>
+                    </div>
+                    <div id="cp-msg" style="display:none; margin-bottom:0.85rem; padding:0.65rem; border-radius:10px; font-size:0.82rem;"></div>
                 </div>
-                <div class="form-group" style="margin-bottom:0.85rem;">
-                    <label>Kayıtlı E-Posta Adresiniz (İsterseniz Güncelleyebilirsiniz)</label>
-                    <input type="email" id="cp-user-email" class="form-control" placeholder="Kişisel veya kurumsal e-posta adresiniz" required>
-                </div>
-                <div class="form-group" style="margin-bottom:0.85rem;">
-                    <label>Mevcut Şifreniz *</label>
-                    <input type="password" id="cp-current-password" class="form-control" placeholder="Mevcut şifrenizi girin" required>
-                </div>
-                <div class="form-group" style="margin-bottom:0.85rem;">
-                    <label>Yeni Şifreniz *</label>
-                    <input type="password" id="cp-new-password" class="form-control" placeholder="Yeni şifrenizi belirleyin" required>
-                </div>
-                <div class="form-group" style="margin-bottom:1rem;">
-                    <label>Yeni Şifre (Tekrar) *</label>
-                    <input type="password" id="cp-new-password-confirm" class="form-control" placeholder="Yeni şifrenizi tekrar girin" required>
-                </div>
-                <div id="cp-msg" style="display:none; margin-bottom:0.85rem; padding:0.65rem; border-radius:10px; font-size:0.82rem;"></div>
-                <div class="modal-footer" style="padding:0.75rem 0 0;">
+                <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" onclick="closeChangePasswordModal()">İptal</button>
                     <button type="submit" class="btn btn-success"><i class="fa-solid fa-floppy-disk"></i> Yeni Şifreyi Kaydet & Entegre Et</button>
                 </div>
@@ -197,7 +199,7 @@
                     <span class="brand-name">DİZSAN</span>
                     <span class="brand-sub">TOPLANTI & AKSİYON</span>
                     <span class="version-pill" onclick="switchTab('version-tab')" title="Sürüm ve Güncelleme Merkezini Gör">
-                        <i class="fa-solid fa-tag"></i> <span class="dynamic-version-text">v1.7.0</span>
+                        <i class="fa-solid fa-tag"></i> <span class="dynamic-version-text">v1.8.0</span>
                     </span>
                 </div>
             </div>
@@ -784,7 +786,7 @@
                     <div class="glass-card" id="omer-version-admin-card">
                         <div class="card-header">
                             <h3><i class="fa-solid fa-user-shield" style="color:#34d399;"></i> Versiyon Güncelleme & Yayın Yönetimi (Sadece Yönetici: Ömer Eren)</h3>
-                            <span class="badge badge-done">Aktif Sürüm: <span class="dynamic-version-text">v1.3.0</span></span>
+                            <span class="badge badge-done">Aktif Sürüm: <span class="dynamic-version-text">v1.8.0</span></span>
                         </div>
 
                         <!-- Ömer Eren giriş yaptığında gösterilecek alan -->
@@ -886,6 +888,10 @@
             <i class="fa-solid fa-handshake"></i>
             <span>Toplantılar</span>
         </button>
+        <button type="button" class="mobile-nav-fab" onclick="handleMobileFabClick()" title="Yeni Kayıt Ekle">
+            <i class="fa-solid fa-plus"></i>
+            <span>Ekle</span>
+        </button>
         <button class="mob-nav-item" data-tab="actions-tab" onclick="switchTab('actions-tab')">
             <i class="fa-solid fa-stopwatch"></i>
             <span>Aksiyonlar</span>
@@ -893,10 +899,6 @@
         <button class="mob-nav-item" data-tab="reports-tab" onclick="switchTab('reports-tab')">
             <i class="fa-solid fa-chart-column"></i>
             <span>Raporlar</span>
-        </button>
-        <button class="mob-nav-item" onclick="openPushTestCenterModal()">
-            <i class="fa-solid fa-satellite-dish" style="color:#34d399;"></i>
-            <span>Push Test</span>
         </button>
     </nav>
 
@@ -909,7 +911,8 @@
                 <h3 id="meeting-modal-title"><i class="fa-solid fa-handshake" style="color:var(--dizsan-light);"></i> Yeni Toplantı / Eğitim ve Tutanak Kaydı</h3>
                 <button class="modal-close" onclick="closeMeetingModal()">&times;</button>
             </div>
-            <form id="meeting-form" onsubmit="saveMeeting(event)" class="modal-body">
+            <form id="meeting-form" onsubmit="saveMeeting(event)">
+                <div class="modal-body">
                 <input type="hidden" id="meeting-id">
 
                 <!-- Kayıt Türü Seçimi: Toplantı veya Eğitim -->
@@ -1065,8 +1068,7 @@
                     </div>
                     <div id="inline-actions-container" style="display:flex; flex-direction:column; gap:0.6rem;"></div>
                 </div>
-
-                <div class="modal-footer" style="margin-top:1.25rem; padding:1rem 0 0;">
+                <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" onclick="closeMeetingModal()">İptal</button>
                     <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Kaydet</button>
                 </div>
@@ -1083,70 +1085,71 @@
                 <h3 id="action-modal-title"><i class="fa-solid fa-stopwatch" style="color:#fbbf24;"></i> Aksiyon & Otomatik Hatırlatıcı Tanımla</h3>
                 <button class="modal-close" onclick="closeActionModal()">&times;</button>
             </div>
-            <form id="action-form" onsubmit="saveAction(event)" class="modal-body">
-                <input type="hidden" id="action-id">
+            <form id="action-form" onsubmit="saveAction(event)">
+                <div class="modal-body">
+                    <input type="hidden" id="action-id">
 
-                <div class="form-group" style="margin-bottom:1rem;">
-                    <label>Bağlı Olduğu Toplantı / Eğitim *</label>
-                    <select id="action-meeting-select" class="form-control" required></select>
-                </div>
+                    <div class="form-group" style="margin-bottom:1rem;">
+                        <label>Bağlı Olduğu Toplantı / Eğitim *</label>
+                        <select id="action-meeting-select" class="form-control" required></select>
+                    </div>
 
-                <div class="form-group" style="margin-bottom:1rem;">
-                    <label>Aksiyon / Görev Tanımı *</label>
-                    <textarea id="action-title-input" class="form-control" rows="3" placeholder="Yapılacak aksiyonu net olarak açıklayın..." required></textarea>
-                </div>
+                    <div class="form-group" style="margin-bottom:1rem;">
+                        <label>Aksiyon / Görev Tanımı *</label>
+                        <textarea id="action-title-input" class="form-control" rows="3" placeholder="Yapılacak aksiyonu net olarak açıklayın..." required></textarea>
+                    </div>
 
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label>Aksiyon Verilen Sorumlu Personel *</label>
-                        <select id="action-assignee-select" class="form-control" required></select>
-                    </div>
-                    <div class="form-group">
-                        <label>Hatırlatma Yapılacak Yönetici *</label>
-                        <select id="action-manager-select" class="form-control" required>
-                            <option value="ÖMER EREN">ÖMER EREN (Yönetici)</option>
-                            <option value="RAFET CANBEK">RAFET CANBEK (Genel Müdür)</option>
-                            <option value="HAKAN AYDIN">HAKAN AYDIN (Servis Müdürü)</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label>Aksiyon Termin Tarihi (GG.AA.YYYY) *</label>
-                        <input type="date" id="action-duedate-input" class="form-control" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Hatırlatma Saati *</label>
-                        <input type="time" id="action-duetime-input" class="form-control" value="09:00" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Öncelik & Durum *</label>
-                        <div style="display:flex; gap:0.4rem;">
-                            <select id="action-priority-select" class="form-control" required>
-                                <option value="Normal">🔵 Normal</option>
-                                <option value="Kritik">🚨 Kritik</option>
-                            </select>
-                            <select id="action-status-select" class="form-control" required>
-                                <option value="Bekliyor">⏳ Bekliyor</option>
-                                <option value="Devam Ediyor">🔄 Devam Ediyor</option>
-                                <option value="Tamamlandı">✅ Tamamlandı</option>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Aksiyon Verilen Sorumlu Personel *</label>
+                            <select id="action-assignee-select" class="form-control" required></select>
+                        </div>
+                        <div class="form-group">
+                            <label>Hatırlatma Yapılacak Yönetici *</label>
+                            <select id="action-manager-select" class="form-control" required>
+                                <option value="ÖMER EREN">ÖMER EREN (Yönetici)</option>
+                                <option value="RAFET CANBEK">RAFET CANBEK (Genel Müdür)</option>
+                                <option value="HAKAN AYDIN">HAKAN AYDIN (Servis Müdürü)</option>
                             </select>
                         </div>
                     </div>
-                </div>
 
-                <!-- 1 Gün Önce ve Aynı Gün Hatırlatma Kuralı Bilgisi -->
-                <div style="background:rgba(245,158,11,0.1); border:1px solid rgba(245,158,11,0.35); border-radius:10px; padding:0.75rem; margin-bottom:1rem; font-size:0.8rem; color:#fde68a;">
-                    <i class="fa-solid fa-bell"></i> <strong>Çift Aşamalı Hatırlatıcı Aktif:</strong> Bu aksiyon hem <strong>sorumlu personele</strong> hem de seçilen <strong>yöneticiye</strong> termin tarihinden <strong>1 gün önce</strong> ve <strong>termin günü (aynı gün)</strong> sesli, masaüstü bildirimli ve görsel olarak otomatik hatırlatılır.
-                </div>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Aksiyon Termin Tarihi (GG.AA.YYYY) *</label>
+                            <input type="date" id="action-duedate-input" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Hatırlatma Saati *</label>
+                            <input type="time" id="action-duetime-input" class="form-control" value="09:00" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Öncelik & Durum *</label>
+                            <div style="display:flex; gap:0.4rem;">
+                                <select id="action-priority-select" class="form-control" required>
+                                    <option value="Normal">🔵 Normal</option>
+                                    <option value="Kritik">🚨 Kritik</option>
+                                </select>
+                                <select id="action-status-select" class="form-control" required>
+                                    <option value="Bekliyor">⏳ Bekliyor</option>
+                                    <option value="Devam Ediyor">🔄 Devam Ediyor</option>
+                                    <option value="Tamamlandı">✅ Tamamlandı</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
 
-                <div class="form-group" style="margin-bottom:0.5rem;">
-                    <label>Personel Tamamlama / İlerleme Notu</label>
-                    <input type="text" id="action-note-input" class="form-control" placeholder="Aksiyonla ilgili son durum veya açıklama...">
-                </div>
+                    <!-- 1 Gün Önce ve Aynı Gün Hatırlatma Kuralı Bilgisi -->
+                    <div style="background:rgba(245,158,11,0.1); border:1px solid rgba(245,158,11,0.35); border-radius:10px; padding:0.75rem; margin-bottom:1rem; font-size:0.8rem; color:#fde68a;">
+                        <i class="fa-solid fa-bell"></i> <strong>Çift Aşamalı Hatırlatıcı Aktif:</strong> Bu aksiyon hem <strong>sorumlu personele</strong> hem de seçilen <strong>yöneticiye</strong> termin tarihinden <strong>1 gün önce</strong> ve <strong>termin günü (aynı gün)</strong> sesli, masaüstü bildirimli ve görsel olarak otomatik hatırlatılır.
+                    </div>
 
-                <div class="modal-footer" style="margin-top:1.25rem; padding:1rem 0 0;">
+                    <div class="form-group" style="margin-bottom:0.5rem;">
+                        <label>Personel Tamamlama / İlerleme Notu</label>
+                        <input type="text" id="action-note-input" class="form-control" placeholder="Aksiyonla ilgili son durum veya açıklama...">
+                    </div>
+                </div>
+                <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" onclick="closeActionModal()">İptal</button>
                     <button type="submit" class="btn btn-success"><i class="fa-solid fa-check"></i> Aksiyonu ve Hatırlatıcıyı Kaydet</button>
                 </div>
@@ -1163,41 +1166,43 @@
                 <h3><i class="fa-solid fa-user-plus" style="color:var(--dizsan-light);"></i> Personel Hesabı Tanımla / Güncelle</h3>
                 <button class="modal-close" onclick="closeUserModal()">&times;</button>
             </div>
-            <form id="user-form" onsubmit="saveUser(event)" class="modal-body">
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label>Personel Adı Soyadı *</label>
-                        <input type="text" id="user-fullname-input" class="form-control" placeholder="Örn: HAKAN AYDIN" required>
+            <form id="user-form" onsubmit="saveUser(event)">
+                <div class="modal-body">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Personel Adı Soyadı *</label>
+                            <input type="text" id="user-fullname-input" class="form-control" placeholder="Örn: HAKAN AYDIN" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Görev / Bölüm *</label>
+                            <input type="text" id="user-dept-input" class="form-control" value="Servis" placeholder="Örn: Servis Müdürü" required>
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label>Görev / Bölüm *</label>
-                        <input type="text" id="user-dept-input" class="form-control" value="Servis" placeholder="Örn: Servis Müdürü" required>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Giriş Kullanıcı Adı *</label>
+                            <input type="text" id="user-username-input" class="form-control" placeholder="Örn: hakan.aydin" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Giriş Şifresi</label>
+                            <input type="password" id="user-password-input" class="form-control" placeholder="Değiştirmek için yeni şifre yazın">
+                        </div>
+                    </div>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>E-Posta Adresi (Şifre Sıfırlama İçin) *</label>
+                            <input type="email" id="user-email-input" class="form-control" placeholder="kullanici@kurum.com.tr" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Sistem Rolü</label>
+                            <select id="user-role-input" class="form-control">
+                                <option value="Personel">Personel</option>
+                                <option value="Yönetici">Yönetici</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label>Giriş Kullanıcı Adı *</label>
-                        <input type="text" id="user-username-input" class="form-control" placeholder="Örn: hakan.aydin" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Giriş Şifresi</label>
-                        <input type="password" id="user-password-input" class="form-control" placeholder="Değiştirmek için yeni şifre yazın">
-                    </div>
-                </div>
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label>E-Posta Adresi (Şifre Sıfırlama İçin) *</label>
-                        <input type="email" id="user-email-input" class="form-control" placeholder="kullanici@kurum.com.tr" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Sistem Rolü</label>
-                        <select id="user-role-input" class="form-control">
-                            <option value="Personel">Personel</option>
-                            <option value="Yönetici">Yönetici</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="modal-footer" style="margin-top:1rem; padding:1rem 0 0;">
+                <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" onclick="closeUserModal()">İptal</button>
                     <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Personeli Kaydet</button>
                 </div>
@@ -1337,72 +1342,73 @@
                 <h3><i class="fa-solid fa-bullhorn" style="color:#fbbf24;"></i> Toplantı Çağrısı Planla &amp; Kurumsal Duyuru Gönder</h3>
                 <button class="modal-close" onclick="closeAnnouncementModal()">&times;</button>
             </div>
-            <form id="announcement-form" onsubmit="saveMeetingCallOrAnnouncement(event)" class="modal-body">
-                <div style="background:linear-gradient(135deg, rgba(245,158,11,0.14), rgba(239,68,68,0.12)); border:1px solid rgba(245,158,11,0.4); border-radius:12px; padding:0.85rem; margin-bottom:1rem; font-size:0.81rem; color:#fde68a; line-height:1.5;">
-                    <i class="fa-solid fa-bell"></i> <strong>Otomatik Bildirim &amp; Sesli Alarm Kuralı:</strong><br>
-                    • Seçtiğiniz katılımcılara <strong>anında toplantı çağrısı / duyuru bildirimi</strong> gider.<br>
-                    • Toplantı saatine <strong>1 saat kala 🟨 SARI UYARI + Bildirim Sesi</strong>, <strong>5 dakika kala 🟥 KIRMIZI UYARI + Acil Alarm Sesi</strong> davet edilenlerin ekranında otomatik çalar!
-                </div>
+            <form id="announcement-form" onsubmit="saveMeetingCallOrAnnouncement(event)">
+                <div class="modal-body">
+                    <div style="background:linear-gradient(135deg, rgba(245,158,11,0.14), rgba(239,68,68,0.12)); border:1px solid rgba(245,158,11,0.4); border-radius:12px; padding:0.85rem; margin-bottom:1rem; font-size:0.81rem; color:#fde68a; line-height:1.5;">
+                        <i class="fa-solid fa-bell"></i> <strong>Otomatik Bildirim &amp; Sesli Alarm Kuralı:</strong><br>
+                        • Seçtiğiniz katılımcılara <strong>anında toplantı çağrısı / duyuru bildirimi</strong> gider.<br>
+                        • Toplantı saatine <strong>1 saat kala 🟨 SARI UYARI + Bildirim Sesi</strong>, <strong>5 dakika kala 🟥 KIRMIZI UYARI + Acil Alarm Sesi</strong> davet edilenlerin ekranında otomatik çalar!
+                    </div>
 
-                <!-- Çağrı / Duyuru Türü -->
-                <div class="form-grid" style="margin-bottom:0.85rem;">
-                    <div class="form-group">
-                        <label>Çağrı / Bildirim Türü *</label>
-                        <select id="call-type-select" class="form-control" onchange="toggleCallTypeFields(this.value)" required>
-                            <option value="MEETING_CALL">📅 Planlı Toplantı Çağrısı (1 Saat &amp; 5 Dk Alarmlı)</option>
-                            <option value="TRAINING_CALL">🎓 Planlı Eğitim Çağrısı (1 Saat &amp; 5 Dk Alarmlı)</option>
-                            <option value="ANNOUNCEMENT">📣 Genel Kurumsal Duyuru (Anlık Sesli Bildirim)</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Departman / Kategori *</label>
-                        <select id="call-dept-input" class="form-control" required>
-                            <option value="Genel Yönetim">Genel Yönetim</option>
-                            <option value="SSH & Servis">SSH &amp; Servis Operasyon</option>
-                            <option value="Depo & Yedek Parça">Depo &amp; Yedek Parça</option>
-                            <option value="Muhasebe & Finans">Muhasebe &amp; Finans</option>
-                            <option value="Kalite & İSG">Kalite &amp; İSG</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="form-group" style="margin-bottom:0.85rem;">
-                    <label>Toplantı Çağrısı / Duyuru Başlığı *</label>
-                    <input type="text" id="call-title-input" class="form-control" placeholder="Örn: Yarın Saat 16:00 Haftalık Değerlendirme Toplantısı Çağrısı" required>
-                </div>
-
-                <div id="call-datetime-row" class="form-grid" style="margin-bottom:0.85rem;">
-                    <div class="form-group">
-                        <label>Toplantı Tarihi (GG.AA.YYYY) *</label>
-                        <input type="date" id="call-date-input" class="form-control" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Toplantı Saati (Örn: 16:00) *</label>
-                        <input type="time" id="call-time-input" class="form-control" value="16:00" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Toplantı Yeri / Salon *</label>
-                        <input type="text" id="call-location-input" class="form-control" value="Dizsan Toplantı Salonu" required>
-                    </div>
-                </div>
-
-                <div class="form-group" style="margin-bottom:0.85rem;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.35rem; flex-wrap:wrap; gap:0.4rem;">
-                        <label style="margin:0;">Davet Edilen / Bildirim Gidecek Katılımcılar *</label>
-                        <div style="display:flex; gap:0.45rem;">
-                            <button type="button" class="btn btn-secondary btn-sm" style="padding:2px 8px; font-size:0.72rem;" onclick="toggleAllCallParticipants(true)">Tüm Personeli Seç</button>
-                            <button type="button" class="btn btn-secondary btn-sm" style="padding:2px 8px; font-size:0.72rem;" onclick="toggleAllCallParticipants(false)">Temizle</button>
+                    <!-- Çağrı / Duyuru Türü -->
+                    <div class="form-grid" style="margin-bottom:0.85rem;">
+                        <div class="form-group">
+                            <label>Çağrı / Bildirim Türü *</label>
+                            <select id="call-type-select" class="form-control" onchange="toggleCallTypeFields(this.value)" required>
+                                <option value="MEETING_CALL">📅 Planlı Toplantı Çağrısı (1 Saat &amp; 5 Dk Alarmlı)</option>
+                                <option value="TRAINING_CALL">🎓 Planlı Eğitim Çağrısı (1 Saat &amp; 5 Dk Alarmlı)</option>
+                                <option value="ANNOUNCEMENT">📣 Genel Kurumsal Duyuru (Anlık Sesli Bildirim)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Departman / Kategori *</label>
+                            <select id="call-dept-input" class="form-control" required>
+                                <option value="Genel Yönetim">Genel Yönetim</option>
+                                <option value="SSH & Servis">SSH &amp; Servis Operasyon</option>
+                                <option value="Depo & Yedek Parça">Depo &amp; Yedek Parça</option>
+                                <option value="Muhasebe & Finans">Muhasebe &amp; Finans</option>
+                                <option value="Kalite & İSG">Kalite &amp; İSG</option>
+                            </select>
                         </div>
                     </div>
-                    <div id="call-participants-box" class="participants-selector"></div>
-                </div>
 
-                <div class="form-group" style="margin-bottom:0.85rem;">
-                    <label>Toplantı Gündemi / Duyuru Mesajı *</label>
-                    <textarea id="call-message-input" class="form-control" rows="3" placeholder="1. Görüşülecek gündem maddeleri veya duyuru detayını yazın..." onfocus="handleNumberedTextareaFocus(this)" onkeydown="handleNumberedTextareaKeydown(event, this)" oninput="handleNumberedTextareaInput(this)" required></textarea>
-                </div>
+                    <div class="form-group" style="margin-bottom:0.85rem;">
+                        <label>Toplantı Çağrısı / Duyuru Başlığı *</label>
+                        <input type="text" id="call-title-input" class="form-control" placeholder="Örn: Yarın Saat 16:00 Haftalık Değerlendirme Toplantısı Çağrısı" required>
+                    </div>
 
-                <div class="modal-footer" style="padding:0.75rem 0 0;">
+                    <div id="call-datetime-row" class="form-grid" style="margin-bottom:0.85rem;">
+                        <div class="form-group">
+                            <label>Toplantı Tarihi (GG.AA.YYYY) *</label>
+                            <input type="date" id="call-date-input" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Toplantı Saati (Örn: 16:00) *</label>
+                            <input type="time" id="call-time-input" class="form-control" value="16:00" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Toplantı Yeri / Salon *</label>
+                            <input type="text" id="call-location-input" class="form-control" value="Dizsan Toplantı Salonu" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom:0.85rem;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.35rem; flex-wrap:wrap; gap:0.4rem;">
+                            <label style="margin:0;">Davet Edilen / Bildirim Gidecek Katılımcılar *</label>
+                            <div style="display:flex; gap:0.45rem;">
+                                <button type="button" class="btn btn-secondary btn-sm" style="padding:2px 8px; font-size:0.72rem;" onclick="toggleAllCallParticipants(true)">Tüm Personeli Seç</button>
+                                <button type="button" class="btn btn-secondary btn-sm" style="padding:2px 8px; font-size:0.72rem;" onclick="toggleAllCallParticipants(false)">Temizle</button>
+                            </div>
+                        </div>
+                        <div id="call-participants-box" class="participants-selector"></div>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom:0.85rem;">
+                        <label>Toplantı Gündemi / Duyuru Mesajı *</label>
+                        <textarea id="call-message-input" class="form-control" rows="3" placeholder="1. Görüşülecek gündem maddeleri veya duyuru detayını yazın..." onfocus="handleNumberedTextareaFocus(this)" onkeydown="handleNumberedTextareaKeydown(event, this)" oninput="handleNumberedTextareaInput(this)" required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" onclick="closeAnnouncementModal()">İptal</button>
                     <button type="submit" class="btn" style="background:linear-gradient(135deg,#f59e0b,#ef4444); color:#fff; border:none;">
                         <i class="fa-solid fa-paper-plane"></i> Çağrıyı / Duyuruyu Yayınla &amp; Katılımcılara Bildirim Gönder
@@ -1436,8 +1442,9 @@
     <div id="print-minutes-area"></div>
 
     <!-- Otomatik Tarih Geçiş Kütüphanesi (GG.AA.YYYY Auto-Advance Kuralı) -->
+    <script src="dizsan-back-navigation.js?v=2.0.0"></script>
     <script src="auto-date-helper.js"></script>
-    <script src="app.js?v=1.7.1"></script>
-<script src="dizsan-auto-updater.js" data-app-id="toplanti" data-app-name="Dizsan Toplantı & Aksiyon" data-version="1.7.2"></script>
+    <script src="app.js?v=1.8.0"></script>
+<script src="dizsan-auto-updater.js" data-app-id="toplanti" data-app-name="Dizsan Toplantı & Aksiyon" data-version="1.8.0"></script>
 </body>
 </html>
