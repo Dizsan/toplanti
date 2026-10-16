@@ -1,6 +1,6 @@
 {
-  "version": "v1.8.1",
-  "updatedAt": "2026-10-15T21:23:46.258Z",
+  "version": "v1.7.1",
+  "updatedAt": "2026-10-16T05:50:26.068Z",
   "users": [
     {
       "order": 0,
@@ -248,6 +248,14 @@
   ],
   "actions": [],
   "logs": [
+    {
+      "id": "LOG-1792129826068",
+      "timestamp": "16.10.2026 08:50:26",
+      "user": "FATİH KIROĞLU",
+      "category": "GİRİŞ / ÇIKIŞ",
+      "detail": "FATİH KIROĞLU (Depo) sisteme giriş yaptı.",
+      "platform": "Windows / Masaüstü"
+    },
     {
       "id": "LOG-1792082732257",
       "timestamp": "15.10.2026 19:45:32",
@@ -1013,7 +1021,7 @@
       "resolvedBy": "ÖMER EREN"
     }
   ],
-  "stateRevision": 43,
+  "stateRevision": 44,
   "pushSubscriptions": [
     {
       "id": "SUB-1792079730314-929",
