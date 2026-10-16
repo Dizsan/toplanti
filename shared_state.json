@@ -1,6 +1,6 @@
 {
   "version": "v1.7.1",
-  "updatedAt": "2026-10-16T05:50:26.068Z",
+  "updatedAt": "2026-10-16T05:51:03.940Z",
   "users": [
     {
       "order": 0,
@@ -1021,8 +1021,21 @@
       "resolvedBy": "ÖMER EREN"
     }
   ],
-  "stateRevision": 44,
+  "stateRevision": 45,
   "pushSubscriptions": [
+    {
+      "id": "SUB-1792129863940-504",
+      "username": "fatih.kiroglu",
+      "userFullName": "FATİH KIROĞLU",
+      "endpoint": "https://fcm.googleapis.com/fcm/send/fPuvpZj2t4o:APA91bHIv8Hr3zlB8-y0OAj_RaD8lH9l7_iwSox3nbnUBzN-MWgiiWV7EwEKfqDONrdO8f8iE3R7OgV0IrLAJTD8T5ioFL2MHdOFTBs4qII9apuDmW2kvCIGwj5qa6FYnGovyEZ1efmK",
+      "p256dh": "BOHRO3Jg0JGVVryeY1L9KlfW7kRrDA9b0S6TfypOrP0Jy0g8GagpDYpC8pzXvzwXeIoY5dX6fAXnsqWUOAm79sE",
+      "auth": "Bei_gfyOF1TXruG2dH7nYw",
+      "browser": "Google Chrome",
+      "platform": "Windows",
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36",
+      "isActive": true,
+      "updatedAt": "16.10.2026 08:51:03"
+    },
     {
       "id": "SUB-1792079730314-929",
       "username": "fatih.kiroglu",
