@@ -5535,7 +5535,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 12000);
 
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('sw.js?v=1.8.2').then(reg => {
+        navigator.serviceWorker.register('sw.js?v=1.8.3').then(reg => {
             try { reg.update(); } catch (e) {}
             syncUserAndStateToServiceWorker();
         }).catch(() => {});
