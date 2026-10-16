@@ -1,6 +1,6 @@
 {
-  "version": "v1.7.1",
-  "updatedAt": "2026-10-16T05:51:03.940Z",
+  "version": "v1.8.2",
+  "updatedAt": "2026-10-16T12:49:48.287313",
   "users": [
     {
       "order": 0,
@@ -1021,7 +1021,7 @@
       "resolvedBy": "ÖMER EREN"
     }
   ],
-  "stateRevision": 45,
+  "stateRevision": 46,
   "pushSubscriptions": [
     {
       "id": "SUB-1792129863940-504",
@@ -1547,12 +1547,12 @@
       "fail_count": 0
     }
   ],
-  "appVersion": "1.8.1",
+  "appVersion": "1.8.2",
   "latestVersion": {
-    "version": "1.8.1",
-    "releaseNotes": "Akilli mobil kurulum uyarisi ve tek tikla yukleme",
-    "releasedAt": "2026-10-16 00:23:46"
+    "version": "1.8.2",
+    "releaseNotes": "Toplantı ve aksiyon pencerelerinde, kartlarda ve raporlarda ekleyen ve değişiklik yapan personel, tarih ve saat izleme (Audit) alanları güncellendi",
+    "releasedAt": "2026-10-16 12:49:48"
   },
-  "versionUpdatedAt": "2026-10-16 00:23:46",
-  "versionReleaseNotes": "Akilli mobil kurulum uyarisi ve tek tikla yukleme"
+  "versionUpdatedAt": "2026-10-16 12:49:48",
+  "versionReleaseNotes": "Toplantı ve aksiyon pencerelerinde, kartlarda ve raporlarda ekleyen ve değişiklik yapan personel, tarih ve saat izleme (Audit) alanları güncellendi"
 }

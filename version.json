@@ -1,9 +1,9 @@
 {
   "appId": "toplanti",
   "appName": "Dizsan Toplantı & Aksiyon",
-  "version": "1.8.1",
-  "build": 181,
-  "releasedAt": "2026-10-16 00:23:46",
-  "releaseNotes": "Akilli mobil kurulum uyarisi ve tek tikla yukleme",
+  "version": "1.8.2",
+  "build": 182,
+  "releasedAt": "2026-10-16 12:49:48",
+  "releaseNotes": "Toplantı ve aksiyon pencerelerinde, kartlarda ve raporlarda ekleyen ve değişiklik yapan personel, tarih ve saat izleme (Audit) alanları güncellendi",
   "author": "Ömer Eren & DİZSAN"
 }

@@ -2794,12 +2794,15 @@ function approveNewMeeting(meetingId) {
     m.omerApprovedStamp = true;
     m.approvedBy = 'ÖMER EREN';
     m.approvedAt = formatNowTR();
+    m.updatedBy = 'ÖMER EREN';
+    m.updatedAt = formatNowTR();
     addAuditLog("TOPLANTI", `${m.id} kodlu '${m.title}' kaydı Yönetici ÖMER EREN tarafından onaylandı.`);
     dispatchPushToServer([m.createdBy || 'Personel'], {
         title: `✅ Toplantı Kaydı Onaylandı`,
         body: `'${m.title}' toplantısı Yönetici ÖMER EREN tarafından onaylandı.`,
         tag: `appr_newm_${m.id}`
     });
+    syncToServer();
     renderAll();
 }
 
@@ -2861,7 +2864,9 @@ function approveRequest(reqId) {
                 approvalStatus: 'Onaylandı',
                 omerApprovedStamp: true,
                 approvedBy: 'ÖMER EREN',
-                approvedAt: formatNowTR()
+                approvedAt: formatNowTR(),
+                updatedBy: req.requestedBy || 'ÖMER EREN',
+                updatedAt: req.requestedAt || formatNowTR()
             };
         }
         req.status = 'APPROVED';
@@ -2875,6 +2880,7 @@ function approveRequest(reqId) {
         });
     }
 
+    syncToServer();
     renderAll();
 }
 
@@ -2995,6 +3001,8 @@ function saveMeetingCallOrAnnouncement(event) {
             participants,
             createdBy: currentUser ? currentUser.name : 'ÖMER EREN',
             createdAt: formatNowTR(),
+            updatedBy: '',
+            updatedAt: '',
             dismissedBy: []
         };
         appState.announcements.unshift(newAnn);
@@ -3031,7 +3039,9 @@ function saveMeetingCallOrAnnouncement(event) {
         decisions: '',
         attachments: [],
         createdBy: currentUser ? currentUser.name : 'ÖMER EREN',
-        createdAt: formatNowTR()
+        createdAt: formatNowTR(),
+        updatedBy: '',
+        updatedAt: ''
     };
 
     appState.meetings.unshift(newMeeting);
@@ -3075,6 +3085,48 @@ function setMaskedDateInputValue(inputEl, isoDateStr) {
     } else {
         inputEl.value = iso;
     }
+}
+
+function getRecordAuditInfo(item) {
+    if (!item) return { createdBy: 'ÖMER EREN', createdAt: '-', updatedBy: '-', updatedAt: 'Henüz değiştirilmedi', hasUpdate: false };
+    const createdBy = item.createdBy || item.assignedBy || item.manager || 'ÖMER EREN';
+    const fallbackCreated = item.date ? `${formatDateTR(item.date)} ${item.time || '09:00'}` : (item.dueDate ? `${formatDateTR(item.dueDate)} ${item.dueTime || '09:00'}` : '-');
+    const createdAt = item.createdAt || fallbackCreated;
+    const hasUpdate = Boolean(item.updatedBy || (item.updatedAt && item.updatedAt !== item.createdAt));
+    const updatedBy = hasUpdate ? (item.updatedBy || item.approvedBy || createdBy) : '-';
+    const updatedAt = hasUpdate ? (item.updatedAt || item.approvedAt || createdAt) : 'Henüz değiştirilmedi';
+    return { createdBy, createdAt, updatedBy, updatedAt, hasUpdate };
+}
+
+function renderRecordAuditBadge(item, compact = false) {
+    const info = getRecordAuditInfo(item);
+    if (compact) {
+        return `
+            <div style="margin-top:0.38rem; padding:0.32rem 0.55rem; background:rgba(15,23,42,0.65); border:1px solid rgba(148,163,184,0.2); border-radius:6px; font-size:0.71rem; color:#94a3b8; display:flex; flex-wrap:wrap; gap:0.55rem; align-items:center;">
+                <span><i class="fa-solid fa-user-plus" style="color:#38bdf8;"></i> Oluşturan: <strong style="color:#e2e8f0;">${info.createdBy}</strong> (${info.createdAt})</span>
+                <span>•</span>
+                <span><i class="fa-solid fa-user-pen" style="color:${info.hasUpdate ? '#fbbf24' : '#64748b'};"></i> Değiştiren: <strong style="color:${info.hasUpdate ? '#fde68a' : '#94a3b8'};">${info.updatedBy}</strong> (${info.updatedAt})</span>
+            </div>
+        `;
+    }
+    return `
+        <div style="margin-top:0.6rem; padding:0.5rem 0.7rem; background:rgba(15,23,42,0.72); border:1px solid rgba(56,189,248,0.22); border-radius:8px; font-size:0.74rem; color:#cbd5e1; display:grid; grid-template-columns:repeat(auto-fit, minmax(210px, 1fr)); gap:0.4rem;">
+            <div style="display:flex; align-items:center; gap:0.4rem;">
+                <i class="fa-solid fa-user-plus" style="color:#38bdf8;"></i>
+                <div>
+                    <span style="color:#94a3b8;">Oluşturan Kişi &amp; Zamanı:</span><br>
+                    <strong style="color:#fff;">${info.createdBy}</strong> <span style="color:#38bdf8;">• ${info.createdAt}</span>
+                </div>
+            </div>
+            <div style="display:flex; align-items:center; gap:0.4rem;">
+                <i class="fa-solid fa-user-pen" style="color:${info.hasUpdate ? '#fbbf24' : '#64748b'};"></i>
+                <div>
+                    <span style="color:#94a3b8;">Değiştiren Kişi &amp; Zamanı:</span><br>
+                    <strong style="color:${info.hasUpdate ? '#fde68a' : '#94a3b8'};">${info.updatedBy}</strong> <span style="color:${info.hasUpdate ? '#fbbf24' : '#64748b'};">• ${info.updatedAt}</span>
+                </div>
+            </div>
+        </div>
+    `;
 }
 
 // ==========================================================================
@@ -3253,6 +3305,7 @@ function renderDashboard() {
                                 <span style="font-size:0.75rem; color:var(--dizsan-light);">• Yönetici: ${a.manager || 'ÖMER EREN'}</span>
                             </div>
                             <div style="font-size:0.83rem; color:#cbd5e1;">${a.title}</div>
+                            ${renderRecordAuditBadge(a, true)}
                         </div>
                         <div class="countdown-pill ${st.type}">${st.shortText || st.badgeText}</div>
                     </div>
@@ -3284,7 +3337,10 @@ function renderDashboard() {
                                 <span style="font-size:0.78rem; color:var(--text-sec);"><i class="fa-regular fa-calendar"></i> ${formatDateTR(m.date)}</span>
                             </div>
                             <div style="font-size:0.8rem; color:#fde68a; margin-bottom:0.35rem;"><i class="fa-solid fa-lock"></i> Katılımcı olmadığınız için toplantı detayı gizlidir. Size atanan aksiyon:</div>
-                            ${myActions.map(ma => `<div style="font-weight:700; color:#fff; font-size:0.85rem;">• ${ma.title} (Termin: ${formatDateTR(ma.dueDate)})</div>`).join('')}
+                            ${myActions.map(ma => `
+                                <div style="font-weight:700; color:#fff; font-size:0.85rem;">• ${ma.title} (Termin: ${formatDateTR(ma.dueDate)})</div>
+                                ${renderRecordAuditBadge(ma, true)}
+                            `).join('')}
                         </div>
                     `;
                 }
@@ -3299,7 +3355,8 @@ function renderDashboard() {
                             <span style="font-size:0.78rem; color:var(--text-sec);"><i class="fa-regular fa-calendar"></i> ${formatDateTR(m.date)} ${m.time}</span>
                         </div>
                         <div style="font-weight:700; color:#fff; font-size:0.92rem; margin-bottom:0.35rem;">${m.title}</div>
-                        <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.78rem; color:var(--text-sec);">
+                        ${renderRecordAuditBadge(m, true)}
+                        <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.78rem; color:var(--text-sec); margin-top:0.45rem;">
                             <span><i class="fa-solid fa-users"></i> ${totalPartCount} Katılımcı${extCount > 0 ? ` (${extCount} Dış)` : ''} • <i class="fa-solid fa-bolt"></i> ${mActions.length} Aksiyon${attCount > 0 ? ` • <i class="fa-solid fa-paperclip"></i> ${attCount} Ek` : ''}</span>
                             <button class="btn btn-secondary btn-sm" style="padding:3px 8px; font-size:0.74rem;" onclick="printMeetingMinutes('${m.id}')">
                                 <i class="fa-solid fa-print"></i> Tutanak Yazdır
@@ -3365,7 +3422,7 @@ function renderMeetings() {
                 if (!actHay.includes(q)) return false;
             } else {
                 const extStr = (m.externalParticipants || []).map(ep => `${ep.name} ${ep.phone || ''} ${ep.company || ''}`).join(' ');
-                const haystack = normalizeTR(`${m.id} ${mType} ${m.title} ${m.notes} ${m.decisions} ${(m.participants || []).join(' ')} ${extStr}`);
+                const haystack = normalizeTR(`${m.id} ${mType} ${m.title} ${m.notes} ${m.decisions} ${(m.participants || []).join(' ')} ${extStr} ${m.createdBy || ''} ${m.updatedBy || ''}`);
                 if (!haystack.includes(q)) return false;
             }
         }
@@ -3423,7 +3480,8 @@ function renderMeetings() {
                                             <span class="countdown-pill ${st.type}">${st.shortText}</span>
                                         </div>
                                         <div style="font-weight:700; color:#fff; font-size:0.9rem; margin-bottom:0.4rem;">${ma.title}</div>
-                                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; font-size:0.78rem; color:var(--text-sec);">
+                                        ${renderRecordAuditBadge(ma, true)}
+                                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; font-size:0.78rem; color:var(--text-sec); margin-top:0.4rem;">
                                             <span>Termin: <strong>${formatDateTR(ma.dueDate)} ${ma.dueTime || '09:00'}</strong></span>
                                             <select class="form-control" style="width:auto; padding:0.25rem 0.5rem; font-size:0.76rem; font-weight:700;" onchange="quickChangeActionStatus('${ma.id}', this.value)">
                                                 <option value="Bekliyor" ${ma.status === 'Bekliyor' ? 'selected' : ''}>⏳ Bekliyor</option>
@@ -3477,7 +3535,9 @@ function renderMeetings() {
                         <span><i class="fa-solid fa-location-dot"></i> ${m.location || 'Merkez'}</span>
                     </div>
 
-                    <div class="meeting-summary-box" style="white-space:pre-line;">
+                    ${renderRecordAuditBadge(m, false)}
+
+                    <div class="meeting-summary-box" style="white-space:pre-line; margin-top:0.55rem;">
                         <strong>${isTraining ? 'Eğitim Konuları & Notlar:' : 'Notlar:'}</strong>\n${m.notes || ''}
                     </div>
 
@@ -3555,7 +3615,7 @@ function renderActions() {
         if (prioF !== 'ALL' && a.priority !== prioF) return false;
         if (statF !== 'ALL' && a.status !== statF) return false;
         if (q) {
-            const hay = normalizeTR(`${a.id} ${a.title} ${a.assignee} ${a.manager || ''} ${a.meetingTitle} ${a.note || ''}`);
+            const hay = normalizeTR(`${a.id} ${a.title} ${a.assignee} ${a.manager || ''} ${a.meetingTitle} ${a.note || ''} ${a.createdBy || ''} ${a.updatedBy || ''}`);
             if (!hay.includes(q)) return false;
         }
         return true;
@@ -3582,6 +3642,7 @@ function renderActions() {
                 <td>
                     <div style="font-weight:600; color:#fff; margin-bottom:3px;">${a.title}</div>
                     ${a.note ? `<div style="font-size:0.76rem; color:var(--text-sec);"><i class="fa-regular fa-comment-dots"></i> ${a.note}</div>` : ''}
+                    ${renderRecordAuditBadge(a, true)}
                 </td>
                 <td>
                     <span class="participant-tag" style="font-weight:600;"><i class="fa-solid fa-user-check" style="color:var(--dizsan-light);"></i> ${a.assignee}</span>
@@ -4345,6 +4406,8 @@ function openMeetingModal(meetingId = null) {
 
         currentDraftAttachments = Array.isArray(m.attachments) ? [...m.attachments] : [];
         renderDraftAttachments();
+        const auditBox = document.getElementById('meeting-audit-info-box');
+        if (auditBox) auditBox.innerHTML = renderRecordAuditBadge(m, false);
     } else {
         setMeetingRecordType('Toplantı');
         document.getElementById('meeting-modal-title').innerHTML = `<i class="fa-solid fa-handshake" style="color:var(--dizsan-light);"></i> Yeni Toplantı / Eğitim ve Tutanak Kaydı`;
@@ -4367,6 +4430,15 @@ function openMeetingModal(meetingId = null) {
 
         currentDraftAttachments = [];
         renderDraftAttachments();
+        const auditBox = document.getElementById('meeting-audit-info-box');
+        if (auditBox) {
+            auditBox.innerHTML = renderRecordAuditBadge({
+                createdBy: currentUser ? currentUser.name : 'ÖMER EREN',
+                createdAt: formatNowTR(),
+                updatedBy: '',
+                updatedAt: ''
+            }, false);
+        }
     }
 
     modal.classList.add('open');
@@ -4471,42 +4543,67 @@ function saveMeeting(event) {
     if (idVal) {
         const idx = appState.meetings.findIndex(m => m.id === idVal);
         if (idx !== -1) {
-            // Mevcut toplantı değiştirildiğinde İSTİSNASIZ olarak Yönetici Ömer Eren onay kuyruğuna düşer
-            if (!Array.isArray(appState.approvalRequests)) appState.approvalRequests = [];
-            appState.approvalRequests.unshift({
-                id: 'ONAY-' + Date.now(),
-                type: 'EDIT_MEETING',
-                status: 'PENDING',
-                meetingId: idVal,
-                meetingTitle: appState.meetings[idx].title,
-                requestedBy: currentUser ? currentUser.name : 'Personel',
-                requestedAt: formatNowTR(),
-                reason: "Toplantı tutanağı güncelleme talebi",
-                proposedData: { recordType, title, dept, date, time, location, participants, externalParticipants, notes, decisions, attachments }
-            });
-            addAuditLog("TOPLANTI", `${currentUser ? currentUser.name : 'Personel'}, ${idVal} kodlu '${title}' kaydı için değiştirme (düzenleme) talebi oluşturdu (Yönetici ÖMER EREN onayı bekleniyor).`);
-            playMeetingCallSound('APPROVAL', `Dikkat! ${title} toplantısı için değiştirme onayı bekleniyor.`);
-            alert(`🛡️ Değiştirme Talebi Yönetici ÖMER EREN Onayına Düşürüldü!\n\n'${title}' (${idVal}) kaydında yaptığınız değişiklikler ekranın üst kısmındaki "🛡️ ÖMER EREN YÖNETİCİ ONAY MERKEZİ"ne düşmüştür. Ömer Eren "✅ Değişikliği Onayla & Uygula" butonuna bastığında değişiklikler otomatik olarak uygulanacaktır.`);
+            const editorName = currentUser ? currentUser.name : 'ÖMER EREN';
+            const editNow = formatNowTR();
+            if (isOmerEren(currentUser)) {
+                appState.meetings[idx] = {
+                    ...appState.meetings[idx],
+                    recordType, title, dept, date, time, location, participants, externalParticipants, notes, decisions, attachments,
+                    approvalStatus: 'Onaylandı',
+                    omerApprovedStamp: true,
+                    approvedBy: 'ÖMER EREN',
+                    approvedAt: editNow,
+                    updatedBy: editorName,
+                    updatedAt: editNow
+                };
+                addAuditLog("TOPLANTI", `${idVal} kodlu '${title}' kaydı Yönetici ÖMER EREN tarafından güncellendi.`);
+                playMeetingCallSound('INVITE');
+                alert(`✅ '${title}' (${idVal}) kaydı Yönetici ÖMER EREN yetkisiyle güncellendi!\n\n✏️ Değiştiren: ${editorName}\n🕒 Değiştirilme Zamanı: ${editNow}`);
+            } else {
+                // Mevcut toplantı personel tarafından değiştirildiğinde Yönetici Ömer Eren onay kuyruğuna düşer
+                if (!Array.isArray(appState.approvalRequests)) appState.approvalRequests = [];
+                appState.approvalRequests.unshift({
+                    id: 'ONAY-' + Date.now(),
+                    type: 'EDIT_MEETING',
+                    status: 'PENDING',
+                    meetingId: idVal,
+                    meetingTitle: appState.meetings[idx].title,
+                    requestedBy: editorName,
+                    requestedAt: editNow,
+                    reason: "Toplantı tutanağı güncelleme talebi",
+                    proposedData: {
+                        recordType, title, dept, date, time, location, participants, externalParticipants, notes, decisions, attachments,
+                        updatedBy: editorName,
+                        updatedAt: editNow
+                    }
+                });
+                addAuditLog("TOPLANTI", `${editorName}, ${idVal} kodlu '${title}' kaydı için değiştirme (düzenleme) talebi oluşturdu (Yönetici ÖMER EREN onayı bekleniyor).`);
+                playMeetingCallSound('APPROVAL', `Dikkat! ${title} toplantısı için değiştirme onayı bekleniyor.`);
+                alert(`🛡️ Değiştirme Talebi Yönetici ÖMER EREN Onayına Düşürüldü!\n\n'${title}' (${idVal}) kaydında yaptığınız değişiklikler ekranın üst kısmındaki "🛡️ ÖMER EREN YÖNETİCİ ONAY MERKEZİ"ne düşmüştür. Ömer Eren "✅ Değişikliği Onayla & Uygula" butonuna bastığında değişiklikler otomatik olarak uygulanacaktır.`);
+            }
         }
     } else {
         const nextNum = String(appState.meetings.length + 1).padStart(3, '0');
         const prefix = recordType === 'Eğitim' ? 'EGT' : 'TOP';
         targetMeetingId = `${prefix}-2026-${nextNum}`;
-        const approvalStatus = 'Yönetici Onayı Bekliyor';
+        const approvalStatus = isOmerEren(currentUser) ? 'Onaylandı' : 'Yönetici Onayı Bekliyor';
+        const nowStr = formatNowTR();
         const newMeeting = {
             id: targetMeetingId,
             recordType, title, dept, date, time, location, participants, externalParticipants, notes, decisions, attachments,
             approvalStatus,
-            omerApprovedStamp: false,
-            approvedBy: '',
-            approvedAt: '',
+            omerApprovedStamp: isOmerEren(currentUser),
+            approvedBy: isOmerEren(currentUser) ? 'ÖMER EREN' : '',
+            approvedAt: isOmerEren(currentUser) ? nowStr : '',
             createdBy: currentUser ? currentUser.name : "ÖMER EREN",
-            createdAt: formatNowTR()
+            createdAt: nowStr,
+            updatedBy: '',
+            updatedAt: ''
         };
         appState.meetings.unshift(newMeeting);
         addAuditLog("TOPLANTI", `${targetMeetingId} kodlu yeni ${recordType.toLowerCase()} ('${title}') oluşturuldu (${approvalStatus}). Katılımcı: ${participants.length} personel${externalParticipants.length > 0 ? ` + ${externalParticipants.length} dış katılımcı` : ''}.`);
-        playMeetingCallSound('APPROVAL', `Dikkat! ${title} başlıklı yeni ${recordType.toLowerCase()} kaydedildi ve Ömer Eren yönetici onayına düştü.`);
-        alert(`🛡️ ${recordType} Kaydedildi ve Yönetici ÖMER EREN Onayına Düşürüldü!\n\n📌 Kayıt Kodu: ${targetMeetingId}\n📌 Başlık: ${title}\n📌 Durum: ⏳ Yönetici Onayı Bekliyor\n\nKayıt "🛡️ ÖMER EREN YÖNETİCİ ONAY MERKEZİ"ne düşmüştür. Ömer Eren tarafından onaylanabilir.`);
+        playMeetingCallSound('APPROVAL', `Dikkat! ${title} başlıklı yeni ${recordType.toLowerCase()} kaydedildi.`);
+        alert(`🛡️ ${recordType} Kaydedildi!\n\n📌 Kayıt Kodu: ${targetMeetingId}\n📌 Başlık: ${title}\n👤 Oluşturan: ${newMeeting.createdBy} (${newMeeting.createdAt})\n📌 Durum: ${approvalStatus}`);
     }
 
     const inlineRows = document.querySelectorAll('#inline-actions-container > div');
@@ -4517,6 +4614,7 @@ function saveMeeting(event) {
         const aDueRaw = r.querySelector('.inline-action-duedate')?.value;
         if (aTitle) {
             const newActId = `AKS-${100 + appState.actions.length + 1}`;
+            const actCreatedNow = formatNowTR();
             appState.actions.unshift({
                 id: newActId,
                 meetingId: targetMeetingId,
@@ -4532,7 +4630,9 @@ function saveMeeting(event) {
                 remindOneDayBefore: true,
                 remindSameDay: true,
                 createdBy: currentUser ? currentUser.name : "ÖMER EREN",
-                updatedAt: formatNowTR()
+                createdAt: actCreatedNow,
+                updatedBy: '',
+                updatedAt: ''
             });
             addAuditLog("AKSİYON", `${newActId} kodlu aksiyon '${aAssignee}' personeline ve Yönetici ÖMER EREN'e hatırlatıcılı olarak atandı (Termin: ${formatDateTR(aDueRaw)}).`);
         }
@@ -4590,6 +4690,8 @@ function openActionModal(actionId = null) {
         document.getElementById('action-duetime-input').value = a.dueTime || '09:00';
         document.getElementById('action-status-select').value = a.status || 'Bekliyor';
         document.getElementById('action-note-input').value = a.note || '';
+        const auditBox = document.getElementById('action-audit-info-box');
+        if (auditBox) auditBox.innerHTML = renderRecordAuditBadge(a, false);
     } else {
         document.getElementById('action-modal-title').innerHTML = `<i class="fa-solid fa-stopwatch" style="color:#fbbf24;"></i> Yeni Aksiyon & Otomatik Hatırlatıcı Tanımla`;
         document.getElementById('action-id').value = '';
@@ -4601,6 +4703,15 @@ function openActionModal(actionId = null) {
         document.getElementById('action-duetime-input').value = '09:00';
         document.getElementById('action-status-select').value = 'Bekliyor';
         document.getElementById('action-note-input').value = '';
+        const auditBox = document.getElementById('action-audit-info-box');
+        if (auditBox) {
+            auditBox.innerHTML = renderRecordAuditBadge({
+                createdBy: currentUser ? currentUser.name : 'ÖMER EREN',
+                createdAt: formatNowTR(),
+                updatedBy: '',
+                updatedAt: ''
+            }, false);
+        }
     }
 
     modal.classList.add('open');
@@ -4629,24 +4740,31 @@ function saveAction(event) {
     if (idVal) {
         const idx = appState.actions.findIndex(a => a.id === idVal);
         if (idx !== -1) {
+            const existing = appState.actions[idx];
             appState.actions[idx] = {
-                ...appState.actions[idx],
+                ...existing,
                 meetingId, meetingTitle, title, assignee, manager, priority, dueDate, dueTime, status, note,
                 remindOneDayBefore: true,
                 remindSameDay: true,
+                createdBy: existing.createdBy || "ÖMER EREN",
+                createdAt: existing.createdAt || existing.updatedAt || formatNowTR(),
+                updatedBy: currentUser ? currentUser.name : "ÖMER EREN",
                 updatedAt: formatNowTR()
             };
-            addAuditLog("AKSİYON", `${idVal} aksiyonu güncellendi (Sorumlu: ${assignee}, Yönetici: ${manager}, Durum: ${status}, Termin: ${formatDateTR(dueDate)}).`);
+            addAuditLog("AKSİYON", `${idVal} aksiyonu ${currentUser ? currentUser.name : 'ÖMER EREN'} tarafından güncellendi (Sorumlu: ${assignee}, Yönetici: ${manager}, Durum: ${status}, Termin: ${formatDateTR(dueDate)}).`);
         }
     } else {
         const newId = `AKS-${100 + appState.actions.length + 1}`;
+        const nowStr = formatNowTR();
         appState.actions.unshift({
             id: newId,
             meetingId, meetingTitle, title, assignee, manager, priority, dueDate, dueTime, status, note,
             remindOneDayBefore: true,
             remindSameDay: true,
             createdBy: currentUser ? currentUser.name : "ÖMER EREN",
-            updatedAt: formatNowTR()
+            createdAt: nowStr,
+            updatedBy: '',
+            updatedAt: ''
         });
         addAuditLog("AKSİYON", `${newId} aksiyonu tanımlandı: '${title}' -> Sorumlu: ${assignee} | Yönetici: ${manager} (1 gün önce ve ${formatDateTR(dueDate)} günü hatırlatılacak).`);
     }
@@ -4675,8 +4793,11 @@ function quickChangeActionStatus(actionId, newStatus) {
     }
     const oldStatus = a.status;
     a.status = newStatus;
+    if (!a.createdAt) a.createdAt = a.updatedAt || formatNowTR();
+    if (!a.createdBy) a.createdBy = 'ÖMER EREN';
+    a.updatedBy = currentUser ? currentUser.name : 'ÖMER EREN';
     a.updatedAt = formatNowTR();
-    addAuditLog("AKSİYON", `${a.id} (${a.assignee}) aksiyon durumu '${oldStatus}' -> '${newStatus}' olarak güncellendi.`);
+    addAuditLog("AKSİYON", `${a.id} (${a.assignee}) aksiyon durumu '${oldStatus}' -> '${newStatus}' olarak ${a.updatedBy} tarafından güncellendi.`);
     dispatchActionProgressPush(a, oldStatus, newStatus);
     syncToServer();
     renderAll();
@@ -4877,6 +4998,7 @@ function printMeetingMinutes(meetingId) {
     const extList = m.externalParticipants || [];
     const attList = m.attachments || [];
     const printArea = document.getElementById('print-minutes-area');
+    const mAudit = getRecordAuditInfo(m);
 
     printArea.innerHTML = `
         <div style="border: 2px solid #000; padding: 20px; font-family: Arial, sans-serif; color: #000;">
@@ -4890,12 +5012,13 @@ function printMeetingMinutes(meetingId) {
                         </p>
                     </div>
                 </div>
-                <div style="text-align:right; font-size:12px;">
+                <div style="text-align:right; font-size:11.5px; line-height:1.45;">
                     <div><strong>Kayıt Türü:</strong> ${isTraining ? '🎓 EĞİTİM' : '🤝 TOPLANTI'}</div>
                     <div><strong>Tutanak No:</strong> ${m.id}</div>
                     <div><strong>Tarih / Saat:</strong> ${formatDateTR(m.date)} - ${m.time}</div>
-                    <div><strong>Departman:</strong> ${m.dept}</div>
-                    <div><strong>Yer:</strong> ${m.location || 'Merkez'}</div>
+                    <div><strong>Departman / Yer:</strong> ${m.dept} / ${m.location || 'Merkez'}</div>
+                    <div><strong>Oluşturan:</strong> ${mAudit.createdBy} (${mAudit.createdAt})</div>
+                    <div><strong>Değiştiren:</strong> ${mAudit.updatedBy} (${mAudit.updatedAt})</div>
                 </div>
             </div>
 
@@ -4945,7 +5068,7 @@ function printMeetingMinutes(meetingId) {
             </div>` : ''}
 
             <h3 style="font-size:14px; margin:0 0 8px;">Atanan Aksiyonlar ve Termin Tarihleri</h3>
-            <table style="width:100%; border-collapse:collapse; font-size:11.5px; margin-bottom:22px;">
+            <table style="width:100%; border-collapse:collapse; font-size:11px; margin-bottom:22px;">
                 <thead>
                     <tr style="background:#e2e8f0;">
                         <th style="border:1px solid #94a3b8; padding:6px;">Kod</th>
@@ -4953,20 +5076,27 @@ function printMeetingMinutes(meetingId) {
                         <th style="border:1px solid #94a3b8; padding:6px;">Sorumlu Personel</th>
                         <th style="border:1px solid #94a3b8; padding:6px;">Yönetici</th>
                         <th style="border:1px solid #94a3b8; padding:6px;">Termin Tarihi</th>
+                        <th style="border:1px solid #94a3b8; padding:6px;">Oluşturan / Değiştiren</th>
                         <th style="border:1px solid #94a3b8; padding:6px;">Durum</th>
                     </tr>
                 </thead>
                 <tbody>
-                    ${mActions.length > 0 ? mActions.map(a => `
+                    ${mActions.length > 0 ? mActions.map(a => {
+                        const aAudit = getRecordAuditInfo(a);
+                        return `
                         <tr>
                             <td style="border:1px solid #94a3b8; padding:6px;">${a.id}</td>
                             <td style="border:1px solid #94a3b8; padding:6px;">${a.title}</td>
                             <td style="border:1px solid #94a3b8; padding:6px; font-weight:bold;">${a.assignee}</td>
                             <td style="border:1px solid #94a3b8; padding:6px;">${a.manager || 'ÖMER EREN'}</td>
                             <td style="border:1px solid #94a3b8; padding:6px;">${formatDateTR(a.dueDate)} ${a.dueTime || ''}</td>
+                            <td style="border:1px solid #94a3b8; padding:6px; font-size:10px;">
+                                Oluşturan: ${aAudit.createdBy} (${aAudit.createdAt})<br>
+                                Değiştiren: ${aAudit.updatedBy} (${aAudit.updatedAt})
+                            </td>
                             <td style="border:1px solid #94a3b8; padding:6px;">${a.status}</td>
                         </tr>
-                    `).join('') : `<tr><td colspan="6" style="border:1px solid #94a3b8; padding:8px; text-align:center;">Bu oturuma ait aksiyon kaydı bulunmamaktadır.</td></tr>`}
+                    `;}).join('') : `<tr><td colspan="7" style="border:1px solid #94a3b8; padding:8px; text-align:center;">Bu oturuma ait aksiyon kaydı bulunmamaktadır.</td></tr>`}
                 </tbody>
             </table>
 
@@ -5001,10 +5131,11 @@ function printMeetingMinutes(meetingId) {
 }
 
 function exportAllDataExcelCSV() {
-    let csv = "\uFEFFAksiyon Kodu;Toplantı Kodu;Toplantı Başlığı;Aksiyon Tanımı;Sorumlu Personel;Bilgilendirilen Yönetici;Öncelik;Termin Tarihi;Saat;Durum;Not\n";
+    let csv = "\uFEFFAksiyon Kodu;Toplantı Kodu;Toplantı Başlığı;Aksiyon Tanımı;Sorumlu Personel;Bilgilendirilen Yönetici;Öncelik;Termin Tarihi;Saat;Durum;Not;Oluşturan Kişi;Oluşturulma Tarihi ve Saati;Değiştiren Kişi;Değiştirilme Tarihi ve Saati\n";
     appState.actions.forEach(a => {
         const clean = s => String(s || '').replace(/;/g, ',').replace(/\n/g, ' ');
-        csv += `${clean(a.id)};${clean(a.meetingId)};${clean(a.meetingTitle)};${clean(a.title)};${clean(a.assignee)};${clean(a.manager || 'ÖMER EREN')};${clean(a.priority)};${formatDateTR(a.dueDate)};${clean(a.dueTime)};${clean(a.status)};${clean(a.note)}\n`;
+        const aAudit = getRecordAuditInfo(a);
+        csv += `${clean(a.id)};${clean(a.meetingId)};${clean(a.meetingTitle)};${clean(a.title)};${clean(a.assignee)};${clean(a.manager || 'ÖMER EREN')};${clean(a.priority)};${formatDateTR(a.dueDate)};${clean(a.dueTime)};${clean(a.status)};${clean(a.note)};${clean(aAudit.createdBy)};${clean(aAudit.createdAt)};${clean(aAudit.updatedBy)};${clean(aAudit.updatedAt)}\n`;
     });
 
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -5404,7 +5535,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 12000);
 
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('sw.js?v=1.7.1').then(reg => {
+        navigator.serviceWorker.register('sw.js?v=1.8.2').then(reg => {
             try { reg.update(); } catch (e) {}
             syncUserAndStateToServiceWorker();
         }).catch(() => {});
