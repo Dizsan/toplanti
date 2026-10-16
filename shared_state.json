@@ -1,6 +1,6 @@
 {
-  "version": "v1.8.3",
-  "updatedAt": "2026-10-16T13:00:54.978286",
+  "version": "v1.7.1",
+  "updatedAt": "2026-10-16T16:12:05.748Z",
   "users": [
     {
       "order": 0,
@@ -1021,8 +1021,21 @@
       "resolvedBy": "ÖMER EREN"
     }
   ],
-  "stateRevision": 47,
+  "stateRevision": 48,
   "pushSubscriptions": [
+    {
+      "id": "SUB-1792167125747-335",
+      "username": "ömer",
+      "userFullName": "ÖMER EREN",
+      "endpoint": "https://fcm.googleapis.com/fcm/send/czHstmU0E04:APA91bEcPBWukeXhqmz-abb3eFGJGZU3Ya8_39aQyIyvGxJiAgULb-oYikVCstxoWjROt6NnZw2VnXc4xVIj790ZXburXCI-Ly7kJgGIkR_98LPADKR5GxArGYNW9mg2kIvWGmnLLcWI",
+      "p256dh": "BLXapvNoox9KVZi8sSOVZUWUUNy2WX-1EeC0Mv4qO8gLnPMNjgVZZXGqXhRti_0glu77gkhPhvKJ-Qnear4pSmY",
+      "auth": "6TkpmQYtbx98qUNqpEd17w",
+      "browser": "Samsung Internet",
+      "platform": "Android",
+      "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/30.0 Chrome/143.0.0.0 Mobile Safari/537.36",
+      "isActive": true,
+      "updatedAt": "16.10.2026 19:12:05"
+    },
     {
       "id": "SUB-1792129863940-504",
       "username": "fatih.kiroglu",
@@ -1073,7 +1086,7 @@
       "platform": "Android",
       "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/30.0 Chrome/143.0.0.0 Mobile Safari/537.36",
       "isActive": true,
-      "updatedAt": "15.10.2026 18:57:05"
+      "updatedAt": "16.10.2026 13:06:50"
     }
   ],
   "pushTestRequests": [
