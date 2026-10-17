@@ -1,6 +1,6 @@
 {
-  "version": "v1.7.1",
-  "updatedAt": "2026-10-17T20:47:13.427Z",
+  "version": "v1.8.3",
+  "updatedAt": "2026-10-16T13:00:54.978286",
   "users": [
     {
       "order": 0,
@@ -223,70 +223,6 @@
   "meetings": [],
   "actions": [],
   "logs": [
-    {
-      "id": "LOG-1792270033004",
-      "timestamp": "17.10.2026 23:47:13",
-      "user": "ÖMER EREN",
-      "category": "TOPLANTI",
-      "detail": "TOP-2026-001 ('Deneme') silme talebi (ÖMER EREN) Yönetici ÖMER EREN onayıyla gerçekleştirildi ve kayıt silindi.",
-      "platform": "Android / Mobil"
-    },
-    {
-      "id": "LOG-1792270032516",
-      "timestamp": "17.10.2026 23:47:12",
-      "user": "ÖMER EREN",
-      "category": "TOPLANTI",
-      "detail": "TOP-2026-001 ('Deneme') silme talebi (ÖMER EREN) Yönetici ÖMER EREN onayıyla gerçekleştirildi ve kayıt silindi.",
-      "platform": "Android / Mobil"
-    },
-    {
-      "id": "LOG-1792270031888",
-      "timestamp": "17.10.2026 23:47:11",
-      "user": "ÖMER EREN",
-      "category": "TOPLANTI",
-      "detail": "TOP-2026-001 ('Deneme') silme talebi (ÖMER EREN) Yönetici ÖMER EREN onayıyla gerçekleştirildi ve kayıt silindi.",
-      "platform": "Android / Mobil"
-    },
-    {
-      "id": "LOG-1792270017511",
-      "timestamp": "17.10.2026 23:46:57",
-      "user": "ÖMER EREN",
-      "category": "TOPLANTI",
-      "detail": "ÖMER EREN, TOP-2026-001 kodlu 'Deneme' kaydı için SİLME ONAY TALEBİ gönderdi (Yönetici ÖMER EREN onayı bekleniyor).",
-      "platform": "Android / Mobil"
-    },
-    {
-      "id": "LOG-1792270014745",
-      "timestamp": "17.10.2026 23:46:54",
-      "user": "ÖMER EREN",
-      "category": "TOPLANTI",
-      "detail": "ÖMER EREN, TOP-2026-001 kodlu 'Deneme' kaydı için SİLME ONAY TALEBİ gönderdi (Yönetici ÖMER EREN onayı bekleniyor).",
-      "platform": "Android / Mobil"
-    },
-    {
-      "id": "LOG-1792270009514",
-      "timestamp": "17.10.2026 23:46:49",
-      "user": "ÖMER EREN",
-      "category": "TOPLANTI",
-      "detail": "ÖMER EREN, TOP-2026-001 kodlu 'Deneme' kaydı için SİLME ONAY TALEBİ gönderdi (Yönetici ÖMER EREN onayı bekleniyor).",
-      "platform": "Android / Mobil"
-    },
-    {
-      "id": "LOG-1792241207325",
-      "timestamp": "17.10.2026 15:46:47",
-      "user": "HAKAN AYDIN",
-      "category": "GİRİŞ / ÇIKIŞ",
-      "detail": "HAKAN AYDIN (Servis Müdürü) sisteme giriş yaptı.",
-      "platform": "iOS / Mobil"
-    },
-    {
-      "id": "LOG-1792241106470",
-      "timestamp": "17.10.2026 15:45:06",
-      "user": "HAKAN AYDIN",
-      "category": "GİRİŞ / ÇIKIŞ",
-      "detail": "HAKAN AYDIN sistemden güvenli çıkış yaptı.",
-      "platform": "iOS / Mobil"
-    },
     {
       "id": "LOG-1792129826068",
       "timestamp": "16.10.2026 08:50:26",
@@ -1103,47 +1039,8 @@
       "resolvedBy": "ÖMER EREN"
     }
   ],
-  "stateRevision": 71,
+  "stateRevision": 47,
   "pushSubscriptions": [
-    {
-      "id": "SUB-1792240978719-94",
-      "username": "ömer",
-      "userFullName": "ÖMER EREN",
-      "endpoint": "https://fcm.googleapis.com/fcm/send/dDb9Wsd_C6I:APA91bGTqmgZ_Nr6dTO0U-OwChnTkzplNJxz2VZlLUa360WKlJGiQvA85fkwKoSYNO630tMypHarbhPbYklcWBQ6iLwcvaBpwCHZtzKIRVh3vPpDiWOvqzYV5-OALNiBKiihkvBD3Gs6",
-      "p256dh": "BFn5XrOh_dWyOuNMj3wvaPqddZqFHylnKv4yXY_ZRIt71qqfUjJ_8P0xl6wT59cnKYUTUXpu1_dPpF_0sBkN4i4",
-      "auth": "tyACla9mvcbBD_538W2sHQ",
-      "browser": "Samsung Internet",
-      "platform": "Android",
-      "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/30.0 Chrome/143.0.0.0 Mobile Safari/537.36",
-      "isActive": true,
-      "updatedAt": "17.10.2026 15:42:58"
-    },
-    {
-      "id": "SUB-1792197315193-680",
-      "username": "ömer",
-      "userFullName": "ÖMER EREN",
-      "endpoint": "https://fcm.googleapis.com/fcm/send/exVzUVvgqcA:APA91bGLVdPBf-A2xr6eN7sO59tg-QNbwqiLhCXAIm7Nk29S3sciGHlgkepBa5J1Gr38QfzQvORNHL3YO1qlksQNwarI7gdrQUJq1r4oLW3753b0dVmcCofUHaHIXxS4AWTFhfvTbwX3",
-      "p256dh": "BE7grWkFf4w9LaxTUku21OU4m1ZnEIomtur30RUki3IVPnRY03Uccodj6Q4J_rSW1ONxzC_c5P6mAMx6kXxWD_U",
-      "auth": "l-C65BT04mz1xj_d34ukpQ",
-      "browser": "Samsung Internet",
-      "platform": "Android",
-      "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/30.0 Chrome/143.0.0.0 Mobile Safari/537.36",
-      "isActive": true,
-      "updatedAt": "17.10.2026 13:24:06"
-    },
-    {
-      "id": "SUB-1792167125747-335",
-      "username": "ömer",
-      "userFullName": "ÖMER EREN",
-      "endpoint": "https://fcm.googleapis.com/fcm/send/czHstmU0E04:APA91bEcPBWukeXhqmz-abb3eFGJGZU3Ya8_39aQyIyvGxJiAgULb-oYikVCstxoWjROt6NnZw2VnXc4xVIj790ZXburXCI-Ly7kJgGIkR_98LPADKR5GxArGYNW9mg2kIvWGmnLLcWI",
-      "p256dh": "BLXapvNoox9KVZi8sSOVZUWUUNy2WX-1EeC0Mv4qO8gLnPMNjgVZZXGqXhRti_0glu77gkhPhvKJ-Qnear4pSmY",
-      "auth": "6TkpmQYtbx98qUNqpEd17w",
-      "browser": "Samsung Internet",
-      "platform": "Android",
-      "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/30.0 Chrome/143.0.0.0 Mobile Safari/537.36",
-      "isActive": true,
-      "updatedAt": "16.10.2026 19:14:34"
-    },
     {
       "id": "SUB-1792129863940-504",
       "username": "fatih.kiroglu",

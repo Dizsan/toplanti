@@ -700,10 +700,9 @@ function normalizeTR(str) {
 function renderQuickUserChips() {
     const container = document.getElementById('quick-user-list');
     if (!container) return;
-    container.innerHTML = appState.users.map(u => `
-        <button type="button" class="user-chip" onclick="fillLoginQuick('${escapeHtml(u.username)}')" title="${escapeHtml(u.dept)}">
-            <i class="fa-solid ${isOmerEren(u) ? 'fa-crown' : 'fa-user-check'}" style="color:${isOmerEren(u) ? '#f59e0b' : '#38bdf8'}; margin-right:3px;"></i>
-            ${escapeHtml(u.name)}
+    container.innerHTML = appState.users.filter(u => isOmerEren(u)).map(u => `
+        <button type="button" class="user-chip" onclick="fillLoginQuick('${u.username}')">
+            ${u.name} (${u.dept})
         </button>
     `).join('');
 }
@@ -782,35 +781,12 @@ function handleLogin(event) {
         return;
     }
 
-    const matchedUser = appState.users.find(u => {
-        const userMatch = normalizeTR(u.username) === uVal || normalizeTR(u.name) === uVal || normalizeTR(u.email) === uVal;
-        if (!userMatch) return false;
-        if (rememberedStamp) {
-            return u.pinStamp === rememberedStamp;
-        }
-        return verifyUserPin(u, pVal);
-    });
-
-    if (!matchedUser) {
-        const newCount = (attemptState.count || 0) + 1;
-        if (newCount >= 5) {
-            setLoginAttemptState({ count: 0, lockUntil: Date.now() + 60 * 1000 });
-            errBox.style.display = 'block';
-            errBox.innerHTML = '<i class="fa-solid fa-lock"></i> 5 kez hatalı şifre girildiği için giriş 60 saniye süreyle korumaya alındı.';
-        } else {
-            setLoginAttemptState({ count: newCount, lockUntil: 0 });
-            errBox.style.display = 'block';
-            errBox.innerHTML = `<i class="fa-solid fa-circle-exclamation"></i> Kullanıcı adı veya şifre hatalı! (${newCount}/5 deneme). Şifrenizi unuttuysanız <b>"Şifremi Unuttum?"</b> bağlantısına tıklayarak kurumsal e-postanıza sıfırlama linki gönderebilirsiniz.`;
-        }
-        return;
-    }
-
-    if (!getToplantiUserPerms(matchedUser).allowed) {
+    if (!isOmerEren(matchedUser)) {
         errBox.style.display = 'block';
-        errBox.innerHTML = '<i class="fa-solid fa-ban"></i> Bu uygulamayı görüntüleme yetkiniz bulunmamaktadır. Yönetici ile iletişime geçiniz.';
+        errBox.innerHTML = '<i class="fa-solid fa-lock"></i> Sistem bakım ve geliştirme modundadır. Şu an yalnızca <b>ÖMER EREN</b> erişim sağlayabilir; diğer kullanıcıların erişimi geçici olarak kapatılmıştır.';
         return;
     }
-    setLoginAttemptState({ count: 0, lockUntil: 0 });
+
     errBox.style.display = 'none';
     currentUser = matchedUser;
 
@@ -847,8 +823,10 @@ function handleLogin(event) {
 
 function applyAuthenticatedUser() {
     const overlay = document.getElementById('login-overlay');
-    if (currentUser && !getToplantiUserPerms(currentUser).allowed) {
+    if (currentUser && !isOmerEren(currentUser)) {
         currentUser = null;
+        localStorage.removeItem(STORAGE_KEY_SESSION);
+        sessionStorage.removeItem(STORAGE_KEY_SESSION);
     }
     if (!currentUser) {
         overlay.classList.remove('hidden');
