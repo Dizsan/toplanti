@@ -1,6 +1,6 @@
 {
   "version": "v1.7.1",
-  "updatedAt": "2026-10-17T12:45:06.473Z",
+  "updatedAt": "2026-10-17T12:46:47.325Z",
   "users": [
     {
       "order": 0,
@@ -248,6 +248,14 @@
   ],
   "actions": [],
   "logs": [
+    {
+      "id": "LOG-1792241207325",
+      "timestamp": "17.10.2026 15:46:47",
+      "user": "HAKAN AYDIN",
+      "category": "GİRİŞ / ÇIKIŞ",
+      "detail": "HAKAN AYDIN (Servis Müdürü) sisteme giriş yaptı.",
+      "platform": "iOS / Mobil"
+    },
     {
       "id": "LOG-1792241106470",
       "timestamp": "17.10.2026 15:45:06",
@@ -1030,7 +1038,7 @@
       "resolvedBy": "ÖMER EREN"
     }
   ],
-  "stateRevision": 54,
+  "stateRevision": 55,
   "pushSubscriptions": [
     {
       "id": "SUB-1792240978719-94",
@@ -1134,7 +1142,7 @@
       "platform": "iOS (Apple iPhone)",
       "userAgent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.1 Mobile/15E148 Safari/604.1",
       "isActive": true,
-      "updatedAt": "17.10.2026 15:44:21"
+      "updatedAt": "17.10.2026 15:46:47"
     }
   ],
   "pushTestRequests": [
