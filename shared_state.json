@@ -1,6 +1,6 @@
 {
   "version": "v1.7.1",
-  "updatedAt": "2026-10-17T12:44:46.323Z",
+  "updatedAt": "2026-10-17T12:45:06.473Z",
   "users": [
     {
       "order": 0,
@@ -248,6 +248,14 @@
   ],
   "actions": [],
   "logs": [
+    {
+      "id": "LOG-1792241106470",
+      "timestamp": "17.10.2026 15:45:06",
+      "user": "HAKAN AYDIN",
+      "category": "GİRİŞ / ÇIKIŞ",
+      "detail": "HAKAN AYDIN sistemden güvenli çıkış yaptı.",
+      "platform": "iOS / Mobil"
+    },
     {
       "id": "LOG-1792129826068",
       "timestamp": "16.10.2026 08:50:26",
@@ -1022,7 +1030,7 @@
       "resolvedBy": "ÖMER EREN"
     }
   ],
-  "stateRevision": 53,
+  "stateRevision": 54,
   "pushSubscriptions": [
     {
       "id": "SUB-1792240978719-94",
