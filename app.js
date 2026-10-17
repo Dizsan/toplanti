@@ -573,7 +573,7 @@ function normalizeTR(str) {
 function renderQuickUserChips() {
     const container = document.getElementById('quick-user-list');
     if (!container) return;
-    container.innerHTML = appState.users.map(u => `
+    container.innerHTML = appState.users.filter(u => isOmerEren(u)).map(u => `
         <button type="button" class="user-chip" onclick="fillLoginQuick('${u.username}')">
             ${u.name} (${u.dept})
         </button>
@@ -622,6 +622,12 @@ function handleLogin(event) {
         return;
     }
 
+    if (!isOmerEren(matchedUser)) {
+        errBox.style.display = 'block';
+        errBox.innerHTML = '<i class="fa-solid fa-lock"></i> Sistem bakım ve geliştirme modundadır. Şu an yalnızca <b>ÖMER EREN</b> erişim sağlayabilir; diğer kullanıcıların erişimi geçici olarak kapatılmıştır.';
+        return;
+    }
+
     errBox.style.display = 'none';
     currentUser = matchedUser;
 
@@ -646,6 +652,11 @@ function handleLogin(event) {
 
 function applyAuthenticatedUser() {
     const overlay = document.getElementById('login-overlay');
+    if (currentUser && !isOmerEren(currentUser)) {
+        currentUser = null;
+        localStorage.removeItem(STORAGE_KEY_SESSION);
+        sessionStorage.removeItem(STORAGE_KEY_SESSION);
+    }
     if (!currentUser) {
         overlay.classList.remove('hidden');
         loadRememberedCredentials();
