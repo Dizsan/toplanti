@@ -1,6 +1,6 @@
 {
   "version": "v1.7.1",
-  "updatedAt": "2026-10-17T20:47:11.896Z",
+  "updatedAt": "2026-10-17T20:47:13.427Z",
   "users": [
     {
       "order": 0,
@@ -223,6 +223,22 @@
   "meetings": [],
   "actions": [],
   "logs": [
+    {
+      "id": "LOG-1792270033004",
+      "timestamp": "17.10.2026 23:47:13",
+      "user": "ÖMER EREN",
+      "category": "TOPLANTI",
+      "detail": "TOP-2026-001 ('Deneme') silme talebi (ÖMER EREN) Yönetici ÖMER EREN onayıyla gerçekleştirildi ve kayıt silindi.",
+      "platform": "Android / Mobil"
+    },
+    {
+      "id": "LOG-1792270032516",
+      "timestamp": "17.10.2026 23:47:12",
+      "user": "ÖMER EREN",
+      "category": "TOPLANTI",
+      "detail": "TOP-2026-001 ('Deneme') silme talebi (ÖMER EREN) Yönetici ÖMER EREN onayıyla gerçekleştirildi ve kayıt silindi.",
+      "platform": "Android / Mobil"
+    },
     {
       "id": "LOG-1792270031888",
       "timestamp": "17.10.2026 23:47:11",
@@ -1053,22 +1069,26 @@
     {
       "id": "ONAY-1792270014745",
       "type": "DELETE_MEETING",
-      "status": "PENDING",
+      "status": "APPROVED",
       "meetingId": "TOP-2026-001",
       "meetingTitle": "Deneme",
       "requestedBy": "ÖMER EREN",
       "requestedAt": "17.10.2026 23:46:54",
-      "reason": "Kayıt silme talebi"
+      "reason": "Kayıt silme talebi",
+      "resolvedAt": "17.10.2026 23:47:12",
+      "resolvedBy": "ÖMER EREN"
     },
     {
       "id": "ONAY-1792270009514",
       "type": "DELETE_MEETING",
-      "status": "PENDING",
+      "status": "APPROVED",
       "meetingId": "TOP-2026-001",
       "meetingTitle": "Deneme",
       "requestedBy": "ÖMER EREN",
       "requestedAt": "17.10.2026 23:46:49",
-      "reason": "Kayıt silme talebi"
+      "reason": "Kayıt silme talebi",
+      "resolvedAt": "17.10.2026 23:47:13",
+      "resolvedBy": "ÖMER EREN"
     },
     {
       "id": "ONAY-1792074546010",
@@ -1083,7 +1103,7 @@
       "resolvedBy": "ÖMER EREN"
     }
   ],
-  "stateRevision": 66,
+  "stateRevision": 71,
   "pushSubscriptions": [
     {
       "id": "SUB-1792240978719-94",
