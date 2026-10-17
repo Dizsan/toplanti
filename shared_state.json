@@ -1,6 +1,6 @@
 {
   "version": "v1.7.1",
-  "updatedAt": "2026-10-17T20:46:51.955Z",
+  "updatedAt": "2026-10-17T20:46:54.753Z",
   "users": [
     {
       "order": 0,
@@ -882,6 +882,14 @@
   "pushPilotMode": "ALL_USERS",
   "logs": [
     {
+      "id": "LOG-1792270014745",
+      "timestamp": "17.10.2026 23:46:54",
+      "user": "ÖMER EREN",
+      "category": "TOPLANTI",
+      "detail": "ÖMER EREN, TOP-2026-001 kodlu 'Deneme' kaydı için SİLME ONAY TALEBİ gönderdi (Yönetici ÖMER EREN onayı bekleniyor).",
+      "platform": "Android / Mobil"
+    },
+    {
       "id": "LOG-1792270009514",
       "timestamp": "17.10.2026 23:46:49",
       "user": "ÖMER EREN",
@@ -1673,6 +1681,16 @@
   ],
   "approvalRequests": [
     {
+      "id": "ONAY-1792270014745",
+      "type": "DELETE_MEETING",
+      "status": "PENDING",
+      "meetingId": "TOP-2026-001",
+      "meetingTitle": "Deneme",
+      "requestedBy": "ÖMER EREN",
+      "requestedAt": "17.10.2026 23:46:54",
+      "reason": "Kayıt silme talebi"
+    },
+    {
       "id": "ONAY-1792270009514",
       "type": "DELETE_MEETING",
       "status": "PENDING",
@@ -1695,7 +1713,7 @@
       "resolvedBy": "ÖMER EREN"
     }
   ],
-  "stateRevision": 58,
+  "stateRevision": 60,
   "pushSubscriptions": [
     {
       "id": "SUB-1792240978719-94",
