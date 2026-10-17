@@ -1,6 +1,6 @@
 {
   "version": "v1.7.1",
-  "updatedAt": "2026-10-17T12:44:21.802Z",
+  "updatedAt": "2026-10-17T12:44:46.323Z",
   "users": [
     {
       "order": 0,
@@ -1730,7 +1730,8 @@
         "RAFET CANBEK",
         "GÖKHAN ÖZBULUT",
         "ÖMER EREN",
-        "FATİH KIROĞLU"
+        "FATİH KIROĞLU",
+        "HAKAN AYDIN"
       ]
     }
   ],
@@ -1748,7 +1749,7 @@
       "resolvedBy": "ÖMER EREN"
     }
   ],
-  "stateRevision": 52,
+  "stateRevision": 53,
   "pushSubscriptions": [
     {
       "id": "SUB-1792240978719-94",
