@@ -1,6 +1,6 @@
 {
   "version": "v1.7.1",
-  "updatedAt": "2026-10-17T20:47:05.303Z",
+  "updatedAt": "2026-10-17T20:47:11.896Z",
   "users": [
     {
       "order": 0,
@@ -220,34 +220,17 @@
       "dept": "Hitit Ünv. Stajyer"
     }
   ],
-  "meetings": [
-    {
-      "id": "TOP-2026-001",
-      "recordType": "Toplantı",
-      "title": "Deneme",
-      "dept": "Genel Yönetim",
-      "date": "2026-10-15",
-      "time": "19:02",
-      "location": "Dizsan Toplantı Salonu",
-      "participants": [
-        "ÖMER EREN",
-        "FATİH KIROĞLU",
-        "RAFET CANBEK"
-      ],
-      "externalParticipants": [],
-      "notes": "1. Deneme",
-      "decisions": "",
-      "attachments": [],
-      "approvalStatus": "Onaylandı",
-      "omerApprovedStamp": true,
-      "approvedBy": "ÖMER EREN",
-      "approvedAt": "15.10.2026 18:57:21",
-      "createdBy": "RAFET CANBEK",
-      "createdAt": "15.10.2026 18:56:31"
-    }
-  ],
+  "meetings": [],
   "actions": [],
   "logs": [
+    {
+      "id": "LOG-1792270031888",
+      "timestamp": "17.10.2026 23:47:11",
+      "user": "ÖMER EREN",
+      "category": "TOPLANTI",
+      "detail": "TOP-2026-001 ('Deneme') silme talebi (ÖMER EREN) Yönetici ÖMER EREN onayıyla gerçekleştirildi ve kayıt silindi.",
+      "platform": "Android / Mobil"
+    },
     {
       "id": "LOG-1792270017511",
       "timestamp": "17.10.2026 23:46:57",
@@ -1052,12 +1035,14 @@
     {
       "id": "ONAY-1792270017511",
       "type": "DELETE_MEETING",
-      "status": "PENDING",
+      "status": "APPROVED",
       "meetingId": "TOP-2026-001",
       "meetingTitle": "Deneme",
       "requestedBy": "ÖMER EREN",
       "requestedAt": "17.10.2026 23:46:57",
-      "reason": "Kayıt silme talebi"
+      "reason": "Kayıt silme talebi",
+      "resolvedAt": "17.10.2026 23:47:11",
+      "resolvedBy": "ÖMER EREN"
     },
     {
       "id": "ONAY-1792270014745",
@@ -1092,7 +1077,7 @@
       "resolvedBy": "ÖMER EREN"
     }
   ],
-  "stateRevision": 64,
+  "stateRevision": 66,
   "pushSubscriptions": [
     {
       "id": "SUB-1792240978719-94",
