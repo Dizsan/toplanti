@@ -1,6 +1,6 @@
 {
   "version": "v1.7.1",
-  "updatedAt": "2026-10-17T12:44:46.323Z",
+  "updatedAt": "2026-10-17T12:45:06.473Z",
   "users": [
     {
       "order": 0,
@@ -882,92 +882,12 @@
   "pushPilotMode": "ALL_USERS",
   "logs": [
     {
-      "id": "LOG-1793037398142",
-      "timestamp": "26.10.2026 20:56:38",
-      "user": "ÖMER EREN",
-      "category": "TOPLANTI",
-      "detail": "TOP-2026-001 kodlu 'Genel Değerlendirme ve Bilgilendirme Toplantısı' kaydı Yönetici ÖMER EREN tarafından güncellendi.",
-      "platform": "macOS / Masaüstü"
-    },
-    {
-      "id": "LOG-1793037367416",
-      "timestamp": "26.10.2026 20:56:07",
-      "user": "ÖMER EREN",
-      "category": "AKSİYON",
-      "detail": "AKS-101 kodlu aksiyon 'ÖMER EREN' personeline ve Yönetici ÖMER EREN'e hatırlatıcılı olarak atandı (Termin: 27.10.2026).",
-      "platform": "macOS / Masaüstü"
-    },
-    {
-      "id": "LOG-1793037365415",
-      "timestamp": "26.10.2026 20:56:05",
-      "user": "ÖMER EREN",
-      "category": "TOPLANTI",
-      "detail": "TOP-2026-002 kodlu yeni toplantı ('Finans ve Ödeme Toplantısı Planlama') oluşturuldu (Onaylandı). Katılımcı: 2 personel.",
-      "platform": "macOS / Masaüstü"
-    },
-    {
-      "id": "LOG-1793037245726",
-      "timestamp": "26.10.2026 20:54:05",
-      "user": "ÖMER EREN",
-      "category": "TOPLANTI",
-      "detail": "TOP-2026-001 kodlu 'Genel Değerlendirme ve Bilgilendirme Toplantısı' kaydı Yönetici ÖMER EREN tarafından güncellendi.",
-      "platform": "macOS / Masaüstü"
-    },
-    {
-      "id": "LOG-1793026603378",
-      "timestamp": "26.10.2026 17:56:43",
-      "user": "ÖMER EREN",
-      "category": "TOPLANTI",
-      "detail": "TOP-2026-001 kodlu 'Genel Değerlendirme ve Bilgilendirme Toplantısı' kaydı Yönetici ÖMER EREN tarafından güncellendi.",
-      "platform": "macOS / Masaüstü"
-    },
-    {
-      "id": "LOG-1793023638863",
-      "timestamp": "26.10.2026 17:07:18",
-      "user": "MUSTAFA İLGEN",
+      "id": "LOG-1792241106470",
+      "timestamp": "17.10.2026 15:45:06",
+      "user": "HAKAN AYDIN",
       "category": "GİRİŞ / ÇIKIŞ",
-      "detail": "MUSTAFA İLGEN (Fren tekn.) sisteme giriş yaptı.",
-      "platform": "Android / Mobil"
-    },
-    {
-      "id": "LOG-1793023077964",
-      "timestamp": "26.10.2026 16:57:57",
-      "user": "MURAT KARAOĞLU",
-      "category": "GİRİŞ / ÇIKIŞ",
-      "detail": "MURAT KARAOĞLU (Formen) sisteme giriş yaptı.",
-      "platform": "Android / Mobil"
-    },
-    {
-      "id": "LOG-1793022059528",
-      "timestamp": "26.10.2026 16:40:59",
-      "user": "ÖMER EREN",
-      "category": "TOPLANTI",
-      "detail": "TOP-2026-001 kodlu 'Genel Değerlendirme ve Bilgilendirme Toplantısı' kaydı Yönetici ÖMER EREN tarafından güncellendi.",
-      "platform": "macOS / Masaüstü"
-    },
-    {
-      "id": "LOG-1793022009535",
-      "timestamp": "26.10.2026 16:40:09",
-      "user": "ÖMER EREN",
-      "category": "TOPLANTI",
-      "detail": "TOP-2026-001 kodlu yeni toplantı ('Genel Değerlendirme ve Bilgilendirme Toplantısı') oluşturuldu (Onaylandı). Katılımcı: 11 personel.",
-      "platform": "macOS / Masaüstü"
-    },
-    {
-      "id": "LOG-1792960396466",
-      "timestamp": "25.10.2026 23:33:16",
-      "user": "ÖMER EREN",
-      "category": "TOPLANTI",
-      "detail": "TOP-2026-001 ('Deneme') silme talebi (ÖMER EREN) Yönetici ÖMER EREN onayıyla gerçekleştirildi ve kayıt silindi.",
-      "platform": "macOS / Masaüstü"
-    },
-    {
-      "id": "LOG-1792960395630",
-      "timestamp": "25.10.2026 23:33:15",
-      "user": "ÖMER EREN",
-      "category": "TOPLANTI",
-      "detail": "TOP-2026-001 ('Deneme') silme talebi (ÖMER EREN) Yönetici ÖMER EREN onayıyla gerçekleştirildi ve kayıt silindi.",
-      "platform": "macOS / Masaüstü"
+      "detail": "HAKAN AYDIN sistemden güvenli çıkış yaptı.",
+      "platform": "iOS / Mobil"
     },
     {
       "id": "LOG-1792129826068",
@@ -1749,7 +1669,7 @@
       "resolvedBy": "ÖMER EREN"
     }
   ],
-  "stateRevision": 53,
+  "stateRevision": 54,
   "pushSubscriptions": [
     {
       "id": "SUB-1792240978719-94",
