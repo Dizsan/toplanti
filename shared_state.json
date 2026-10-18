@@ -1003,11 +1003,32 @@
         "RAFET CANBEK",
         "GÖKHAN ÖZBULUT",
         "ÖMER EREN",
-        "FATİH KIROĞLU"
+        "FATİH KIROĞLU",
+        "HAKAN AYDIN"
       ]
     }
   ],
   "approvalRequests": [
+    {
+      "id": "ONAY-1792270014745",
+      "type": "DELETE_MEETING",
+      "status": "PENDING",
+      "meetingId": "TOP-2026-001",
+      "meetingTitle": "Deneme",
+      "requestedBy": "ÖMER EREN",
+      "requestedAt": "17.10.2026 23:46:54",
+      "reason": "Kayıt silme talebi"
+    },
+    {
+      "id": "ONAY-1792270009514",
+      "type": "DELETE_MEETING",
+      "status": "PENDING",
+      "meetingId": "TOP-2026-001",
+      "meetingTitle": "Deneme",
+      "requestedBy": "ÖMER EREN",
+      "requestedAt": "17.10.2026 23:46:49",
+      "reason": "Kayıt silme talebi"
+    },
     {
       "id": "ONAY-1792074546010",
       "type": "DELETE_MEETING",
@@ -1073,10 +1094,48 @@
       "platform": "Android",
       "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/30.0 Chrome/143.0.0.0 Mobile Safari/537.36",
       "isActive": true,
-      "updatedAt": "15.10.2026 18:57:05"
+      "updatedAt": "16.10.2026 13:06:50"
+    },
+    {
+      "id": "SUB-1792240902950-84",
+      "username": "hakan.aydin",
+      "userFullName": "HAKAN AYDIN",
+      "endpoint": "https://web.push.apple.com/QD5fPPtUv51DOwucji6yQaXZQWoCjKJnDSpCRb7ZEBNBsFfgi5ocVSi7Qku-2CvDChPhgJouzJO22fs6iz_nkeIL8noHl4caMjmbRn_0aSWUyhu3YOu3nlBlBjoz7Qai7OnjCCtX0wZl96QKCg4ZCVITlqw25dwwpb-v3RjATtE",
+      "p256dh": "BMlGFkzRj2degtUeSs7QMMx1OBjJWnZol2Wb6rSeACd5pNtVUC9nxF_bij55Ga8G3ODrlvCdOCDCMnhh4ds6L5g",
+      "auth": "cRdXWO4a7eft5A5f7trFXw",
+      "browser": "Apple Web App (Ana Ekran)",
+      "platform": "iOS (Apple iPhone)",
+      "userAgent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.1 Mobile/15E148 Safari/604.1",
+      "isActive": true,
+      "updatedAt": "17.10.2026 15:46:47"
+    },
+    {
+      "id": "SUB-1792268780682-318",
+      "username": "ömer",
+      "userFullName": "ÖMER EREN",
+      "endpoint": "https://fcm.googleapis.com/fcm/send/enk4euWAjBw:APA91bGCsrjFqDNF_sEiDIBdxY4rEpcpS8K63ZRYnFhSIEAaO3v8yh3MjpMMZ0Wnt44hfVqAYvemmVgMkd5eXHO3tqRkfnNSmBTyC-Gmkuvd6HY8K9_lWQ4a6S0utnj14j8rdLSRySDD",
+      "p256dh": "BFZ5XTuCOM25Yk8BSwYbWBL0vgEjNuh2Op1hudFsLFQQL51ZhuHqIsu1zX5hhADSZdx2XMzm4KFL2L4zWPonKZE",
+      "auth": "89uERjWJIY0kidLu90J99A",
+      "browser": "Samsung Internet",
+      "platform": "Android",
+      "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/30.0 Chrome/143.0.0.0 Mobile Safari/537.36",
+      "isActive": true,
+      "updatedAt": "17.10.2026 23:46:22"
     }
   ],
   "pushTestRequests": [
+    {
+      "id": "PTEST-1792241061802",
+      "username": "hakan.aydin",
+      "userFullName": "HAKAN AYDIN",
+      "delaySeconds": 0,
+      "browser": "Apple Web App (Ana Ekran) (iOS (Apple iPhone))",
+      "title": "🔔 DİZSAN Anlık Web Push Testi (Apple Web App (Ana Ekran))",
+      "body": "Sayın HAKAN AYDIN, bu bildirim telefon ekranınız kilitliyken / uygulama kapalıyken VAPID Web Push sunucusu tarafından gönderilmiştir. Dokunarak uygulamayı açabilirsiniz.",
+      "url": "./?tab=dashboard-tab&focus=push-test",
+      "status": "PENDING",
+      "createdAt": "17.10.2026 15:44:21"
+    },
     {
       "id": "PTEST-1792076087489",
       "username": "ömer",
