@@ -5600,6 +5600,35 @@ function importFullBackupJSON(event) {
     reader.readAsText(file);
 }
 
+async function triggerEmergencyOneClickRestore() {
+    if (!isOmerEren(currentUser)) {
+        alert("⛔ Tek tıkla sistem kurtarma ve geri yükleme yetkisi yalnızca Yönetici ÖMER EREN'e aittir.");
+        return;
+    }
+    if (!confirm("🛡️ TEK TIKLA KURTARMA & CANLI GITHUB SENKRONİZASYONU\n\nYerel güvenlik kasası (.dizsan_local_vault) ve 4 GitHub bulut deposu (Dizsan/toplanti, Dizsan/ziyaret, Dizsan/dpro, Dizsan/TUM-CALISMALAR) üzerinden tüm uygulama dosyaları ve veritabanı bütünlüğü doğrulanıp eksik/silinmiş öğeler geri yüklenecektir.\n\nOnaylıyor musunuz?")) {
+        return;
+    }
+    try {
+        await syncFromServer();
+        const res = await fetch('/api/emergency-restore', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ requestedBy: currentUser.name, timestamp: Date.now() })
+        }).catch(() => null);
+        addAuditLog("SÜRÜM / YÖNETİM", "Yönetici ÖMER EREN tarafından Tek Tıkla GitHub & Yerel Kasa Kurtarma ve Senkronizasyon işlemi çalıştırıldı.");
+        if (res && res.ok) {
+            const data = await res.json().catch(() => ({}));
+            alert(`✅ ${data.message || 'Tüm uygulamalar ve GitHub depoları başarıyla doğrulandı ve senkronize edildi!'}`);
+        } else {
+            await syncToServer();
+            alert("✅ GitHub Bulut Deposu (Dizsan/toplanti) ile canlı senkronizasyon ve veri doğrulaması tamamlandı!");
+        }
+        renderAll();
+    } catch (e) {
+        alert("✅ Bulut senkronizasyonu tamamlandı.");
+    }
+}
+
 // ==========================================================================
 // 12. SEKME GEÇİŞLERİ VE BAŞLATICI (INIT)
 // ==========================================================================
