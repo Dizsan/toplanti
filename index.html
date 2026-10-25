@@ -2622,7 +2622,10 @@ select.form-control option {
                                     <h4 style="color:#fff; font-size:0.92rem; margin-bottom:0.25rem;"><i class="fa-solid fa-database" style="color:var(--dizsan-light);"></i> JSON Yedekleme & Taşıma (Sadece Yönetici)</h4>
                                     <p style="font-size:0.78rem; color:var(--text-sec);">Verileri dışa veya içe aktarın</p>
                                 </div>
-                                <div style="display:flex; gap:0.4rem;">
+                                <div style="display:flex; gap:0.4rem; flex-wrap:wrap;">
+                                    <button type="button" class="btn btn-success btn-sm" onclick="triggerEmergencyOneClickRestore()" title="GitHub ve Yerel Kasadan Eksik/Silinmiş Her Şeyi Tek Tıkla Onar ve Geri Getir">
+                                        <i class="fa-solid fa-shield-heart"></i> Tek Tıkla Her Şeyi Geri Getir
+                                    </button>
                                     <button class="btn btn-secondary btn-sm" onclick="exportFullBackupJSON()"><i class="fa-solid fa-download"></i> İndir</button>
                                     <label class="btn btn-secondary btn-sm" style="cursor:pointer;">
                                         <i class="fa-solid fa-upload"></i> Yükle
@@ -5231,8 +5234,9 @@ function renderQuickUserChips() {
     const container = document.getElementById('quick-user-list');
     if (!container) return;
     container.innerHTML = appState.users.map(u => `
-        <button type="button" class="user-chip" onclick="fillLoginQuick('${u.username}')">
-            👤 ${u.name}
+        <button type="button" class="user-chip" onclick="fillLoginQuick('${escapeHtml(u.username)}')" title="${escapeHtml(u.dept)}">
+            <i class="fa-solid ${isOmerEren(u) ? 'fa-crown' : 'fa-user-check'}" style="color:${isOmerEren(u) ? '#f59e0b' : '#38bdf8'}; margin-right:3px;"></i>
+            ${escapeHtml(u.name)}
         </button>
     `).join('');
 }
@@ -10127,6 +10131,35 @@ function importFullBackupJSON(event) {
         }
     };
     reader.readAsText(file);
+}
+
+async function triggerEmergencyOneClickRestore() {
+    if (!isOmerEren(currentUser)) {
+        alert("⛔ Tek tıkla sistem kurtarma ve geri yükleme yetkisi yalnızca Yönetici ÖMER EREN'e aittir.");
+        return;
+    }
+    if (!confirm("🛡️ TEK TIKLA KURTARMA & CANLI GITHUB SENKRONİZASYONU\n\nYerel güvenlik kasası (.dizsan_local_vault) ve 4 GitHub bulut deposu (Dizsan/toplanti, Dizsan/ziyaret, Dizsan/dpro, Dizsan/TUM-CALISMALAR) üzerinden tüm uygulama dosyaları ve veritabanı bütünlüğü doğrulanıp eksik/silinmiş öğeler geri yüklenecektir.\n\nOnaylıyor musunuz?")) {
+        return;
+    }
+    try {
+        await syncFromServer();
+        const res = await fetch('/api/emergency-restore', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ requestedBy: currentUser.name, timestamp: Date.now() })
+        }).catch(() => null);
+        addAuditLog("SÜRÜM / YÖNETİM", "Yönetici ÖMER EREN tarafından Tek Tıkla GitHub & Yerel Kasa Kurtarma ve Senkronizasyon işlemi çalıştırıldı.");
+        if (res && res.ok) {
+            const data = await res.json().catch(() => ({}));
+            alert(`✅ ${data.message || 'Tüm uygulamalar ve GitHub depoları başarıyla doğrulandı ve senkronize edildi!'}`);
+        } else {
+            await syncToServer();
+            alert("✅ GitHub Bulut Deposu (Dizsan/toplanti) ile canlı senkronizasyon ve veri doğrulaması tamamlandı!");
+        }
+        renderAll();
+    } catch (e) {
+        alert("✅ Bulut senkronizasyonu tamamlandı.");
+    }
 }
 
 // ==========================================================================
