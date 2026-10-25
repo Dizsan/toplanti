@@ -7,7 +7,7 @@
       "name": "ÖMER EREN",
       "username": "ömer",
       "mailBox": "oeren",
-      "pinStamp": "2697120930-1230232798-23831670",
+      "pinStamp": "621976239-623787727-2631164839",
       "role": "Yönetici",
       "dept": "Yönetim Kurulu / Sistem Yöneticisi",
       "avatar": "omer_eren_2.jpg"
@@ -1653,12 +1653,14 @@
       "fail_count": 0
     }
   ],
-  "appVersion": "1.8.3",
+  "appVersion": "1.8.4",
   "latestVersion": {
-    "version": "1.8.3",
-    "releaseNotes": "Stil dosyası (style.css) bağlantısı düzeltildi ve kayıt/değişiklik izleme (Audit) alanları aktif edildi",
-    "releasedAt": "2026-10-16 13:00:54"
+    "version": "1.8.4",
+    "releaseNotes": "24 personel için tam giriş ve şifre/veri mahremiyet izolasyonu, zorunlu e-posta bağlantılı şifre sıfırlama, silinen kayıt (tombstone) senkronizasyonu, mükerrer buton temizliği ve evrensel Geri/Yenile navigasyonu aktif edildi.",
+    "releasedAt": "2026-10-26 00:10:00"
   },
-  "versionUpdatedAt": "2026-10-16 13:00:54",
-  "versionReleaseNotes": "Stil dosyası (style.css) bağlantısı düzeltildi ve kayıt/değişiklik izleme (Audit) alanları aktif edildi"
+  "versionUpdatedAt": "2026-10-26 00:10:00",
+  "versionReleaseNotes": "24 personel için tam giriş ve şifre/veri mahremiyet izolasyonu, zorunlu e-posta bağlantılı şifre sıfırlama, silinen kayıt (tombstone) senkronizasyonu, mükerrer buton temizliği ve evrensel Geri/Yenile navigasyonu aktif edildi.",
+  "deletedIds": [],
+  "usedResetTokens": []
 }

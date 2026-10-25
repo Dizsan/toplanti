@@ -63,6 +63,41 @@
                 display: inline-flex !important;
             }
 
+            /* Üst Çubuk Evrensel Yenile Tuşu */
+            .dizsan-global-refresh-btn {
+                display: inline-flex !important;
+                align-items: center;
+                gap: 6px;
+                background: linear-gradient(135deg, rgba(16, 185, 129, 0.22), rgba(15, 23, 42, 0.92));
+                border: 1px solid rgba(16, 185, 129, 0.48);
+                color: #34d399;
+                padding: 0.38rem 0.75rem;
+                border-radius: 9px;
+                font-size: 0.8rem;
+                font-weight: 700;
+                cursor: pointer;
+                transition: all 0.16s ease;
+                margin-right: 0.45rem;
+                flex-shrink: 0;
+                -webkit-tap-highlight-color: transparent;
+                user-select: none;
+                -webkit-user-select: none;
+            }
+            .dizsan-global-refresh-btn:hover {
+                background: linear-gradient(135deg, rgba(16, 185, 129, 0.38), rgba(5, 150, 105, 0.92));
+                color: #ffffff;
+                border-color: #34d399;
+                transform: translateY(-1px);
+            }
+            .dizsan-global-refresh-btn:active {
+                transform: scale(0.94);
+            }
+
+            /* Sayfa içi mükerrer geri tuşlarını gizle (üst barda tekil Geri + Yenile mevcuttur) */
+            .inpage-back-btn {
+                display: none !important;
+            }
+
             /* Modal Başlığı İçi Geri Tuşu */
             .dizsan-modal-back-btn {
                 display: inline-flex;
@@ -343,20 +378,55 @@
         });
     }
 
-    // 10. Geri Butonlarını DOM'a Enjekte Et
+    // 10. Geri ve Yenile Butonlarını DOM'a Enjekte Et
+    async function refreshApplicationNow(btnEl) {
+        try {
+            const icon = btnEl ? btnEl.querySelector('i') : document.querySelector('#dizsan-global-refresh-btn i');
+            if (icon) icon.classList.add('fa-spin');
+            showBackToast('Uygulama yenileniyor...');
+            if (typeof window.syncFromServer === 'function') {
+                await Promise.race([
+                    window.syncFromServer(),
+                    new Promise(r => setTimeout(r, 450))
+                ]).catch(() => {});
+            }
+            if ('serviceWorker' in navigator) {
+                const regs = await navigator.serviceWorker.getRegistrations().catch(() => []);
+                for (const reg of regs) {
+                    await reg.update().catch(() => {});
+                }
+            }
+        } catch (e) {}
+        window.location.reload();
+    }
+    window.refreshApplicationNow = refreshApplicationNow;
+
     function injectTopNavbarBackButton() {
+        const targetContainer = document.querySelector('.navbar-left, .topbar-left, .header-left');
         let btn = document.getElementById('dizsan-global-back-btn');
-        if (!btn) {
-            const targetContainer = document.querySelector('.navbar-left, .topbar-left, .header-left');
-            if (targetContainer) {
-                btn = document.createElement('button');
-                btn.type = 'button';
-                btn.id = 'dizsan-global-back-btn';
-                btn.className = 'dizsan-global-back-btn visible';
-                btn.title = 'Geri Dön';
-                btn.innerHTML = '<i class="fa-solid fa-arrow-left"></i> <span>Geri</span>';
-                btn.onclick = handleInAppBack;
-                targetContainer.insertBefore(btn, targetContainer.firstChild);
+        if (!btn && targetContainer) {
+            btn = document.createElement('button');
+            btn.type = 'button';
+            btn.id = 'dizsan-global-back-btn';
+            btn.className = 'dizsan-global-back-btn visible';
+            btn.title = 'Geri Dön';
+            btn.innerHTML = '<i class="fa-solid fa-arrow-left"></i> <span>Geri</span>';
+            btn.onclick = handleInAppBack;
+            targetContainer.insertBefore(btn, targetContainer.firstChild);
+        }
+        let refreshBtn = document.getElementById('dizsan-global-refresh-btn');
+        if (!refreshBtn && targetContainer) {
+            refreshBtn = document.createElement('button');
+            refreshBtn.type = 'button';
+            refreshBtn.id = 'dizsan-global-refresh-btn';
+            refreshBtn.className = 'dizsan-global-refresh-btn';
+            refreshBtn.title = 'Uygulamayı ve Verileri Yenile';
+            refreshBtn.innerHTML = '<i class="fa-solid fa-arrows-rotate"></i> <span>Yenile</span>';
+            refreshBtn.onclick = function () { refreshApplicationNow(refreshBtn); };
+            if (btn && btn.nextSibling) {
+                targetContainer.insertBefore(refreshBtn, btn.nextSibling);
+            } else {
+                targetContainer.appendChild(refreshBtn);
             }
         }
         updateBackButtonVisibility();

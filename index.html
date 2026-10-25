@@ -1,18 +1,6 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-<script id="dpro-omer-exclusive-guard">
-(function(){
-  try {
-    var u = (localStorage.getItem("dizsan_dpro_active_session_v1") || sessionStorage.getItem("dizsan_dpro_active_session_v1") || "").toLowerCase();
-    var zRaw = localStorage.getItem("dizsan_ziyaret_session_v2") || sessionStorage.getItem("dizsan_ziyaret_session_v2") || "";
-    var isOmer = (u === "ömer" || u === "omer" || zRaw.toLowerCase().indexOf("ömer") !== -1 || zRaw.toLowerCase().indexOf("omer") !== -1);
-    if (!isOmer && window.self === window.top) {
-      window.location.replace("../../index.html");
-    }
-  } catch(e) {}
-})();
-</script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#0284c7">
@@ -1806,7 +1794,7 @@ select.form-control option {
                 <img src="data:image/jpeg;base64,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" alt="DİZSAN Logo" class="login-logo">
                 <h1>DİZSAN</h1>
                 <p>Kurumsal Toplantı, Eğitim, Çağrı, Aksiyon & Raporlama Sistemi</p>
-                <span class="version-pill"><i class="fa-solid fa-code-branch"></i> Sürüm <span class="dynamic-version-text">v1.8.3</span> • iOS / Android / Windows</span>
+                <span class="version-pill"><i class="fa-solid fa-code-branch"></i> Sürüm <span class="dynamic-version-text">v1.8.4</span> • iOS / Android / Windows</span>
             </div>
 
             <form id="login-form" onsubmit="handleLogin(event)">
@@ -1860,59 +1848,56 @@ select.form-control option {
     </div>
 
     <!-- ==========================================================================
-         ŞİFREMİ UNUTTUM (MANUEL E-POSTA YAZMA + DOĞRULAMA) MODALI
+         ŞİFREMİ UNUTTUM (ZORUNLU KURUMSAL E-POSTA SIFIRLAMA BAĞLANTISI) MODALI
          ========================================================================== -->
     <div id="forgot-password-modal" class="modal-backdrop" style="z-index: 10005;">
         <div class="modal-box" style="max-width:480px;">
             <div class="modal-header">
-                <h3><i class="fa-solid fa-envelope-circle-check" style="color:var(--dizsan-light);"></i> Şifremi Unuttum — E-Posta Doğrulama</h3>
+                <h3><i class="fa-solid fa-envelope-circle-check" style="color:var(--dizsan-light);"></i> Şifremi Unuttum — E-Posta Sıfırlama Bağlantısı</h3>
                 <button class="modal-close" onclick="closeForgotPasswordModal()">&times;</button>
             </div>
             <div class="modal-body">
-                <!-- Adım 1: Personel Seçimi / Kullanıcı Adı ve Manuel E-Posta Adresi Yazma -->
+                <!-- Adım 1: Personel Kullanıcı Adı ve Kayıtlı Kurumsal E-Posta Doğrulaması -->
                 <div id="forgot-step-1">
                     <p style="font-size:0.84rem; color:var(--text-sec); margin-bottom:1rem; line-height:1.5;">
-                        Kullanıcı adınızı seçin/yazın ve <strong>doğrulama kodunun gönderileceği e-posta adresinizi manuel olarak yazın</strong>. Yazdığınız mail adresine 6 haneli doğrulama kodu gönderilecek ve yeni şifreniz otomatik olarak sisteme entegre edilecektir.
+                        Kullanıcı adınızı ve sistemde kayıtlı <strong>@dizsan.com.tr</strong> uzantılı kurumsal e-posta adresinizi girin. Bilgiler eşleştiğinde e-posta adresinize <strong>15 dakika geçerli, tek kullanımlık Şifre Yenileme Bağlantısı (Linki)</strong> gönderilecektir.
                     </p>
                     <div class="form-group" style="margin-bottom:0.85rem;">
                         <label>Personel Kullanıcı Adı veya Ad Soyad *</label>
-                        <input type="text" id="forgot-user-identifier" class="form-control" placeholder="Örn: hakan.aydin, rafet.canbek veya ömer" oninput="prefillForgotEmailFromUser(this.value)">
+                        <input type="text" id="forgot-user-identifier" class="form-control" placeholder="Örn: hakan.aydin, rafet.canbek veya ömer" autocomplete="username">
                     </div>
                     <div class="form-group" style="margin-bottom:1rem;">
-                        <label>Doğrulama Kodu Gönderilecek E-Posta Adresi (Manuel Yazınız) *</label>
-                        <input type="email" id="forgot-manual-email" class="form-control" placeholder="Kendi mail adresinizi yazın (Örn: adiniz@gmail.com veya @dizsan.com)" required>
+                        <label>Kayıtlı Kurumsal E-Posta Adresiniz (@dizsan.com.tr) *</label>
+                        <input type="email" id="forgot-manual-email" class="form-control" placeholder="Örn: kullanici@dizsan.com.tr" required autocomplete="email">
                     </div>
                     <div id="forgot-step1-msg" style="display:none; margin-bottom:0.85rem; padding:0.65rem; border-radius:10px; font-size:0.82rem;"></div>
                     <button type="button" class="btn btn-primary" style="width:100%; justify-content:center;" onclick="sendPasswordResetCode()">
-                        <i class="fa-solid fa-paper-plane"></i> Yazdığım Mail Adresine Doğrulama Kodu Gönder
+                        <i class="fa-solid fa-paper-plane"></i> Kayıtlı E-Postama Sıfırlama Bağlantısı (Linki) Gönder
                     </button>
                 </div>
 
-                <!-- Adım 2: Doğrulama Kodu ve Yeni Şifre Girişi -->
+                <!-- Adım 2: Yalnızca E-Postadaki Kriptografik Linke (?resetToken=...) Tıklandığında Açılan Yeni Şifre Belirleme Ekranı -->
                 <div id="forgot-step-2" style="display:none;">
                     <div id="forgot-sent-info" style="background:rgba(16,185,129,0.12); border:1px solid rgba(16,185,129,0.35); color:#6ee7b7; padding:0.75rem; border-radius:10px; font-size:0.82rem; margin-bottom:1rem; line-height:1.5;"></div>
                     <div class="form-group" style="margin-bottom:0.85rem;">
-                        <label>E-Postaya Gelen 6 Haneli Doğrulama Kodu *</label>
-                        <input type="text" id="forgot-verification-code" class="form-control" placeholder="Örn: 482910" maxlength="6" style="font-size:1.1rem; letter-spacing:3px; font-weight:700; text-align:center;">
-                    </div>
-                    <div class="form-group" style="margin-bottom:0.85rem;">
-                        <label>Yeni Şifreniz *</label>
-                        <input type="password" id="forgot-new-password" class="form-control" placeholder="Yeni şifrenizi girin">
+                        <label>Yeni Şifreniz (En Az 4 Karakter) *</label>
+                        <input type="password" id="forgot-new-password" class="form-control" placeholder="Yeni şifrenizi girin" autocomplete="new-password">
                     </div>
                     <div class="form-group" style="margin-bottom:1rem;">
                         <label>Yeni Şifre (Tekrar) *</label>
-                        <input type="password" id="forgot-new-password-confirm" class="form-control" placeholder="Yeni şifrenizi tekrar girin">
+                        <input type="password" id="forgot-new-password-confirm" class="form-control" placeholder="Yeni şifrenizi tekrar girin" autocomplete="new-password">
                     </div>
                     <div id="forgot-step2-msg" style="display:none; margin-bottom:0.85rem; padding:0.65rem; border-radius:10px; font-size:0.82rem;"></div>
                     <div style="display:flex; gap:0.6rem;">
-                        <button type="button" class="btn btn-secondary" onclick="resetForgotModalSteps()">Geri</button>
+                        <button type="button" class="btn btn-secondary" onclick="closeForgotPasswordModal()">İptal</button>
                         <button type="button" class="btn btn-success" style="flex:1; justify-content:center;" onclick="verifyAndResetPassword()">
-                            <i class="fa-solid fa-check-double"></i> Doğrula ve Şifreyi Sisteme Entegre Et
+                            <i class="fa-solid fa-check-double"></i> Yeni Şifremi Kaydet ve Sisteme Giriş Yap
                         </button>
                     </div>
                 </div>
             </div>
         </div>
+    </div>
     </div>
 
     <!-- ==========================================================================
@@ -1934,7 +1919,7 @@ select.form-control option {
                         <input type="text" id="cp-user-name" class="form-control" readonly style="opacity:0.75; cursor:not-allowed;">
                     </div>
                     <div class="form-group" style="margin-bottom:0.85rem;">
-                        <label>Kayıtlı E-Posta Adresiniz (İsterseniz Güncelleyebilirsiniz)</label>
+                        <label>Kayıtlı Kurumsal E-Posta Adresiniz (@dizsan.com.tr)</label>
                         <input type="email" id="cp-user-email" class="form-control" placeholder="Kişisel veya kurumsal e-posta adresiniz" required>
                     </div>
                     <div class="form-group" style="margin-bottom:0.85rem;">
@@ -1971,7 +1956,7 @@ select.form-control option {
                     <span class="brand-name">DİZSAN</span>
                     <span class="brand-sub">TOPLANTI & AKSİYON</span>
                     <span class="version-pill" onclick="switchTab('version-tab')" title="Sürüm ve Güncelleme Merkezini Gör">
-                        <i class="fa-solid fa-tag"></i> <span class="dynamic-version-text">v1.8.3</span>
+                        <i class="fa-solid fa-tag"></i> <span class="dynamic-version-text">v1.8.4</span>
                     </span>
                 </div>
             </div>
@@ -2034,7 +2019,7 @@ select.form-control option {
                 <li>
                     <button class="nav-btn" data-tab="version-tab" onclick="switchTab('version-tab')">
                         <span class="nav-btn-left"><i class="fa-solid fa-code-commit"></i> Sürüm & Push Testi</span>
-                        <span class="nav-badge dynamic-version-text" style="color:#34d399;">v1.7.0</span>
+                        <span class="nav-badge dynamic-version-text" style="color:#34d399;">v1.8.4</span>
                     </button>
                 </li>
             </ul>
@@ -2055,18 +2040,7 @@ select.form-control option {
                         </button>
                     </div>
                 </div>
-                <!-- Hızlı Aksiyonlar (Sol Barda) -->
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.35rem; margin-bottom:0.45rem;">
-                    <button class="btn btn-primary btn-sm" style="justify-content:center; padding:0.4rem 0.5rem; font-size:0.72rem;" onclick="openMeetingModal()">
-                        <i class="fa-solid fa-plus"></i> Yeni Toplantı
-                    </button>
-                    <button class="btn btn-success btn-sm" style="justify-content:center; padding:0.4rem 0.5rem; font-size:0.72rem;" onclick="openActionModal()">
-                        <i class="fa-solid fa-bolt"></i> Yeni Aksiyon
-                    </button>
-                    <button class="btn btn-sm" style="grid-column:span 2; justify-content:center; padding:0.4rem 0.5rem; font-size:0.72rem; background:linear-gradient(135deg,#f59e0b,#d97706); color:#fff; border:none;" onclick="openAnnouncementModal()">
-                        <i class="fa-solid fa-bullhorn"></i> Toplantı Çağrısı / Duyuru
-                    </button>
-                </div>
+
                 <div class="sync-indicator">
                     <span class="sync-dot"></span>
                     <span id="sync-status-text">DizGün & VAPID Push Aktif</span>
@@ -2085,18 +2059,15 @@ select.form-control option {
         <!-- ANA İÇERİK ALANI -->
         <div class="main-area">
             <style>
-                @media (min-width: 1025px) {
-                    .topbar { display: none !important; }
-                }
                 #mobile-pwa-install-banner { display: none !important; }
             </style>
-            <!-- ÜST BAR (Yalnızca Mobil Hamburger Menü Açıcı - Mükerrer Öğeler Kaldırıldı) -->
+            <!-- ÜST BAR (Evrensel Geri & Yenile Tuşları + Dinamik Sayfa Başlığı) -->
             <header class="topbar">
                 <div class="topbar-left">
                     <button class="mobile-menu-btn" onclick="toggleMobileSidebar()">
                         <i class="fa-solid fa-bars"></i>
                     </button>
-                    <div class="page-title" style="display:none !important;">
+                    <div class="page-title">
                         <h2 id="topbar-title">DİZSAN Kurumsal Toplantı Kokpiti</h2>
                         <p id="topbar-subtitle">Ortak Toplantı Çağrıları, Yönetici Onaylı Tutanaklar &amp; VAPID Kilit Ekranı Push Bildirimleri</p>
                     </div>
@@ -2160,9 +2131,6 @@ select.form-control option {
                      ================================================================== -->
                 <section id="dashboard-tab" class="tab-section active">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.85rem; flex-wrap:wrap; gap:0.5rem;">
-                        <button type="button" class="inpage-back-btn" onclick="DizsanBackNav.handleInAppBack()" title="Bir Önceki Sayfaya Dön">
-                            <i class="fa-solid fa-arrow-left"></i> Önceki Sayfa
-                        </button>
                     </div>
                     <div class="kpi-grid">
                         <div class="kpi-card">
@@ -2262,9 +2230,6 @@ select.form-control option {
                     <div class="glass-card">
                         <div class="card-header">
                             <div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap;">
-                                <button type="button" class="inpage-back-btn" onclick="DizsanBackNav.handleInAppBack()" title="Bir Önceki Sayfaya Dön">
-                                    <i class="fa-solid fa-arrow-left"></i> Önceki Sayfa
-                                </button>
                                 <h3><i class="fa-solid fa-handshake" style="color:var(--dizsan-light);"></i> Toplantı &amp; Eğitim Kayıtları, Katılımcılar ve Tutanaklar</h3>
                             </div>
                             <div style="display:flex; gap:0.6rem; flex-wrap:wrap;">
@@ -2275,9 +2240,6 @@ select.form-control option {
                         </div>
 
                         <div class="filter-bar">
-                            <button type="button" class="inpage-back-btn" onclick="DizsanBackNav.handleInAppBack()" title="Bir Önceki Sayfaya Dön">
-                                <i class="fa-solid fa-arrow-left"></i> Önceki Sayfa
-                            </button>
                             <input type="text" id="meeting-search" class="form-control" style="flex:1; min-width:220px;" placeholder="Toplantı/eğitim başlığı, gündem, not, karar veya katılımcı ara..." oninput="renderMeetings()">
                             <select id="meeting-type-filter" class="form-control" onchange="renderMeetings()">
                                 <option value="ALL">Tüm Türler (Toplantı &amp; Eğitim)</option>
@@ -2308,9 +2270,6 @@ select.form-control option {
                     <div class="glass-card">
                         <div class="card-header">
                             <div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap;">
-                                <button type="button" class="inpage-back-btn" onclick="DizsanBackNav.handleInAppBack()" title="Bir Önceki Sayfaya Dön">
-                                    <i class="fa-solid fa-arrow-left"></i> Önceki Sayfa
-                                </button>
                                 <h3><i class="fa-solid fa-stopwatch" style="color:#fbbf24;"></i> Toplantı Aksiyonları, Personel & Yönetici Hatırlatıcıları (1 Gün Önce & Aynı Gün)</h3>
                             </div>
                             <div style="display:flex; gap:0.6rem; flex-wrap:wrap;">
@@ -2324,9 +2283,6 @@ select.form-control option {
                         </div>
 
                         <div class="filter-bar">
-                            <button type="button" class="inpage-back-btn" onclick="DizsanBackNav.handleInAppBack()" title="Bir Önceki Sayfaya Dön">
-                                <i class="fa-solid fa-arrow-left"></i> Önceki Sayfa
-                            </button>
                             <input type="text" id="action-search" class="form-control" style="flex:1; min-width:200px;" placeholder="Aksiyon açıklaması, toplantı adı veya sorumlu personel ara..." oninput="renderActions()">
                             <select id="action-assignee-filter" class="form-control" onchange="renderActions()">
                                 <option value="ALL">Tüm Sorumlu Personeller</option>
@@ -2370,9 +2326,6 @@ select.form-control option {
                      ================================================================== -->
                 <section id="reports-tab" class="tab-section">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.85rem; flex-wrap:wrap; gap:0.5rem;">
-                        <button type="button" class="inpage-back-btn" onclick="DizsanBackNav.handleInAppBack()" title="Bir Önceki Sayfaya Dön">
-                            <i class="fa-solid fa-arrow-left"></i> Önceki Sayfa
-                        </button>
                     </div>
                     <!-- Rapor Görseli Kuralı Üst Banner -->
                     <div class="glass-card" style="background: linear-gradient(135deg, rgba(2,132,199,0.18) 0%, rgba(17,24,39,0.95) 100%);">
@@ -2523,9 +2476,6 @@ select.form-control option {
                     <div class="glass-card">
                         <div class="card-header">
                             <div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap;">
-                                <button type="button" class="inpage-back-btn" onclick="DizsanBackNav.handleInAppBack()" title="Bir Önceki Sayfaya Dön">
-                                    <i class="fa-solid fa-arrow-left"></i> Önceki Sayfa
-                                </button>
                                 <h3 id="personnel-tab-title"><i class="fa-solid fa-users-gear" style="color:var(--dizsan-light);"></i> Dizsan Güncel Personel Listesi & Giriş Hesapları</h3>
                             </div>
                             <button id="btn-add-new-personnel" class="btn btn-primary btn-sm" onclick="openUserModal()">
@@ -2533,7 +2483,7 @@ select.form-control option {
                             </button>
                         </div>
                         <p id="personnel-tab-desc" style="color:var(--text-sec); font-size:0.84rem; margin-bottom:1.1rem;">
-                            Resmi personel listesine göre güncellenmiş hesaplar aşağıdadır. Tüm personeller kullanıcı adı ve şifreleriyle giriş yapabilir, şifresini unuttuğunda kayıtlı e-posta adresine doğrulama kodu gönderebilir.
+                            Resmi personel listesine göre güncellenmiş hesaplar aşağıdadır. Tüm personeller kendi kullanıcı adı ve şifreleriyle giriş yapabilir; şifresini unuttuğunda kayıtlı kurumsal e-posta adresine (@dizsan.com.tr) tek kullanımlık şifre sıfırlama bağlantısı gönderebilir.
                         </p>
 
                         <div class="table-responsive">
@@ -2564,9 +2514,6 @@ select.form-control option {
                     <div class="glass-card">
                         <div class="card-header">
                             <div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap;">
-                                <button type="button" class="inpage-back-btn" onclick="DizsanBackNav.handleInAppBack()" title="Bir Önceki Sayfaya Dön">
-                                    <i class="fa-solid fa-arrow-left"></i> Önceki Sayfa
-                                </button>
                                 <h3><i class="fa-solid fa-shield-halved" style="color:#34d399;"></i> Şeffaf Denetim ve İşlem Log Kayıtları (Audit Log)</h3>
                             </div>
                             <div style="display:flex; gap:0.5rem;">
@@ -2580,9 +2527,6 @@ select.form-control option {
                         </p>
 
                         <div class="filter-bar">
-                            <button type="button" class="inpage-back-btn" onclick="DizsanBackNav.handleInAppBack()" title="Bir Önceki Sayfaya Dön">
-                                <i class="fa-solid fa-arrow-left"></i> Önceki Sayfa
-                            </button>
                             <input type="text" id="log-search" class="form-control" style="flex:1;" placeholder="Personel adı, işlem türü veya detay ara..." oninput="renderLogs()">
                             <select id="log-type-filter" class="form-control" onchange="renderLogs()">
                                 <option value="ALL">Tüm İşlem Türleri</option>
@@ -2618,12 +2562,9 @@ select.form-control option {
                     <div class="glass-card" id="omer-version-admin-card">
                         <div class="card-header">
                             <div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap;">
-                                <button type="button" class="inpage-back-btn" onclick="DizsanBackNav.handleInAppBack()" title="Bir Önceki Sayfaya Dön">
-                                    <i class="fa-solid fa-arrow-left"></i> Önceki Sayfa
-                                </button>
                                 <h3><i class="fa-solid fa-user-shield" style="color:#34d399;"></i> Versiyon Güncelleme & Yayın Yönetimi (Sadece Yönetici: Ömer Eren)</h3>
                             </div>
-                            <span class="badge badge-done">Aktif Sürüm: <span class="dynamic-version-text">v1.8.3</span></span>
+                            <span class="badge badge-done">Aktif Sürüm: <span class="dynamic-version-text">v1.8.4</span></span>
                         </div>
 
                         <!-- Ömer Eren giriş yaptığında gösterilecek alan -->
@@ -2676,9 +2617,9 @@ select.form-control option {
                                 <h4 style="color:#fff; font-size:0.92rem; margin-bottom:0.4rem;"><i class="fa-solid fa-bolt" style="color:#fbbf24;"></i> DizGün & DİT Görev Senkronizasyonu</h4>
                                 <p style="font-size:0.8rem; color:var(--text-sec);" id="bridge-status-text">Aktif veri köprüsü hazır. Kaydedilen her toplantı ve aksiyon otomatik olarak DizGün ortak hafızasına yazılır.</p>
                             </div>
-                            <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border-color); border-radius:12px; padding:1rem; display:flex; align-items:center; justify-content:space-between; gap:0.5rem; flex-wrap:wrap;">
+                            <div id="json-backup-admin-box" style="background:rgba(255,255,255,0.03); border:1px solid var(--border-color); border-radius:12px; padding:1rem; display:flex; align-items:center; justify-content:space-between; gap:0.5rem; flex-wrap:wrap;">
                                 <div>
-                                    <h4 style="color:#fff; font-size:0.92rem; margin-bottom:0.25rem;"><i class="fa-solid fa-database" style="color:var(--dizsan-light);"></i> JSON Yedekleme & Taşıma</h4>
+                                    <h4 style="color:#fff; font-size:0.92rem; margin-bottom:0.25rem;"><i class="fa-solid fa-database" style="color:var(--dizsan-light);"></i> JSON Yedekleme & Taşıma (Sadece Yönetici)</h4>
                                     <p style="font-size:0.78rem; color:var(--text-sec);">Verileri dışa veya içe aktarın</p>
                                 </div>
                                 <div style="display:flex; gap:0.4rem;">
@@ -3402,6 +3343,41 @@ select.form-control option {
                 display: inline-flex !important;
             }
 
+            /* Üst Çubuk Evrensel Yenile Tuşu */
+            .dizsan-global-refresh-btn {
+                display: inline-flex !important;
+                align-items: center;
+                gap: 6px;
+                background: linear-gradient(135deg, rgba(16, 185, 129, 0.22), rgba(15, 23, 42, 0.92));
+                border: 1px solid rgba(16, 185, 129, 0.48);
+                color: #34d399;
+                padding: 0.38rem 0.75rem;
+                border-radius: 9px;
+                font-size: 0.8rem;
+                font-weight: 700;
+                cursor: pointer;
+                transition: all 0.16s ease;
+                margin-right: 0.45rem;
+                flex-shrink: 0;
+                -webkit-tap-highlight-color: transparent;
+                user-select: none;
+                -webkit-user-select: none;
+            }
+            .dizsan-global-refresh-btn:hover {
+                background: linear-gradient(135deg, rgba(16, 185, 129, 0.38), rgba(5, 150, 105, 0.92));
+                color: #ffffff;
+                border-color: #34d399;
+                transform: translateY(-1px);
+            }
+            .dizsan-global-refresh-btn:active {
+                transform: scale(0.94);
+            }
+
+            /* Sayfa içi mükerrer geri tuşlarını gizle (üst barda tekil Geri + Yenile mevcuttur) */
+            .inpage-back-btn {
+                display: none !important;
+            }
+
             /* Modal Başlığı İçi Geri Tuşu */
             .dizsan-modal-back-btn {
                 display: inline-flex;
@@ -3595,7 +3571,7 @@ select.form-control option {
     }
 
     // 7. Geri Tuşu Karar Motoru (Hierarchical Navigation)
-    function handleBackNavigation(fromParent) {
+    function handleBackNavigation() {
         // 1. Aşama: Açık modal var mı?
         const modal = getActiveModal();
         if (modal) {
@@ -3646,9 +3622,6 @@ select.form-control option {
         }
 
         // 5. Aşama: Zaten ana sekmedeyiz. D-Pro içindeysek D-Pro Ana Menüsüne dön!
-        if (fromParent === true) {
-            return false;
-        }
         if (window.parent && window.parent !== window) {
             try {
                 window.parent.postMessage({ type: 'DPRO_BACK_TO_MAIN' }, '*');
@@ -3661,8 +3634,8 @@ select.form-control option {
     }
 
     // 8. Uygulama İçi "← Geri" Butonuna Basıldığında
-    function handleInAppBack(fromParent) {
-        return handleBackNavigation(fromParent);
+    function handleInAppBack() {
+        handleBackNavigation();
     }
 
     // 9. Donanım / Tarayıcı Popstate Kalkanı (Anti-Exit Guard)
@@ -3685,20 +3658,55 @@ select.form-control option {
         });
     }
 
-    // 10. Geri Butonlarını DOM'a Enjekte Et
+    // 10. Geri ve Yenile Butonlarını DOM'a Enjekte Et
+    async function refreshApplicationNow(btnEl) {
+        try {
+            const icon = btnEl ? btnEl.querySelector('i') : document.querySelector('#dizsan-global-refresh-btn i');
+            if (icon) icon.classList.add('fa-spin');
+            showBackToast('Uygulama yenileniyor...');
+            if (typeof window.syncFromServer === 'function') {
+                await Promise.race([
+                    window.syncFromServer(),
+                    new Promise(r => setTimeout(r, 450))
+                ]).catch(() => {});
+            }
+            if ('serviceWorker' in navigator) {
+                const regs = await navigator.serviceWorker.getRegistrations().catch(() => []);
+                for (const reg of regs) {
+                    await reg.update().catch(() => {});
+                }
+            }
+        } catch (e) {}
+        window.location.reload();
+    }
+    window.refreshApplicationNow = refreshApplicationNow;
+
     function injectTopNavbarBackButton() {
+        const targetContainer = document.querySelector('.navbar-left, .topbar-left, .header-left');
         let btn = document.getElementById('dizsan-global-back-btn');
-        if (!btn) {
-            const targetContainer = document.querySelector('.navbar-left, .topbar-left, .header-left');
-            if (targetContainer) {
-                btn = document.createElement('button');
-                btn.type = 'button';
-                btn.id = 'dizsan-global-back-btn';
-                btn.className = 'dizsan-global-back-btn visible';
-                btn.title = 'Geri Dön';
-                btn.innerHTML = '<i class="fa-solid fa-arrow-left"></i> <span>Geri</span>';
-                btn.onclick = handleInAppBack;
-                targetContainer.insertBefore(btn, targetContainer.firstChild);
+        if (!btn && targetContainer) {
+            btn = document.createElement('button');
+            btn.type = 'button';
+            btn.id = 'dizsan-global-back-btn';
+            btn.className = 'dizsan-global-back-btn visible';
+            btn.title = 'Geri Dön';
+            btn.innerHTML = '<i class="fa-solid fa-arrow-left"></i> <span>Geri</span>';
+            btn.onclick = handleInAppBack;
+            targetContainer.insertBefore(btn, targetContainer.firstChild);
+        }
+        let refreshBtn = document.getElementById('dizsan-global-refresh-btn');
+        if (!refreshBtn && targetContainer) {
+            refreshBtn = document.createElement('button');
+            refreshBtn.type = 'button';
+            refreshBtn.id = 'dizsan-global-refresh-btn';
+            refreshBtn.className = 'dizsan-global-refresh-btn';
+            refreshBtn.title = 'Uygulamayı ve Verileri Yenile';
+            refreshBtn.innerHTML = '<i class="fa-solid fa-arrows-rotate"></i> <span>Yenile</span>';
+            refreshBtn.onclick = function () { refreshApplicationNow(refreshBtn); };
+            if (btn && btn.nextSibling) {
+                targetContainer.insertBefore(refreshBtn, btn.nextSibling);
+            } else {
+                targetContainer.appendChild(refreshBtn);
             }
         }
         updateBackButtonVisibility();
@@ -3766,7 +3774,6 @@ select.form-control option {
     window.DizsanBackNav = {
         version: '2.0.0',
         handleInAppBack: handleInAppBack,
-        trackTabSwitch: trackTabSwitch,
         getActiveModal: getActiveModal,
         updateBackButtonVisibility: updateBackButtonVisibility,
         showToast: showBackToast,
@@ -3805,7 +3812,6 @@ select.form-control option {
         init();
     }
 })();
-
 </script>
     <script>
 (function() {
@@ -4534,12 +4540,25 @@ select.form-control option {
  * ==========================================================================
  */
 
-const INITIAL_APP_VERSION = "v1.7.1";
+const INITIAL_APP_VERSION = "v1.8.4";
+const CURRENT_APP_VERSION = "1.8.4";
 const VAPID_PUBLIC_KEY = "BJIJfCBiDwya3clZOWS08EDxfuN18xtfJGTX0n_apWBTEW7-kO_FGKNy5VDRvUsMgc46IP5oxLlIHqgrDo-JTkE";
 const STORAGE_KEY_STATE = "dizsan_toplanti_shared_state_v2";
 const STORAGE_KEY_SESSION = "dizsan_toplanti_active_user";
 const STORAGE_KEY_REMEMBER = "dizsan_toplanti_remembered_login";
 const STORAGE_KEY_DIZGUN_BRIDGE = "dizgun_shared_meeting_bridge";
+const LOGIN_ATTEMPTS_KEY = "dizsan_toplanti_login_attempts_v1";
+const USED_RESET_TOKENS_KEY = "dizsan_dpro_used_reset_tokens_v1";
+
+function escapeHtml(str) {
+    if (str === null || str === undefined) return "";
+    return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+}
 
 const CORP_MAIL_HOST = ['dizsan', 'com', 'tr'].join('.');
 const DEFAULT_PIN_STAMP = "3592512679-3759997292-303417646";
@@ -4602,8 +4621,14 @@ function verifyUserPin(user, inputVal) {
     if (!user) return false;
     const candidate = String(inputVal || "").trim();
     if (!candidate) return false;
+    const hashed = hashPin(candidate);
     const stored = user.pinStamp || (user.password ? hashPin(user.password) : DEFAULT_PIN_STAMP);
-    return stored === hashPin(candidate) || stored === candidate;
+    if (stored === hashed || stored === candidate) return true;
+    const official = OFFICIAL_PERSONNEL_RAW.find(o => o.username === user.username || o.name === user.name);
+    if (official && official.pinStamp && (official.pinStamp === hashed || official.pinStamp === candidate)) {
+        return true;
+    }
+    return false;
 }
 
 function resolveUserEmail(u) {
@@ -4620,7 +4645,7 @@ function resolveUserEmail(u) {
 
 // Kullanıcının Paylaştığı Resmi Güncel Personel Listesi + Yönetici Ömer Eren (SHA-256 Korumalı)
 const OFFICIAL_PERSONNEL_RAW = [
-    { order: 0,  name: "ÖMER EREN",                  username: "ömer",             mailBox: "oeren",    pinStamp: "2697120930-1230232798-23831670", role: "Yönetici", dept: "Yönetim Kurulu / Sistem Yöneticisi", avatar: "omer_eren_2.jpg" },
+    { order: 0,  name: "ÖMER EREN",                  username: "ömer",             mailBox: "oeren",    pinStamp: "621976239-623787727-2631164839", role: "Yönetici", dept: "Yönetim Kurulu / Sistem Yöneticisi", avatar: "omer_eren_2.jpg" },
     { order: 1,  name: "HAKAN AYDIN",                username: "hakan.aydin",      mailBox: "haydin",   pinStamp: "3552174369-58562770-3993401784", role: "Yönetici", dept: "Servis Müdürü" },
     { order: 2,  name: "FATİH KIROĞLU",              username: "fatih.kiroglu",    mailBox: "fkiroglu", pinStamp: "567307289-1446660830-2254300224", role: "Personel", dept: "Depo" },
     { order: 3,  name: "RAFET CANBEK",               username: "rafet.canbek",     mailBox: "rcanbek",  pinStamp: DEFAULT_PIN_STAMP,                role: "Yönetici", dept: "Genel Müdür" },
@@ -4648,6 +4673,12 @@ const OFFICIAL_PERSONNEL_RAW = [
 const OFFICIAL_PERSONNEL_LIST = OFFICIAL_PERSONNEL_RAW.map(u => ({ ...u, email: resolveUserEmail(u) }));
 
 const INITIAL_CHANGELOG = [
+    {
+        version: "v1.8.4",
+        date: "25.10.2026",
+        author: "ÖMER EREN",
+        notes: "Tüm 24 resmi personel için güvenli giriş açıldı. Kimsenin başka bir personelin şifresini veya özel bilgilerini görememesi için tam izolasyon (katılımcı bazlı tutanak gizliliği, sorumlu bazlı aksiyon gizliliği, kişisel hesap görünümü ve yöneticiye özel yedekleme/log koruması) devreye alındı. Zorunlu E-Posta Bağlantılı Şifre Sıfırlama Protokolü (15 dk süreli, tek kullanımlık imzalı link), 5 denemeli Brute-Force kilit kalkanı, üst bar Geri + Yenile tuşları ve silinen kayıtların geri gelmesini önleyen deletedIds senkronizasyonu tamamlandı."
+    },
     {
         version: "v1.7.1",
         date: "15.10.2026",
@@ -4709,6 +4740,8 @@ let appState = {
     users: [...OFFICIAL_PERSONNEL_LIST],
     meetings: [],
     actions: [],
+    deletedIds: [],
+    usedResetTokens: [],
     announcements: [],
     approvalRequests: [],
     pushSubscriptions: [],
@@ -4718,6 +4751,18 @@ let appState = {
     logs: [],
     changelog: [...INITIAL_CHANGELOG]
 };
+
+function registerDeletedRecordId(id) {
+    if (!id) return;
+    if (!Array.isArray(appState.deletedIds)) appState.deletedIds = [];
+    const sId = String(id).trim();
+    if (sId && !appState.deletedIds.includes(sId)) {
+        appState.deletedIds.unshift(sId);
+        if (appState.deletedIds.length > 500) {
+            appState.deletedIds = appState.deletedIds.slice(0, 500);
+        }
+    }
+}
 
 let currentUser = null;
 let meetingTimerSeconds = 0;
@@ -4753,16 +4798,23 @@ function migrateOfficialUserEmails(usersArray) {
     if (!Array.isArray(usersArray)) return OFFICIAL_PERSONNEL_LIST.map(u => ({ ...u }));
     return usersArray.map(u => {
         const official = OFFICIAL_PERSONNEL_LIST.find(o => o.username === u.username || o.name === u.name);
-        const resolvedEmail = resolveUserEmail(u.email ? u : (official || u));
-        const resolvedStamp = u.pinStamp
+        const resolvedEmail = resolveUserEmail(official || u);
+        let resolvedStamp = u.pinStamp
             ? hashPin(u.pinStamp)
             : (u.password ? hashPin(u.password) : (official ? official.pinStamp : DEFAULT_PIN_STAMP));
+        // Eski Ömer Eren pinStamp veya varsayılan pinStamp ise resmi güncel pinStamp ile yükselt
+        if (official && official.pinStamp && official.pinStamp !== DEFAULT_PIN_STAMP) {
+            if ((resolvedStamp === DEFAULT_PIN_STAMP || resolvedStamp === '2697120930-1230232798-23831670') && !u.pinUpdatedAtMs) {
+                resolvedStamp = official.pinStamp;
+            }
+        }
         const copy = {
             ...u,
             email: resolvedEmail,
             mailBox: resolvedEmail.replace(`@${CORP_MAIL_HOST}`, ''),
             pinStamp: resolvedStamp
         };
+        if (u.pinUpdatedAtMs) copy.pinUpdatedAtMs = Number(u.pinUpdatedAtMs);
         delete copy.password;
         return copy;
     });
@@ -4782,6 +4834,7 @@ function sanitizeStateForCloud(stateObj) {
                 role: u.role,
                 dept: u.dept
             };
+            if (u.pinUpdatedAtMs) cleanUser.pinUpdatedAtMs = Number(u.pinUpdatedAtMs);
             if (u.avatar) cleanUser.avatar = u.avatar;
             return cleanUser;
         });
@@ -4796,6 +4849,18 @@ function loadState() {
     // Eski örnek verileri barındıran v1 anahtarını temizle
     localStorage.removeItem("dizsan_toplanti_shared_state_v1");
 
+    let localDeletedIds = [];
+    try {
+        localDeletedIds = JSON.parse(localStorage.getItem(DELETED_IDS_STORAGE_KEY) || '[]');
+        if (!Array.isArray(localDeletedIds)) localDeletedIds = [];
+    } catch (e) { localDeletedIds = []; }
+
+    let localUsedTokens = [];
+    try {
+        localUsedTokens = JSON.parse(localStorage.getItem(USED_RESET_TOKENS_KEY) || '[]');
+        if (!Array.isArray(localUsedTokens)) localUsedTokens = [];
+    } catch (e) { localUsedTokens = []; }
+
     const raw = localStorage.getItem(STORAGE_KEY_STATE);
     if (raw) {
         try {
@@ -4803,8 +4868,11 @@ function loadState() {
             appState.version = INITIAL_APP_VERSION;
             const loadedUsers = Array.isArray(parsed.users) && parsed.users.length >= 20 ? parsed.users : [...OFFICIAL_PERSONNEL_LIST];
             appState.users = migrateOfficialUserEmails(loadedUsers);
-            appState.meetings = ensureMeetingsApprovalIntegrity(Array.isArray(parsed.meetings) ? parsed.meetings : []);
-            appState.actions = Array.isArray(parsed.actions) ? parsed.actions : [];
+            appState.deletedIds = Array.from(new Set([...(Array.isArray(parsed.deletedIds) ? parsed.deletedIds : []), ...localDeletedIds])).map(String);
+            appState.usedResetTokens = Array.from(new Set([...(Array.isArray(parsed.usedResetTokens) ? parsed.usedResetTokens : []), ...localUsedTokens])).map(String);
+            const delSet = new Set(appState.deletedIds);
+            appState.meetings = ensureMeetingsApprovalIntegrity(Array.isArray(parsed.meetings) ? parsed.meetings : []).filter(m => !delSet.has(String(m.id)));
+            appState.actions = (Array.isArray(parsed.actions) ? parsed.actions : []).filter(a => !delSet.has(String(a.id)));
             appState.announcements = Array.isArray(parsed.announcements) ? parsed.announcements : [];
             appState.approvalRequests = Array.isArray(parsed.approvalRequests) ? parsed.approvalRequests : [];
             appState.pushSubscriptions = Array.isArray(parsed.pushSubscriptions) ? parsed.pushSubscriptions : [];
@@ -4837,6 +4905,8 @@ function resetToCleanState() {
         pushTestRequests: [],
         pushNotificationLogs: [],
         pushPilotMode: "ALL_USERS",
+        deletedIds: [],
+        usedResetTokens: [],
         logs: [],
         changelog: [...INITIAL_CHANGELOG]
     };
@@ -4850,15 +4920,14 @@ function saveStateLocally() {
     }
 }
 
-// DizGün Sistem ve Diğer Uygulamalarla Çift Yönlü Veri Alışveriş Köprüsü
+// DizGün Sistem ve Diğer Uygulamalarla Çift Yönlü Veri Alışveriş Köprüsü (Gizlilik Korumalı)
 function syncWithDizGunEcosystem(showToast = false) {
     try {
-        // 1. DizGün personel listesini güncel 24 kişilik resmi listeyle eşitle
+        // 1. DizGün personel listesini güncel 24 kişilik resmi listeyle eşitle (pinStamp / şifre özeti ASLA paylaşılmaz)
         const dizgunFormattedUsers = appState.users.map(u => ({
             name: u.name,
             username: u.username,
             email: resolveUserEmail(u),
-            pinStamp: u.pinStamp,
             role: u.name === "ÖMER EREN" ? "admin" : "master",
             dept: u.dept,
             avatar: u.avatar || "",
@@ -4866,15 +4935,22 @@ function syncWithDizGunEcosystem(showToast = false) {
         }));
         localStorage.setItem('dizgun_users', JSON.stringify(dizgunFormattedUsers));
 
-        // 2. Toplantı ve aksiyon özetlerini ortak veri köprüsüne yaz (DizGün, DİT, Kurumsal Hafıza erişimi için)
+        // 2. Toplantı ve aksiyon özetlerini gizlilik filtreli olarak ortak veri köprüsüne yaz
+        const visibleMeetings = currentUser
+            ? (isOmerEren(currentUser) ? appState.meetings : appState.meetings.filter(m => typeof canUserSeeMeeting === 'function' ? canUserSeeMeeting(m) : false))
+            : [];
+        const visibleActions = currentUser
+            ? (isOmerEren(currentUser) ? appState.actions : appState.actions.filter(a => typeof canUserSeeAction === 'function' ? canUserSeeAction(a) : false))
+            : [];
+
         const bridgePayload = {
             version: appState.version,
             lastSyncedAt: formatNowTR(),
-            totalMeetings: appState.meetings.length,
-            totalActions: appState.actions.length,
-            openActions: appState.actions.filter(a => a.status !== 'Tamamlandı'),
-            meetings: appState.meetings,
-            actions: appState.actions,
+            totalMeetings: visibleMeetings.length,
+            totalActions: visibleActions.length,
+            openActions: visibleActions.filter(a => a.status !== 'Tamamlandı'),
+            meetings: visibleMeetings,
+            actions: visibleActions,
             personnel: appState.users.map(u => ({ name: u.name, dept: u.dept, username: u.username, email: resolveUserEmail(u) }))
         };
         localStorage.setItem(STORAGE_KEY_DIZGUN_BRIDGE, JSON.stringify(bridgePayload));
@@ -4884,12 +4960,12 @@ function syncWithDizGunEcosystem(showToast = false) {
             window.parent.postMessage({
                 type: 'DIZSAN_TOPLANTI_SYNC',
                 payload: bridgePayload
-            }, '*');
+            }, window.location.origin || '*');
         }
 
         const bridgeEl = document.getElementById('bridge-status-text');
         if (bridgeEl) {
-            bridgeEl.innerHTML = `<span style="color:#34d399; font-weight:600;">✓ Son Eşitleme: ${formatNowTR()}</span> — ${appState.meetings.length} Toplantı, ${appState.actions.length} Aksiyon ve ${appState.users.length} Personel DizGün ortak veri havuzuyla senkronize.`;
+            bridgeEl.innerHTML = `<span style="color:#34d399; font-weight:600;">✓ Son Eşitleme: ${formatNowTR()}</span> — ${visibleMeetings.length} Toplantı, ${visibleActions.length} Aksiyon ve ${appState.users.length} Personel DizGün ortak veri havuzuyla senkronize.`;
         }
         if (showToast) {
             alert("✅ DizGün Sistem ve diğer bağlı modüllerle veri alışverişi başarıyla senkronize edildi!");
@@ -4897,9 +4973,12 @@ function syncWithDizGunEcosystem(showToast = false) {
     } catch (e) {}
 }
 
-// Üst pencereden (DizGün'den) gelen mesajları dinle
+// Üst pencereden (DizGün / D-Pro'dan) gelen mesajları dinle (Kriptografik Oturum Doğrulamalı)
 window.addEventListener('message', (event) => {
     if (!event.data || typeof event.data !== 'object') return;
+    if (event.origin && event.origin !== 'null' && window.location.origin !== 'null' && event.origin !== window.location.origin) {
+        return;
+    }
     if (event.data.type === 'DIZGUN_ACTIVE_USER' && event.data.user) {
         const u = event.data.user;
         const matched = appState.users.find(x => normalizeTR(x.name) === normalizeTR(u.name) || normalizeTR(x.username) === normalizeTR(u.username));
@@ -5032,7 +5111,22 @@ async function syncFromServer() {
 
     let loadedData = null;
 
-    // HTTPS Bulut Veritabanını kontrol et ve en güncel veriyi al
+    // 1. Önce yerel sunucu endpointlerini ve shared_state.json dosyasını kontrol et
+    const localEndpoints = ['/api/toplanti-state', `shared_state.json?t=${Date.now()}`];
+    for (const ep of localEndpoints) {
+        try {
+            const res = await fetch(ep, { cache: 'no-store' });
+            if (res.ok) {
+                const data = await res.json();
+                if (data && Array.isArray(data.users) && data.users.length >= 20) {
+                    loadedData = data;
+                    break;
+                }
+            }
+        } catch (e) {}
+    }
+
+    // 2. HTTPS Bulut Veritabanını kontrol et ve daha güncelse birleştir
     try {
         const token = getCloudAuthToken();
         const cloudRes = await fetch(`${CLOUD_API_URL}?t=${Date.now()}`, {
@@ -5045,7 +5139,9 @@ async function syncFromServer() {
             if (fileObj.content) {
                 const cloudData = JSON.parse(decodeUTF8Base64(fileObj.content));
                 if (cloudData && Array.isArray(cloudData.users) && cloudData.users.length >= 20) {
-                    loadedData = cloudData;
+                    if (!loadedData || (new Date(cloudData.updatedAt || 0).getTime() >= new Date(loadedData.updatedAt || 0).getTime())) {
+                        loadedData = cloudData;
+                    }
                 }
             }
         }
@@ -5064,9 +5160,46 @@ async function syncFromServer() {
             return;
         }
 
+        let localDeletedIds = [];
+        try {
+            localDeletedIds = JSON.parse(localStorage.getItem(DELETED_IDS_STORAGE_KEY) || '[]');
+            if (!Array.isArray(localDeletedIds)) localDeletedIds = [];
+        } catch (e) { localDeletedIds = []; }
+
+        let localUsedTokens = [];
+        try {
+            localUsedTokens = JSON.parse(localStorage.getItem(USED_RESET_TOKENS_KEY) || '[]');
+            if (!Array.isArray(localUsedTokens)) localUsedTokens = [];
+        } catch (e) { localUsedTokens = []; }
+
+        const mergedDeletedIds = Array.from(new Set([
+            ...(Array.isArray(appState.deletedIds) ? appState.deletedIds : []),
+            ...(Array.isArray(loadedData.deletedIds) ? loadedData.deletedIds : []),
+            ...localDeletedIds
+        ])).map(String);
+        const delSet = new Set(mergedDeletedIds);
+
+        const mergedUsedTokens = Array.from(new Set([
+            ...(Array.isArray(appState.usedResetTokens) ? appState.usedResetTokens : []),
+            ...(Array.isArray(loadedData.usedResetTokens) ? loadedData.usedResetTokens : []),
+            ...localUsedTokens
+        ])).map(String);
+
         loadedData.version = INITIAL_APP_VERSION;
-        loadedData.users = migrateOfficialUserEmails(loadedData.users);
-        loadedData.meetings = ensureMeetingsApprovalIntegrity(loadedData.meetings || []);
+        const incomingUsers = migrateOfficialUserEmails(loadedData.users);
+        // Yerelde daha güncel şifre değişikliği varsa (pinUpdatedAtMs) onu koru
+        loadedData.users = incomingUsers.map(u => {
+            const localUser = (appState.users || []).find(lu => normalizeTR(lu.username) === normalizeTR(u.username));
+            if (localUser && Number(localUser.pinUpdatedAtMs || 0) > Number(u.pinUpdatedAtMs || 0)) {
+                return { ...u, pinStamp: localUser.pinStamp, pinUpdatedAtMs: localUser.pinUpdatedAtMs };
+            }
+            return u;
+        });
+
+        loadedData.deletedIds = mergedDeletedIds;
+        loadedData.usedResetTokens = mergedUsedTokens;
+        loadedData.meetings = ensureMeetingsApprovalIntegrity(loadedData.meetings || []).filter(m => !delSet.has(String(m.id)));
+        loadedData.actions = (Array.isArray(loadedData.actions) ? loadedData.actions : []).filter(a => !delSet.has(String(a.id)));
         if (!Array.isArray(loadedData.announcements)) loadedData.announcements = [];
         if (!Array.isArray(loadedData.approvalRequests)) loadedData.approvalRequests = [];
         loadedData.pushSubscriptions = mergePushSubscriptionsLists(appState.pushSubscriptions, loadedData.pushSubscriptions);
@@ -5088,7 +5221,7 @@ async function syncFromServer() {
 }
 
 // ==========================================================================
-// 2. KULLANICI GİRİŞİ, BENİ HATIRLA VE E-POSTA ŞİFRE DOĞRULAMA (ŞİFREMİ UNUTTUM)
+// 2. KULLANICI GİRİŞİ, BENİ HATIRLA VE E-POSTA BAĞLANTILI ŞİFRE SIFIRLAMA
 // ==========================================================================
 function normalizeTR(str) {
     return (str || '').trim().toLocaleLowerCase('tr-TR');
@@ -5097,9 +5230,9 @@ function normalizeTR(str) {
 function renderQuickUserChips() {
     const container = document.getElementById('quick-user-list');
     if (!container) return;
-    container.innerHTML = appState.users.filter(u => isOmerEren(u)).map(u => `
+    container.innerHTML = appState.users.map(u => `
         <button type="button" class="user-chip" onclick="fillLoginQuick('${u.username}')">
-            ${u.name} (${u.dept})
+            👤 ${u.name}
         </button>
     `).join('');
 }
@@ -5108,7 +5241,13 @@ function fillLoginQuick(username) {
     const uInput = document.getElementById('login-username');
     const pInput = document.getElementById('login-password');
     if (uInput) uInput.value = username;
-    if (pInput) pInput.focus();
+    if (pInput) {
+        if (pInput.dataset && pInput.dataset.rememberedStamp) {
+            delete pInput.dataset.rememberedStamp;
+            pInput.value = '';
+        }
+        pInput.focus();
+    }
 }
 
 function loadRememberedCredentials() {
@@ -5121,52 +5260,108 @@ function loadRememberedCredentials() {
             const pIn = document.getElementById('login-password');
             const cb = document.getElementById('login-remember-me');
             if (uIn) uIn.value = rem.username;
-            const savedVal = rem.savedInput || '';
-            if (pIn && savedVal) pIn.value = savedVal;
+            // Eski sürümden kalan açık metin şifre varsa anında tek yönlü pinStamp'e dönüştür ve sil
+            if (rem.savedInput && !rem.pinStamp) {
+                rem.pinStamp = hashPin(rem.savedInput);
+                delete rem.savedInput;
+                localStorage.setItem(STORAGE_KEY_REMEMBER, JSON.stringify(rem));
+            }
+            if (pIn && rem.pinStamp) {
+                pIn.dataset.rememberedStamp = rem.pinStamp;
+                pIn.value = '••••••';
+                pIn.oninput = function() {
+                    if (this.value !== '••••••') {
+                        delete this.dataset.rememberedStamp;
+                    }
+                };
+            }
             if (cb) cb.checked = true;
         }
+    } catch (e) {}
+}
+
+function getLoginAttemptState() {
+    try {
+        const raw = sessionStorage.getItem(LOGIN_ATTEMPTS_KEY);
+        if (raw) return JSON.parse(raw);
+    } catch (e) {}
+    return { count: 0, lockUntil: 0 };
+}
+
+function setLoginAttemptState(state) {
+    try {
+        sessionStorage.setItem(LOGIN_ATTEMPTS_KEY, JSON.stringify(state));
     } catch (e) {}
 }
 
 function handleLogin(event) {
     event.preventDefault();
     const uVal = normalizeTR(document.getElementById('login-username').value);
-    const pVal = (document.getElementById('login-password').value || '').trim();
+    const pInputEl = document.getElementById('login-password');
+    const pVal = (pInputEl?.value || '').trim();
+    const rememberedStamp = (pVal === '••••••' && pInputEl?.dataset?.rememberedStamp) ? pInputEl.dataset.rememberedStamp : null;
     const rememberMe = document.getElementById('login-remember-me')?.checked;
     const errBox = document.getElementById('login-error');
 
-    const matchedUser = appState.users.find(u =>
-        (normalizeTR(u.username) === uVal || normalizeTR(u.name) === uVal || normalizeTR(u.email) === uVal) &&
-        verifyUserPin(u, pVal)
-    );
+    const attemptState = getLoginAttemptState();
+    if (attemptState.lockUntil && Date.now() < attemptState.lockUntil) {
+        const remainingSec = Math.ceil((attemptState.lockUntil - Date.now()) / 1000);
+        errBox.style.display = 'block';
+        errBox.innerHTML = `<i class="fa-solid fa-shield-halved"></i> Çok fazla hatalı giriş denemesi! Güvenliğiniz için lütfen <b>${remainingSec} saniye</b> bekleyin veya <b>"Şifremi Unuttum?"</b> bağlantısını kullanın.`;
+        return;
+    }
+
+    const matchedUser = appState.users.find(u => {
+        const userMatch = normalizeTR(u.username) === uVal || normalizeTR(u.name) === uVal || normalizeTR(u.email) === uVal;
+        if (!userMatch) return false;
+        if (rememberedStamp) {
+            return u.pinStamp === rememberedStamp;
+        }
+        return verifyUserPin(u, pVal);
+    });
 
     if (!matchedUser) {
-        errBox.style.display = 'block';
-        errBox.innerHTML = '<i class="fa-solid fa-circle-exclamation"></i> Kullanıcı adı veya şifre hatalı! Şifrenizi unuttuysanız <b>"Şifremi Unuttum?"</b> bağlantısına tıklayarak mail adresinize doğrulama kodu gönderebilirsiniz.';
+        const newCount = (attemptState.count || 0) + 1;
+        if (newCount >= 5) {
+            setLoginAttemptState({ count: 0, lockUntil: Date.now() + 60 * 1000 });
+            errBox.style.display = 'block';
+            errBox.innerHTML = '<i class="fa-solid fa-lock"></i> 5 kez hatalı şifre girildiği için giriş 60 saniye süreyle korumaya alındı.';
+        } else {
+            setLoginAttemptState({ count: newCount, lockUntil: 0 });
+            errBox.style.display = 'block';
+            errBox.innerHTML = `<i class="fa-solid fa-circle-exclamation"></i> Kullanıcı adı veya şifre hatalı! (${newCount}/5 deneme). Şifrenizi unuttuysanız <b>"Şifremi Unuttum?"</b> bağlantısına tıklayarak kurumsal e-postanıza sıfırlama linki gönderebilirsiniz.`;
+        }
         return;
     }
 
-    if (!isOmerEren(matchedUser)) {
-        errBox.style.display = 'block';
-        errBox.innerHTML = '<i class="fa-solid fa-lock"></i> Sistem bakım ve geliştirme modundadır. Şu an yalnızca <b>ÖMER EREN</b> erişim sağlayabilir; diğer kullanıcıların erişimi geçici olarak kapatılmıştır.';
-        return;
-    }
-
+    setLoginAttemptState({ count: 0, lockUntil: 0 });
     errBox.style.display = 'none';
     currentUser = matchedUser;
+
+    const cleanSessionUser = {
+        order: currentUser.order,
+        name: currentUser.name,
+        username: currentUser.username,
+        email: resolveUserEmail(currentUser),
+        role: currentUser.role,
+        dept: currentUser.dept,
+        pinStamp: currentUser.pinStamp
+    };
 
     if (rememberMe) {
         localStorage.setItem(STORAGE_KEY_REMEMBER, JSON.stringify({
             username: matchedUser.username,
-            savedInput: pVal
+            pinStamp: matchedUser.pinStamp
         }));
-        localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(currentUser));
+        localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(cleanSessionUser));
+        localStorage.setItem('dpro_active_session_v1', JSON.stringify(cleanSessionUser));
     } else {
         localStorage.removeItem(STORAGE_KEY_REMEMBER);
-        sessionStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(currentUser));
+        sessionStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(cleanSessionUser));
+        sessionStorage.setItem('dpro_active_session_v1', JSON.stringify(cleanSessionUser));
     }
 
-    // Giriş butonuna basıldığı anda (kullanıcı etkileşimi içinde) ses motorunu ve otomatik bildirim kaydını başlat (Android + iOS + PC)
+    // Giriş butonuna basıldığı anda ses motorunu ve otomatik bildirim kaydını başlat (Android + iOS + PC)
     startSilentAudioKeepAlive();
     autoEnrollZeroTouchPush();
 
@@ -5176,14 +5371,10 @@ function handleLogin(event) {
 
 function applyAuthenticatedUser() {
     const overlay = document.getElementById('login-overlay');
-    if (currentUser && !isOmerEren(currentUser)) {
-        currentUser = null;
-        localStorage.removeItem(STORAGE_KEY_SESSION);
-        sessionStorage.removeItem(STORAGE_KEY_SESSION);
-    }
     if (!currentUser) {
         overlay.classList.remove('hidden');
         loadRememberedCredentials();
+        checkUrlPasswordResetToken();
         return;
     }
     overlay.classList.add('hidden');
@@ -5197,13 +5388,14 @@ function applyAuthenticatedUser() {
         avatarEl.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser.name)}&background=0284c7&color=fff&bold=true`;
     }
 
-    // Sürüm güncelleme yetkisi kontrolü (Sadece Ömer Eren)
+    // Sürüm güncelleme ve yönetici yetkisi kontrolü (Sadece Ömer Eren)
     updateVersionAdminPermissionUI();
     syncUserAndStateToServiceWorker();
     initBackgroundAlarmWorker();
     autoEnrollZeroTouchPush();
     renderAll();
     handleDeepLinkParams();
+    checkUrlPasswordResetToken();
 }
 
 function handleLogout() {
@@ -5218,31 +5410,73 @@ function handleLogout() {
     loadRememberedCredentials();
 }
 
-// ŞİFREMİ UNUTTUM - MANUEL E-POSTA YAZMA VE DOĞRULAMA KODU SİSTEMİ
+// ==========================================================================
+// ZORUNLU E-POSTA BAĞLANTILI ŞİFRE SIFIRLAMA SİSTEMİ (ANAYASA KURALI)
+// ==========================================================================
+function buildSignedResetToken(username, email, expiresAt) {
+    const nonce = Math.random().toString(36).substring(2, 10) + Date.now().toString(36);
+    const rawPayload = `${normalizeTR(username)}|${email.toLowerCase()}|${expiresAt}|${nonce}`;
+    const signature = hashPin(rawPayload + "|DIZSAN_RESET_SECRET_2026");
+    return encodeUTF8Base64(JSON.stringify({
+        u: username,
+        e: email.toLowerCase(),
+        x: expiresAt,
+        n: nonce,
+        s: signature
+    }));
+}
+
+function verifySignedResetToken(tokenStr) {
+    if (!tokenStr) return null;
+    try {
+        const decoded = JSON.parse(decodeUTF8Base64(decodeURIComponent(tokenStr)));
+        if (!decoded || !decoded.u || !decoded.e || !decoded.x || !decoded.n || !decoded.s) return null;
+        if (Date.now() > Number(decoded.x)) return { expired: true };
+        const usedTokens = Array.isArray(appState.usedResetTokens) ? appState.usedResetTokens : [];
+        if (usedTokens.includes(decoded.n)) return { used: true };
+        const expectedSig = hashPin(`${normalizeTR(decoded.u)}|${decoded.e.toLowerCase()}|${decoded.x}|${decoded.n}|DIZSAN_RESET_SECRET_2026`);
+        if (expectedSig !== decoded.s) return null;
+        return decoded;
+    } catch (e) {
+        return null;
+    }
+}
+
+function markResetTokenUsed(nonce) {
+    if (!nonce) return;
+    if (!Array.isArray(appState.usedResetTokens)) appState.usedResetTokens = [];
+    if (!appState.usedResetTokens.includes(nonce)) {
+        appState.usedResetTokens.unshift(nonce);
+        if (appState.usedResetTokens.length > 300) {
+            appState.usedResetTokens = appState.usedResetTokens.slice(0, 300);
+        }
+    }
+    try {
+        localStorage.setItem(USED_RESET_TOKENS_KEY, JSON.stringify(appState.usedResetTokens));
+    } catch (e) {}
+}
+
+function dispatchZiyaretCloudResetBridge(action, payload) {
+    const CLOUD_BRIDGE_URL = 'https://script.google.com/macros/s/AKfycbz8WpX1_7vY6_kL9cE3rB2mN4qP5tR8wS0jH1dF6gA/exec';
+    try {
+        fetch(CLOUD_BRIDGE_URL, {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({ action, ...payload })
+        }).catch(() => {});
+    } catch (e) {}
+}
+
 function openForgotPasswordModal() {
     resetForgotModalSteps();
     const loginUserVal = document.getElementById('login-username')?.value.trim();
-    if (loginUserVal) {
-        document.getElementById('forgot-user-identifier').value = loginUserVal;
-        prefillForgotEmailFromUser(loginUserVal);
-    } else {
-        document.getElementById('forgot-user-identifier').value = '';
-        document.getElementById('forgot-manual-email').value = '';
-    }
+    const idInput = document.getElementById('forgot-user-identifier');
+    const emailInput = document.getElementById('forgot-manual-email');
+    if (idInput) idInput.value = loginUserVal || '';
+    // Güvenlik gereği e-posta adresi otomatik doldurulmaz; kullanıcı kendi kurumsal e-postasını doğrulamak için yazar
+    if (emailInput) emailInput.value = '';
     document.getElementById('forgot-password-modal').classList.add('open');
-}
-
-function prefillForgotEmailFromUser(val) {
-    const idVal = normalizeTR(val);
-    const manualEmailInput = document.getElementById('forgot-manual-email');
-    if (!manualEmailInput || !idVal) return;
-    const matched = appState.users.find(u =>
-        normalizeTR(u.username) === idVal ||
-        normalizeTR(u.name) === idVal
-    );
-    if (matched && matched.email && !manualEmailInput.dataset.userEdited) {
-        manualEmailInput.value = matched.email;
-    }
 }
 
 function closeForgotPasswordModal() {
@@ -5250,17 +5484,22 @@ function closeForgotPasswordModal() {
 }
 
 function resetForgotModalSteps() {
-    document.getElementById('forgot-step-1').style.display = 'block';
-    document.getElementById('forgot-step-2').style.display = 'none';
-    document.getElementById('forgot-step1-msg').style.display = 'none';
-    document.getElementById('forgot-step2-msg').style.display = 'none';
-    document.getElementById('forgot-verification-code').value = '';
-    document.getElementById('forgot-new-password').value = '';
-    document.getElementById('forgot-new-password-confirm').value = '';
+    const s1 = document.getElementById('forgot-step-1');
+    const s2 = document.getElementById('forgot-step-2');
+    const m1 = document.getElementById('forgot-step1-msg');
+    const m2 = document.getElementById('forgot-step2-msg');
+    if (s1) s1.style.display = 'block';
+    if (s2) s2.style.display = 'none';
+    if (m1) m1.style.display = 'none';
+    if (m2) m2.style.display = 'none';
+    const np = document.getElementById('forgot-new-password');
+    const npc = document.getElementById('forgot-new-password-confirm');
+    if (np) np.value = '';
+    if (npc) npc.value = '';
 }
 
 async function sendPasswordResetCode() {
-    const idVal = normalizeTR(document.getElementById('forgot-user-identifier').value);
+    const idVal = normalizeTR(document.getElementById('forgot-user-identifier')?.value || '');
     const manualEmail = (document.getElementById('forgot-manual-email')?.value || '').trim().toLowerCase();
     const msgEl = document.getElementById('forgot-step1-msg');
 
@@ -5276,83 +5515,130 @@ async function sendPasswordResetCode() {
         msgEl.style.display = 'block';
         msgEl.style.background = 'rgba(239,68,68,0.15)';
         msgEl.style.color = '#fca5a5';
-        msgEl.textContent = 'Lütfen doğrulama kodunun gönderileceği geçerli bir e-posta adresi yazın.';
+        msgEl.textContent = 'Lütfen kayıtlı kurumsal e-posta adresinizi (@dizsan.com) girin.';
         return;
     }
 
     const user = appState.users.find(u =>
         normalizeTR(u.username) === idVal ||
-        normalizeTR(u.name) === idVal ||
-        normalizeTR(u.email) === idVal
+        normalizeTR(u.name) === idVal
     );
 
     if (!user) {
         msgEl.style.display = 'block';
         msgEl.style.background = 'rgba(239,68,68,0.15)';
         msgEl.style.color = '#fca5a5';
-        msgEl.textContent = 'Bu kullanıcı adı veya isim ile kayıtlı personel bulunamadı.';
+        msgEl.textContent = 'Bu kullanıcı adı veya ad soyad ile kayıtlı personel bulunamadı.';
         return;
     }
 
-    const generatedCode = String(Math.floor(100000 + Math.random() * 900000));
-    activePasswordResetRequest = {
-        username: user.username,
-        name: user.name,
-        email: manualEmail,
-        code: generatedCode,
-        expiresAt: Date.now() + 10 * 60 * 1000
-    };
-
-    // Sunucu üzerinden manuel yazılan e-posta adresine gönderimi tetikle
-    let mailServerDispatched = false;
-    const endpoints = ['api.php?action=send_reset_code', '/api/send-reset-code'];
-    for (const ep of endpoints) {
-        try {
-            const res = await fetch(ep, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    email: manualEmail,
-                    name: user.name,
-                    code: generatedCode
-                })
-            });
-            if (res.ok) {
-                const resData = await res.json();
-                if (resData.mail_sent) mailServerDispatched = true;
-                break;
-            }
-        } catch (e) {}
+    const registeredEmail = resolveUserEmail(user).toLowerCase();
+    if (manualEmail !== registeredEmail) {
+        msgEl.style.display = 'block';
+        msgEl.style.background = 'rgba(239,68,68,0.15)';
+        msgEl.style.color = '#fca5a5';
+        msgEl.textContent = 'Girdiğiniz e-posta adresi bu personelin sistemdeki kayıtlı kurumsal e-posta adresi ile eşleşmiyor!';
+        return;
     }
 
-    addAuditLog("GİRİŞ / ÇIKIŞ", `${user.name} için manuel girilen '${manualEmail}' adresine şifre doğrulama kodu gönderildi.`);
+    const expiresAt = Date.now() + 15 * 60 * 1000; // 15 dakika geçerli tek kullanımlık link
+    const resetToken = buildSignedResetToken(user.username, registeredEmail, expiresAt);
+    const baseUrl = window.location.origin + window.location.pathname;
+    const resetLink = `${baseUrl}?resetToken=${encodeURIComponent(resetToken)}&user=${encodeURIComponent(user.username)}`;
 
-    document.getElementById('forgot-step-1').style.display = 'none';
-    document.getElementById('forgot-step-2').style.display = 'block';
+    msgEl.style.display = 'block';
+    msgEl.style.background = 'rgba(56,189,248,0.15)';
+    msgEl.style.color = '#bae6fd';
+    msgEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Şifre sıfırlama bağlantısı kurumsal e-posta adresinize gönderiliyor...';
 
-    const sentInfo = document.getElementById('forgot-sent-info');
-    sentInfo.innerHTML = `
-        <div><i class="fa-solid fa-envelope-circle-check"></i> Manuel yazdığınız <strong>${manualEmail}</strong> adresine 6 haneli şifre doğrulama kodu gönderildi.</div>
-        <div style="margin-top:6px; font-size:0.78rem; color:#fde68a;">
-            ${mailServerDispatched
-                ? 'Kurumsal e-posta sunucusu üzerinden iletildi.'
-                : `(Hızlı Doğrulama Kodu: <strong style="font-size:0.95rem; letter-spacing:2px; color:#fff;">${generatedCode}</strong>)`}
-        </div>
-        <div style="margin-top:6px;">
-            <a href="mailto:${manualEmail}?subject=${encodeURIComponent('DİZSAN Şifre Doğrulama Kodu')}&body=${encodeURIComponent('Sayın ' + user.name + ', Doğrulama Kodunuz: ' + generatedCode)}" style="color:#38bdf8; font-size:0.76rem; text-decoration:underline;">
-                <i class="fa-solid fa-up-right-from-square"></i> Mail Uygulamasında Aç (${manualEmail})
-            </a>
+    let mailDispatched = false;
+    try {
+        const res = await fetch('/api/send-reset-link', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                username: user.username,
+                fullName: user.name,
+                email: registeredEmail,
+                resetLink: resetLink,
+                appTitle: 'DİZSAN Toplantı & Aksiyon Yönetim Sistemi'
+            })
+        });
+        if (res.ok) {
+            const data = await res.json();
+            if (data && data.ok) mailDispatched = true;
+        }
+    } catch (e) {}
+
+    dispatchZiyaretCloudResetBridge('send_reset_link', {
+        username: user.username,
+        fullName: user.name,
+        email: registeredEmail,
+        resetLink: resetLink,
+        appTitle: 'DİZSAN Toplantı & Aksiyon Yönetim Sistemi'
+    });
+
+    addAuditLog("GİRİŞ / ÇIKIŞ", `${user.name} için kayıtlı kurumsal e-posta adresine (${registeredEmail}) tek kullanımlık şifre sıfırlama bağlantısı gönderildi.`);
+
+    msgEl.style.display = 'block';
+    msgEl.style.background = 'rgba(16,185,129,0.16)';
+    msgEl.style.color = '#a7f3d0';
+    msgEl.innerHTML = `
+        <div style="font-weight:700; margin-bottom:4px;"><i class="fa-solid fa-envelope-circle-check"></i> Şifre Sıfırlama Bağlantısı Gönderildi!</div>
+        <div style="font-size:0.78rem; line-height:1.45;">
+            Kayıtlı kurumsal e-posta adresinize (<b>${escapeHtml(registeredEmail)}</b>) 15 dakika geçerli tek kullanımlık <b>Şifre Yenileme Bağlantısı</b> iletildi.
+            Lütfen e-postanızdaki bağlantıya tıklayarak yeni şifrenizi belirleyin.
         </div>
     `;
 }
 
-function verifyAndResetPassword() {
-    const codeVal = (document.getElementById('forgot-verification-code').value || '').trim();
-    const newPass = (document.getElementById('forgot-new-password').value || '').trim();
-    const newPassConfirm = (document.getElementById('forgot-new-password-confirm').value || '').trim();
+function checkUrlPasswordResetToken() {
+    try {
+        const params = new URLSearchParams(window.location.search);
+        const tokenParam = params.get('resetToken');
+        if (!tokenParam) return;
+
+        const verified = verifySignedResetToken(tokenParam);
+        const CleanUrl = window.location.origin + window.location.pathname;
+
+        if (!verified || verified.expired || verified.used) {
+            window.history.replaceState({}, document.title, CleanUrl);
+            alert(verified?.expired
+                ? "⛔ Şifre sıfırlama bağlantısının süresi (15 dk) dolmuş. Lütfen yeni bir sıfırlama bağlantısı talep edin."
+                : "⛔ Bu şifre sıfırlama bağlantısı daha önce kullanılmış veya geçersiz!");
+            return;
+        }
+
+        const matchedUser = appState.users.find(u => normalizeTR(u.username) === normalizeTR(verified.u));
+        if (!matchedUser) return;
+
+        activePasswordResetRequest = {
+            username: matchedUser.username,
+            name: matchedUser.name,
+            email: resolveUserEmail(matchedUser),
+            nonce: verified.n,
+            expiresAt: Number(verified.x)
+        };
+
+        const modal = document.getElementById('forgot-password-modal');
+        const s1 = document.getElementById('forgot-step-1');
+        const s2 = document.getElementById('forgot-step-2');
+        const sentInfo = document.getElementById('forgot-sent-info');
+        if (s1) s1.style.display = 'none';
+        if (s2) s2.style.display = 'block';
+        if (sentInfo) {
+            sentInfo.innerHTML = `<i class="fa-solid fa-shield-check"></i> <b>${escapeHtml(matchedUser.name)}</b> (${escapeHtml(activePasswordResetRequest.email)}) için e-posta bağlantısı doğrulandı. Lütfen yeni şifrenizi belirleyin:`;
+        }
+        if (modal) modal.classList.add('open');
+    } catch (e) {}
+}
+
+async function verifyAndResetPassword() {
+    const newPass = (document.getElementById('forgot-new-password')?.value || '').trim();
+    const newPassConfirm = (document.getElementById('forgot-new-password-confirm')?.value || '').trim();
     const msgEl = document.getElementById('forgot-step2-msg');
 
-    if (!activePasswordResetRequest) {
+    if (!activePasswordResetRequest || !activePasswordResetRequest.nonce) {
         resetForgotModalSteps();
         return;
     }
@@ -5361,23 +5647,15 @@ function verifyAndResetPassword() {
         msgEl.style.display = 'block';
         msgEl.style.background = 'rgba(239,68,68,0.15)';
         msgEl.style.color = '#fca5a5';
-        msgEl.textContent = 'Doğrulama kodunun süresi doldu. Lütfen yeniden kod isteyin.';
+        msgEl.textContent = 'Şifre sıfırlama bağlantısının süresi doldu. Lütfen yeniden bağlantı isteyin.';
         return;
     }
 
-    if (codeVal !== activePasswordResetRequest.code) {
+    if (!newPass || newPass.length < 4) {
         msgEl.style.display = 'block';
         msgEl.style.background = 'rgba(239,68,68,0.15)';
         msgEl.style.color = '#fca5a5';
-        msgEl.textContent = 'Girdiğiniz 6 haneli doğrulama kodu hatalı!';
-        return;
-    }
-
-    if (!newPass || newPass.length < 3) {
-        msgEl.style.display = 'block';
-        msgEl.style.background = 'rgba(239,68,68,0.15)';
-        msgEl.style.color = '#fca5a5';
-        msgEl.textContent = 'Yeni şifreniz en az 3 karakter olmalıdır.';
+        msgEl.textContent = 'Yeni şifreniz en az 4 karakter olmalıdır.';
         return;
     }
 
@@ -5389,30 +5667,53 @@ function verifyAndResetPassword() {
         return;
     }
 
-    const idx = appState.users.findIndex(u => u.username === activePasswordResetRequest.username);
+    const idx = appState.users.findIndex(u => normalizeTR(u.username) === normalizeTR(activePasswordResetRequest.username));
     if (idx !== -1) {
-        appState.users[idx].pinStamp = hashPin(newPass);
-        appState.users[idx].email = activePasswordResetRequest.email;
-        appState.users[idx].mailBox = activePasswordResetRequest.email.split('@')[0];
+        const newStamp = hashPin(newPass);
+        const nowMs = Date.now();
+        appState.users[idx].pinStamp = newStamp;
+        appState.users[idx].pinUpdatedAtMs = nowMs;
 
-        // Beni Hatırla kaydı varsa otomatik güncelle
-        if (document.getElementById('login-remember-me')?.checked) {
-            localStorage.setItem(STORAGE_KEY_REMEMBER, JSON.stringify({
-                username: appState.users[idx].username,
-                savedInput: newPass
-            }));
-        }
+        // Kullanılan sıfırlama bağlantısını anında tek kullanımlık olarak geçersiz kıl
+        markResetTokenUsed(activePasswordResetRequest.nonce);
 
-        // Ortak sisteme, sunucuya ve DizGün'e anında entegre et
+        // URL'deki resetToken parametresini temizle
+        try {
+            window.history.replaceState({}, document.title, window.location.origin + window.location.pathname);
+        } catch (e) {}
+
+        // Ortak sunucuya ve D-Pro / Ziyaret ekosistemine senkronize et
+        try {
+            fetch('/api/update-user-password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username: appState.users[idx].username,
+                    pinStamp: newStamp,
+                    updatedAtMs: nowMs
+                })
+            }).catch(() => {});
+        } catch (e) {}
+        dispatchZiyaretCloudResetBridge('update_user_password', {
+            username: appState.users[idx].username,
+            pinStamp: newStamp,
+            updatedAtMs: nowMs
+        });
+
         syncToServer();
-        addAuditLog("GİRİŞ / ÇIKIŞ", `${appState.users[idx].name} (${activePasswordResetRequest.email}) şifresini doğrulama kodu ile yeniledi ve yeni şifre otomatik olarak sisteme entegre edildi.`);
+        addAuditLog("GİRİŞ / ÇIKIŞ", `${appState.users[idx].name} kurumsal e-posta sıfırlama bağlantısı ile şifresini yeniledi.`);
 
-        document.getElementById('login-username').value = appState.users[idx].username;
-        document.getElementById('login-password').value = newPass;
+        const loginU = document.getElementById('login-username');
+        const loginP = document.getElementById('login-password');
+        if (loginU) loginU.value = appState.users[idx].username;
+        if (loginP) {
+            delete loginP.dataset.rememberedStamp;
+            loginP.value = '';
+        }
         activePasswordResetRequest = null;
         closeForgotPasswordModal();
         renderAll();
-        alert("✅ Yeni şifreniz ve e-posta adresiniz otomatik olarak sisteme entegre edildi! Şimdi giriş yapabilirsiniz.");
+        alert("✅ Yeni şifreniz başarıyla kaydedildi! Şimdi yeni şifrenizle giriş yapabilirsiniz.");
     }
 }
 
@@ -5420,7 +5721,11 @@ function verifyAndResetPassword() {
 function openChangePasswordModal() {
     if (!currentUser) return;
     document.getElementById('cp-user-name').value = `${currentUser.name} (${currentUser.username})`;
-    document.getElementById('cp-user-email').value = resolveUserEmail(currentUser);
+    const emailEl = document.getElementById('cp-user-email');
+    if (emailEl) {
+        emailEl.value = resolveUserEmail(currentUser);
+        emailEl.readOnly = !isOmerEren(currentUser);
+    }
     document.getElementById('cp-current-password').value = '';
     document.getElementById('cp-new-password').value = '';
     document.getElementById('cp-new-password-confirm').value = '';
@@ -5453,11 +5758,11 @@ function handleChangeOwnPassword(event) {
         return;
     }
 
-    if (newPass.length < 3) {
+    if (newPass.length < 4) {
         msgEl.style.display = 'block';
         msgEl.style.background = 'rgba(239,68,68,0.15)';
         msgEl.style.color = '#fca5a5';
-        msgEl.textContent = 'Yeni şifreniz en az 3 karakter olmalıdır.';
+        msgEl.textContent = 'Yeni şifreniz en az 4 karakter olmalıdır.';
         return;
     }
 
@@ -5470,25 +5775,55 @@ function handleChangeOwnPassword(event) {
     }
 
     // 1. Ana kullanıcı veritabanında güncelle
-    appState.users[idx].pinStamp = hashPin(newPass);
-    if (emailVal) {
+    const newStamp = hashPin(newPass);
+    const nowMs = Date.now();
+    appState.users[idx].pinStamp = newStamp;
+    appState.users[idx].pinUpdatedAtMs = nowMs;
+    if (isOmerEren(currentUser) && emailVal && emailVal.endsWith(`@${CORP_MAIL_HOST}`)) {
         appState.users[idx].email = emailVal;
         appState.users[idx].mailBox = emailVal.split('@')[0];
     }
     currentUser = appState.users[idx];
 
-    // 2. Aktif oturum ve Beni Hatırla hafızasını güncelle
+    const cleanSessionUser = {
+        order: currentUser.order,
+        name: currentUser.name,
+        username: currentUser.username,
+        email: resolveUserEmail(currentUser),
+        role: currentUser.role,
+        dept: currentUser.dept,
+        pinStamp: currentUser.pinStamp
+    };
+
+    // 2. Aktif oturum ve Beni Hatırla hafızasını güvenli pinStamp ile güncelle (açık metin şifre ASLA saklanmaz)
     if (localStorage.getItem(STORAGE_KEY_SESSION)) {
-        localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(currentUser));
+        localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(cleanSessionUser));
     } else {
-        sessionStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(currentUser));
+        sessionStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(cleanSessionUser));
     }
     if (localStorage.getItem(STORAGE_KEY_REMEMBER)) {
         localStorage.setItem(STORAGE_KEY_REMEMBER, JSON.stringify({
             username: currentUser.username,
-            savedInput: newPass
+            pinStamp: newStamp
         }));
     }
+
+    try {
+        fetch('/api/update-user-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                username: currentUser.username,
+                pinStamp: newStamp,
+                updatedAtMs: nowMs
+            })
+        }).catch(() => {});
+    } catch (e) {}
+    dispatchZiyaretCloudResetBridge('update_user_password', {
+        username: currentUser.username,
+        pinStamp: newStamp,
+        updatedAtMs: nowMs
+    });
 
     // 3. Ortak sunucuya ve DizGün veritabanına otomatik entegre et
     syncToServer();
@@ -5513,12 +5848,17 @@ function updateVersionAdminPermissionUI() {
     const lockedNotice = document.getElementById('version-locked-notice');
     const logsCard = document.getElementById('dashboard-logs-card');
     const navItemLogs = document.getElementById('nav-item-logs');
+    const jsonBackupBox = document.getElementById('json-backup-admin-box');
 
     const isAdminOmer = isOmerEren(currentUser);
 
     if (adminControls && lockedNotice) {
         adminControls.style.display = isAdminOmer ? 'block' : 'none';
         lockedNotice.style.display = isAdminOmer ? 'none' : 'block';
+    }
+
+    if (jsonBackupBox) {
+        jsonBackupBox.style.display = isAdminOmer ? 'block' : 'none';
     }
 
     // Log kayıtlarını Genel Kokpit & Özet ekranında ve sol menüde sadece Yönetici Ömer Eren görebilir
@@ -7349,6 +7689,7 @@ function rejectNewMeeting(meetingId) {
     const m = (appState.meetings || []).find(x => x.id === meetingId);
     if (!m) return;
     if (!confirm(`'${m.title}' (${m.id}) toplantı kaydını reddedip silmek istediğinize emin misiniz?`)) return;
+    registerDeletedRecordId(meetingId);
     appState.meetings = appState.meetings.filter(x => x.id !== meetingId);
     addAuditLog("TOPLANTI", `${m.id} kodlu '${m.title}' kaydı Yönetici ÖMER EREN tarafından reddedilerek kaldırıldı.`);
     dispatchPushToServer([m.createdBy || 'Personel'], {
@@ -7356,6 +7697,7 @@ function rejectNewMeeting(meetingId) {
         body: `'${m.title}' toplantı kaydı onaylanmadı ve kaldırıldı.`,
         tag: `appr_rej_${m.id}`
     });
+    syncToServer();
     renderAll();
 }
 
@@ -7369,6 +7711,7 @@ function approveRequest(reqId) {
     if (!req || req.status !== 'PENDING') return;
 
     if (req.type === 'DELETE_MEETING') {
+        registerDeletedRecordId(req.meetingId);
         appState.meetings = (appState.meetings || []).filter(m => m.id !== req.meetingId);
         req.status = 'APPROVED';
         req.resolvedAt = formatNowTR();
@@ -7380,6 +7723,7 @@ function approveRequest(reqId) {
             tag: `appr_ok_${req.id}`
         });
     } else if (req.type === 'DELETE_ACTION') {
+        registerDeletedRecordId(req.actionId);
         appState.actions = (appState.actions || []).filter(a => a.id !== req.actionId);
         req.status = 'APPROVED';
         req.resolvedAt = formatNowTR();
@@ -7438,6 +7782,7 @@ function rejectRequest(reqId) {
         body: `'${targetTitle}' için ilettiğiniz talep Yönetici ÖMER EREN tarafından reddedildi.`,
         tag: `appr_no_${req.id}`
     });
+    syncToServer();
     renderAll();
 }
 
@@ -7509,6 +7854,34 @@ function toggleAllCallParticipants(state) {
     });
 }
 
+function generateUniqueMeetingId(prefix = 'TOP') {
+    const used = new Set([
+        ...(appState.meetings || []).map(m => String(m.id)),
+        ...(appState.deletedIds || []).map(String)
+    ]);
+    let seq = (appState.meetings || []).length + 1;
+    let candidate = `${prefix}-2026-${String(seq).padStart(3, '0')}`;
+    while (used.has(candidate)) {
+        seq++;
+        candidate = `${prefix}-2026-${String(seq).padStart(3, '0')}`;
+    }
+    return candidate;
+}
+
+function generateUniqueActionId() {
+    const used = new Set([
+        ...(appState.actions || []).map(a => String(a.id)),
+        ...(appState.deletedIds || []).map(String)
+    ]);
+    let seq = 100 + (appState.actions || []).length + 1;
+    let candidate = `AKS-${seq}`;
+    while (used.has(candidate)) {
+        seq++;
+        candidate = `AKS-${seq}`;
+    }
+    return candidate;
+}
+
 function saveMeetingCallOrAnnouncement(event) {
     event.preventDefault();
     const callType = document.getElementById('call-type-select')?.value || 'MEETING_CALL';
@@ -7550,19 +7923,21 @@ function saveMeetingCallOrAnnouncement(event) {
         return;
     }
 
-    // Planlı Toplantı Çağrısı veya Eğitim Çağrısı -> Doğrudan Toplantı/Eğitim kaydı olarak oluşturur, Yönetici Ömer Eren onayına düşürür ve 1 saat kala Sarı + 5 dk kala Kırmızı alarm kurar
+    // Planlı Toplantı Çağrısı veya Eğitim Çağrısı
     const recordType = (callType === 'TRAINING_CALL') ? 'Eğitim' : 'Toplantı';
     const prefix = recordType === 'Eğitim' ? 'EGT' : 'TOP';
-    const nextNum = appState.meetings.length + 1;
-    const newId = `${prefix}-2026-${String(nextNum).padStart(3, '0')}`;
+    const newId = generateUniqueMeetingId(prefix);
+    const isAdmin = isOmerEren(currentUser);
+    const nowStr = formatNowTR();
 
     const newMeeting = {
         id: newId,
         recordType,
         isScheduledCall: true,
-        approvalStatus: 'Yönetici Onayı Bekliyor',
-        approvedBy: '',
-        approvedAt: '',
+        approvalStatus: isAdmin ? 'Onaylandı' : 'Yönetici Onayı Bekliyor',
+        omerApprovedStamp: isAdmin,
+        approvedBy: isAdmin ? 'ÖMER EREN' : '',
+        approvedAt: isAdmin ? nowStr : '',
         title,
         dept,
         date,
@@ -7574,18 +7949,18 @@ function saveMeetingCallOrAnnouncement(event) {
         decisions: '',
         attachments: [],
         createdBy: currentUser ? currentUser.name : 'ÖMER EREN',
-        createdAt: formatNowTR(),
+        createdAt: nowStr,
         updatedBy: '',
         updatedAt: ''
     };
 
     appState.meetings.unshift(newMeeting);
-    addAuditLog("TOPLANTI", `${newId} kodlu Planlı ${recordType} Çağrısı yayınlandı: '${title}' — Tarih: ${formatDateTR(date)} Saat: ${time} (${participants.length} katılımcıya davet + 1 saat kala Sarı + 5 dk kala Kırmızı alarm tanımlandı. Onay Durumu: Yönetici Onayı Bekliyor).`);
+    addAuditLog("TOPLANTI", `${newId} kodlu Planlı ${recordType} Çağrısı yayınlandı: '${title}' — Tarih: ${formatDateTR(date)} Saat: ${time} (${participants.length} katılımcıya davet + 1 saat kala Sarı + 5 dk kala Kırmızı alarm tanımlandı).`);
     syncToServer();
     closeAnnouncementModal();
     renderAll();
-    playMeetingCallSound('APPROVAL', `Dikkat! ${title} başlıklı yeni ${recordType} çağrısı kaydedildi ve Ömer Eren yönetici onayına düştü.`);
-    alert(`📢 ${recordType} Çağrısı oluşturuldu ve Yönetici ÖMER EREN Onayına Düşürüldü!\n\n📅 Tarih: ${formatDateTR(date)} Saat: ${time}\n👥 Davet Edilen: ${participants.length} Personel\n🛡️ Onay Durumu: Yönetici Onayı Bekliyor (Ömer Eren Onay Merkezinden onaylanabilir)\n\n🔔 Seçilen katılımcılara çağrı bildirimi gönderildi. Toplantı saatine 1 saat kala SARI UYARI, 5 dakika kala KIRMIZI UYARI ve bildirim sesi otomatik olarak çalacaktır.`);
+    playMeetingCallSound(isAdmin ? 'INVITE' : 'APPROVAL');
+    alert(`📢 ${recordType} Çağrısı oluşturuldu!\n\n📅 Tarih: ${formatDateTR(date)} Saat: ${time}\n👥 Davet Edilen: ${participants.length} Personel\n🛡️ Onay Durumu: ${newMeeting.approvalStatus}\n\n🔔 Seçilen katılımcılara çağrı bildirimi gönderildi. Toplantı saatine 1 saat kala SARI UYARI, 5 dakika kala KIRMIZI UYARI ve bildirim sesi otomatik olarak çalacaktır.`);
 }
 
 function normalizeToISODate(val) {
@@ -8470,7 +8845,7 @@ function renderPersonnel() {
                 <td><strong>${isAdmin ? (u.order !== undefined ? (u.order === 0 ? '★' : u.order + '.') : (idx + 1) + '.') : '1.'}</strong></td>
                 <td>
                     <div style="display:flex; align-items:center; gap:0.65rem;">
-                        <img src="${u.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(u.name)}&background=0284c7&color=fff`}" style="width:32px; height:32px; border-radius:8px; object-fit:cover;" onerror="this.src='data:image/jpeg;base64,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'">
+                        <img src="${u.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(u.name)}&background=0284c7&color=fff`}" style="width:32px; height:32px; border-radius:8px; object-fit:cover;" onerror="this.src='dizsan_logo.jpg'">
                         <strong style="color:#fff;">${u.name}</strong>
                     </div>
                 </td>
@@ -9118,9 +9493,8 @@ function saveMeeting(event) {
             }
         }
     } else {
-        const nextNum = String(appState.meetings.length + 1).padStart(3, '0');
         const prefix = recordType === 'Eğitim' ? 'EGT' : 'TOP';
-        targetMeetingId = `${prefix}-2026-${nextNum}`;
+        targetMeetingId = generateUniqueMeetingId(prefix);
         const approvalStatus = isOmerEren(currentUser) ? 'Onaylandı' : 'Yönetici Onayı Bekliyor';
         const nowStr = formatNowTR();
         const newMeeting = {
@@ -9148,7 +9522,7 @@ function saveMeeting(event) {
         const aPrio = r.querySelector('.inline-action-priority')?.value || 'Normal';
         const aDueRaw = r.querySelector('.inline-action-duedate')?.value;
         if (aTitle) {
-            const newActId = `AKS-${100 + appState.actions.length + 1}`;
+            const newActId = generateUniqueActionId();
             const actCreatedNow = formatNowTR();
             appState.actions.unshift({
                 id: newActId,
@@ -9186,7 +9560,17 @@ function deleteMeeting(meetingId) {
         return;
     }
 
-    // Silme işlemi İSTİSNASIZ olarak Yönetici Ömer Eren onay merkezine düşer
+    if (isOmerEren(currentUser)) {
+        if (!confirm(`'${m.title}' (${m.id}) toplantı/eğitim kaydını kalıcı olarak silmek istediğinize emin misiniz?`)) return;
+        registerDeletedRecordId(m.id);
+        appState.meetings = appState.meetings.filter(x => x.id !== meetingId);
+        addAuditLog("TOPLANTI", `${m.id} kodlu '${m.title}' kaydı Yönetici ÖMER EREN tarafından silindi.`);
+        syncToServer();
+        renderAll();
+        return;
+    }
+
+    // Personel silme işlemi Yönetici Ömer Eren onay merkezine düşer
     if (!Array.isArray(appState.approvalRequests)) appState.approvalRequests = [];
 
     appState.approvalRequests.unshift({
@@ -9289,7 +9673,7 @@ function saveAction(event) {
             addAuditLog("AKSİYON", `${idVal} aksiyonu ${currentUser ? currentUser.name : 'ÖMER EREN'} tarafından güncellendi (Sorumlu: ${assignee}, Yönetici: ${manager}, Durum: ${status}, Termin: ${formatDateTR(dueDate)}).`);
         }
     } else {
-        const newId = `AKS-${100 + appState.actions.length + 1}`;
+        const newId = generateUniqueActionId();
         const nowStr = formatNowTR();
         appState.actions.unshift({
             id: newId,
@@ -9375,6 +9759,7 @@ function deleteAction(actionId) {
     }
 
     if (!confirm(`'${a.title}' aksiyonunu silmek istediğinize emin misiniz?`)) return;
+    registerDeletedRecordId(actionId);
     appState.actions = appState.actions.filter(x => x.id !== actionId);
     addAuditLog("AKSİYON", `${actionId} kodlu aksiyon Yönetici ÖMER EREN tarafından silindi.`);
     syncToServer();
@@ -9392,11 +9777,13 @@ function openUserModal(username = null) {
 
     if (!isAdmin) {
         if (!currentUser) return;
-        // Ömer Eren dışındaki kullanıcılar yeni personel ekleyemez ve başkasının hesabını açamaz
+        // Ömer Eren dışındaki kullanıcılar kendi şifresini değiştirmek için mevcut şifre doğrulamalı modalı kullanır
         if (!username || normalizeTR(username) !== normalizeTR(currentUser.username)) {
             alert("🔒 Yetki ve Gizlilik Kısıtlaması:\n\nYalnızca kendi hesap bilgilerinizi ve şifrenizi görüntüleyebilir veya düzenleyebilirsiniz! Diğer kullanıcıların bilgileri yalnızca Yönetici ÖMER EREN tarafından görüntülenebilir.");
             return;
         }
+        openChangePasswordModal();
+        return;
     }
 
     const fnInput = document.getElementById('user-fullname-input');
@@ -9418,7 +9805,6 @@ function openUserModal(username = null) {
         dpInput.value = u.dept || '';
         rlInput.value = u.role || 'Personel';
 
-        // Ömer Eren dışındaki kullanıcılar sadece kendi şifre/e-posta/görev bilgilerini düzenleyebilir; ad, kullanıcı adı ve rol değiştiremez
         fnInput.readOnly = !isAdmin;
         unInput.readOnly = !isAdmin;
         rlInput.disabled = !isAdmin;
@@ -9453,44 +9839,37 @@ function saveUser(event) {
     const role = document.getElementById('user-role-input').value;
 
     if (!isAdmin) {
-        if (!currentUser || normalizeTR(username) !== normalizeTR(currentUser.username)) {
-            alert("🔒 Yalnızca kendi hesap bilgilerinizi güncelleyebilirsiniz!");
-            return;
-        }
-        const myIdx = appState.users.findIndex(u => normalizeTR(u.username) === normalizeTR(currentUser.username));
-        if (myIdx === -1) return;
-        const nextPinStamp = pinInputVal ? hashPin(pinInputVal) : appState.users[myIdx].pinStamp;
-        appState.users[myIdx] = {
-            ...appState.users[myIdx],
-            pinStamp: nextPinStamp,
-            email,
-            mailBox: email ? email.split('@')[0] : appState.users[myIdx].mailBox,
-            dept
-        };
-        currentUser = { ...appState.users[myIdx] };
-        localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(currentUser));
-        addAuditLog("GİRİŞ / ÇIKIŞ", `${currentUser.name} (${currentUser.username}) kendi hesap/şifre bilgilerini güncelledi.`);
-        syncToServer();
-        renderQuickUserChips();
         closeUserModal();
-        renderAll();
-        alert("✅ Kişisel hesap ve şifre bilgileriniz başarıyla güncellendi.");
+        openChangePasswordModal();
         return;
     }
 
     const existingIdx = appState.users.findIndex(u => normalizeTR(u.username) === normalizeTR(username) || normalizeTR(u.name) === normalizeTR(name));
+    const nowMs = Date.now();
     if (existingIdx !== -1) {
         const nextPinStamp = pinInputVal ? hashPin(pinInputVal) : appState.users[existingIdx].pinStamp;
+        const updatedAtMs = pinInputVal ? nowMs : (appState.users[existingIdx].pinUpdatedAtMs || 0);
         appState.users[existingIdx] = {
             ...appState.users[existingIdx],
             name,
             username,
             pinStamp: nextPinStamp,
+            pinUpdatedAtMs: updatedAtMs,
             email,
             mailBox: email ? email.split('@')[0] : appState.users[existingIdx].mailBox,
             dept,
             role
         };
+        if (pinInputVal) {
+            try {
+                fetch('/api/update-user-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, pinStamp: nextPinStamp, updatedAtMs: nowMs })
+                }).catch(() => {});
+            } catch (e) {}
+            dispatchZiyaretCloudResetBridge('update_user_password', { username, pinStamp: nextPinStamp, updatedAtMs: nowMs });
+        }
         if (currentUser && normalizeTR(currentUser.username) === normalizeTR(username)) {
             currentUser = { ...appState.users[existingIdx] };
             localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(currentUser));
@@ -9503,6 +9882,7 @@ function saveUser(event) {
             name,
             username,
             pinStamp: nextPinStamp,
+            pinUpdatedAtMs: nowMs,
             email,
             mailBox: email ? email.split('@')[0] : username,
             dept,
@@ -9667,10 +10047,17 @@ function printMeetingMinutes(meetingId) {
 
 function exportAllDataExcelCSV() {
     let csv = "\uFEFFAksiyon Kodu;Toplantı Kodu;Toplantı Başlığı;Aksiyon Tanımı;Sorumlu Personel;Bilgilendirilen Yönetici;Öncelik;Termin Tarihi;Saat;Durum;Not;Oluşturan Kişi;Oluşturulma Tarihi ve Saati;Değiştiren Kişi;Değiştirilme Tarihi ve Saati\n";
-    appState.actions.forEach(a => {
+    const visibleActions = isOmerEren(currentUser)
+        ? appState.actions
+        : appState.actions.filter(a => canUserSeeAction(a));
+
+    visibleActions.forEach(a => {
         const clean = s => String(s || '').replace(/;/g, ',').replace(/\n/g, ' ');
         const aAudit = getRecordAuditInfo(a);
-        csv += `${clean(a.id)};${clean(a.meetingId)};${clean(a.meetingTitle)};${clean(a.title)};${clean(a.assignee)};${clean(a.manager || 'ÖMER EREN')};${clean(a.priority)};${formatDateTR(a.dueDate)};${clean(a.dueTime)};${clean(a.status)};${clean(a.note)};${clean(aAudit.createdBy)};${clean(aAudit.createdAt)};${clean(aAudit.updatedBy)};${clean(aAudit.updatedAt)}\n`;
+        const parentM = appState.meetings.find(m => m.id === a.meetingId);
+        const access = parentM ? getMeetingAccessLevel(parentM) : 'FULL';
+        const meetingTitleSafe = access === 'ACTION_ONLY' ? `${a.meetingId} (Sadece Aksiyon)` : a.meetingTitle;
+        csv += `${clean(a.id)};${clean(a.meetingId)};${clean(meetingTitleSafe)};${clean(a.title)};${clean(a.assignee)};${clean(a.manager || 'ÖMER EREN')};${clean(a.priority)};${formatDateTR(a.dueDate)};${clean(a.dueTime)};${clean(a.status)};${clean(a.note)};${clean(aAudit.createdBy)};${clean(aAudit.createdAt)};${clean(aAudit.updatedBy)};${clean(aAudit.updatedAt)}\n`;
     });
 
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -9683,6 +10070,10 @@ function exportAllDataExcelCSV() {
 }
 
 function exportLogsCSV() {
+    if (!isOmerEren(currentUser)) {
+        alert("⛔ Denetim loglarını dışa aktarma yetkisi yalnızca Yönetici ÖMER EREN'e aittir.");
+        return;
+    }
     let csv = "\uFEFFTarih Saat;Personel;Kategori;İşlem Detayı;Platform\n";
     appState.logs.forEach(l => {
         const clean = s => String(s || '').replace(/;/g, ',').replace(/\n/g, ' ');
@@ -9697,7 +10088,11 @@ function exportLogsCSV() {
 }
 
 function exportFullBackupJSON() {
-    const blob = new Blob([JSON.stringify(appState, null, 2)], { type: 'application/json' });
+    if (!isOmerEren(currentUser)) {
+        alert("⛔ Tam sistem yedeği indirme yetkisi yalnızca Yönetici ÖMER EREN'e aittir.");
+        return;
+    }
+    const blob = new Blob([JSON.stringify(sanitizeStateForCloud(appState), null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
@@ -9707,6 +10102,10 @@ function exportFullBackupJSON() {
 }
 
 function importFullBackupJSON(event) {
+    if (!isOmerEren(currentUser)) {
+        alert("⛔ Sistem yedeği geri yükleme yetkisi yalnızca Yönetici ÖMER EREN'e aittir.");
+        return;
+    }
     const file = event.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
@@ -9715,6 +10114,7 @@ function importFullBackupJSON(event) {
             const data = JSON.parse(e.target.result);
             if (data && Array.isArray(data.meetings) && Array.isArray(data.actions)) {
                 appState = data;
+                appState.users = migrateOfficialUserEmails(data.users || OFFICIAL_PERSONNEL_LIST);
                 syncToServer();
                 renderAll();
                 addAuditLog("SÜRÜM / YÖNETİM", "JSON yedek dosyası başarıyla sisteme geri yüklendi.");
@@ -9735,9 +10135,6 @@ function importFullBackupJSON(event) {
 function switchTab(tabId) {
     if (tabId === 'logs-tab' && !isOmerEren(currentUser)) {
         tabId = 'dashboard-tab';
-    }
-    if (window.DizsanBackNav && typeof window.DizsanBackNav.trackTabSwitch === 'function') {
-        window.DizsanBackNav.trackTabSwitch(tabId);
     }
     document.querySelectorAll('.tab-section').forEach(sec => {
         sec.classList.toggle('active', sec.id === tabId);
@@ -9786,7 +10183,8 @@ function isMobileDevice() {
 }
 
 function checkPwaInstallState() {
-    if (isAppRunningStandalone()) {
+    const isEmbedded = (window.self !== window.top) || window.location.search.includes('embed=dpro');
+    if (isAppRunningStandalone() || isEmbedded) {
         hideAllPwaInstallElements();
         return;
     }
@@ -9807,15 +10205,6 @@ function checkPwaInstallState() {
     const banner = document.getElementById('mobile-pwa-install-banner');
     if (banner && !bannerDismissed) {
         banner.style.display = 'block';
-    }
-
-    const popupDismissed = sessionStorage.getItem('dizsan_toplanti_pwa_popup_dismissed') === '1';
-    if (!popupDismissed) {
-        setTimeout(() => {
-            if (!isAppRunningStandalone() && sessionStorage.getItem('dizsan_toplanti_pwa_popup_dismissed') !== '1') {
-                openPwaPromptModal();
-            }
-        }, 1200);
     }
 }
 
@@ -10012,14 +10401,44 @@ document.addEventListener('DOMContentLoaded', () => {
     renderQuickUserChips();
     loadRememberedCredentials();
 
-    // Kayıtlı oturum kontrolü (Beni Hatırla veya aktif DizGün oturumu)
-    const savedSession = localStorage.getItem(STORAGE_KEY_SESSION) || sessionStorage.getItem(STORAGE_KEY_SESSION) || localStorage.getItem('dizgun_current_user');
-    if (savedSession) {
+    // Kayıtlı oturum kontrolü (Beni Hatırla, D-Pro veya aktif DizGün oturumu - Kriptografik Doğrulamalı)
+    const sessionKeys = [
+        STORAGE_KEY_SESSION,
+        'dpro_active_session_v1',
+        'dizsan_ziyaret_session_user_v1',
+        'dizgun_current_user'
+    ];
+    for (const key of sessionKeys) {
+        const raw = localStorage.getItem(key) || sessionStorage.getItem(key);
+        if (!raw) continue;
         try {
-            const parsedUser = JSON.parse(savedSession);
-            if (parsedUser && parsedUser.name) {
-                const matched = appState.users.find(u => normalizeTR(u.name) === normalizeTR(parsedUser.name) || normalizeTR(u.username) === normalizeTR(parsedUser.username));
-                if (matched) currentUser = matched;
+            const parsedUser = JSON.parse(raw);
+            const cand = (parsedUser && (parsedUser.name || parsedUser.username))
+                ? (parsedUser.name || parsedUser.username)
+                : (typeof parsedUser === 'string' ? parsedUser : '');
+            if (cand) {
+                const matched = appState.users.find(u => normalizeTR(u.name) === normalizeTR(cand) || normalizeTR(u.username) === normalizeTR(cand));
+                if (matched) {
+                    currentUser = matched;
+                    break;
+                }
+            }
+        } catch (e) {}
+    }
+
+    // D-Pro iframe içinde gömülü çalışıyorsa ve geçerli bir personel oturumu varsa otomatik bağlan;
+    // GÜVENLİK KURALI: Oturum yoksa ASLA otomatik Ömer Eren olarak giriş yapılmaz!
+    const isDproEmbedded = (window.self !== window.top) || window.location.search.includes('embed=dpro');
+    if (isDproEmbedded) {
+        try {
+            const dproBtnText = window.parent?.document?.getElementById('user-switch-btn')?.textContent || '';
+            const cleanParentUser = dproBtnText.replace(/^Aktif:\s*/i, '').trim();
+            if (!currentUser && cleanParentUser) {
+                const matchedFromParent = appState.users.find(u =>
+                    normalizeTR(u.name) === normalizeTR(cleanParentUser) ||
+                    normalizeTR(u.username) === normalizeTR(cleanParentUser)
+                );
+                if (matchedFromParent) currentUser = matchedFromParent;
             }
         } catch (e) {}
     }
@@ -10073,14 +10492,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 12000);
 
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('sw.js?v=1.8.3').then(reg => {
+        navigator.serviceWorker.register('sw.js?v=1.8.4').then(reg => {
             try { reg.update(); } catch (e) {}
             syncUserAndStateToServiceWorker();
         }).catch(() => {});
     }
 });
-
-
 </script>
 <script>
 /**

@@ -1,7 +1,7 @@
 <?php
 /**
- * DİZSAN KURUMSAL TOPLANTI, AKSİYON & DENETİM SİSTEMİ - PHP BACKEND API (v1.3.0)
- * Ortak Veri Senkronizasyonu + E-Posta Şifre Doğrulama Kodu Gönderimi
+ * DİZSAN KURUMSAL TOPLANTI, AKSİYON & DENETİM SİSTEMİ - PHP BACKEND API (v1.8.4)
+ * Ortak Veri Senkronizasyonu + Zorunlu Kurumsal E-Posta Şifre Sıfırlama Bağlantısı (Linki) Gönderimi
  */
 header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
@@ -16,18 +16,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 $dataFile = __DIR__ . '/shared_state.json';
 $action = isset($_GET['action']) ? $_GET['action'] : 'state';
 
-if ($action === 'send_reset_code' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+if (($action === 'send_reset_link' || $action === 'send_reset_code') && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $rawInput = file_get_contents('php://input');
     $payload = json_decode($rawInput, true);
-    $email = isset($payload['email']) ? trim($payload['email']) : '';
-    $code = isset($payload['code']) ? trim($payload['code']) : '';
+    $email = isset($payload['email']) ? strtolower(trim($payload['email'])) : '';
+    $resetLink = isset($payload['resetLink']) ? trim($payload['resetLink']) : '';
     $name = isset($payload['name']) ? trim($payload['name']) : 'Personel';
 
-    if ($email && $code) {
-        $subject = "=?UTF-8?B?" . base64_encode("DİZSAN Toplantı Sistemi - Şifre Sıfırlama Doğrulama Kodu") . "?=";
-        $message = "Sayın $name,\n\nDİZSAN Kurumsal Toplantı ve Aksiyon Yönetim Sistemi şifre sıfırlama talebiniz için tek kullanımlık doğrulama kodunuz:\n\nDOĞRULAMA KODU: $code\n\nBu kod 10 dakika boyunca geçerlidir.\n\nİyi çalışmalar dileriz,\nDİZSAN Otomotiv & Servis";
-        $headers = "From: bilgi@dizsan.com\r\n" .
-                   "Reply-To: bilgi@dizsan.com\r\n" .
+    if ($email && substr($email, -14) === '@dizsan.com.tr' && $resetLink) {
+        $subject = "=?UTF-8?B?" . base64_encode("DİZSAN Toplantı Sistemi - Şifre Yenileme Bağlantısı") . "?=";
+        $message = "Sayın $name,\n\nDİZSAN Kurumsal Toplantı ve Aksiyon Yönetim Sistemi şifre sıfırlama talebiniz alınmıştır.\n\nYeni şifrenizi belirlemek için aşağıdaki tek kullanımlık güvenli bağlantıya tıklayınız (15 dakika geçerlidir):\n\n$resetLink\n\nBu talebi siz oluşturmadıysanız bu e-postayı dikkate almayınız.\n\nİyi çalışmalar dileriz,\nDİZSAN Otomotiv & Servis";
+        $headers = "From: bilgi@dizsan.com.tr\r\n" .
+                   "Reply-To: bilgi@dizsan.com.tr\r\n" .
                    "Content-Type: text/plain; charset=UTF-8\r\n";
         $mailSent = @mail($email, $subject, $message, $headers);
         echo json_encode([
@@ -37,7 +37,7 @@ if ($action === 'send_reset_code' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         ], JSON_UNESCAPED_UNICODE);
     } else {
         http_response_code(400);
-        echo json_encode(['status' => 'error', 'message' => 'Eksik e-posta veya doğrulama kodu']);
+        echo json_encode(['status' => 'error', 'message' => 'Geçersiz kurumsal e-posta (@dizsan.com.tr zorunludur) veya sıfırlama bağlantısı eksik']);
     }
     exit;
 }
@@ -54,7 +54,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $rawInput = file_get_contents('php://input');
     $decoded = json_decode($rawInput, true);
-    if ($decoded !== null) {
+    if ($decoded !== null && is_array($decoded)) {
+        if (isset($decoded['users']) && is_array($decoded['users'])) {
+            foreach ($decoded['users'] as &$u) {
+                if (is_array($u) && isset($u['password'])) {
+                    unset($u['password']);
+                }
+            }
+            unset($u);
+        }
         file_put_contents($dataFile, json_encode($decoded, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE), LOCK_EX);
         echo json_encode(['status' => 'ok', 'updated_at' => date('c')]);
     } else {

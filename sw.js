@@ -1,4 +1,4 @@
-const CACHE_NAME = "dizsan-toplanti-v1.8.3";
+const CACHE_NAME = "dizsan-toplanti-v1.8.4";
 const ASSETS = [
   './',
   './index.html',
@@ -200,9 +200,12 @@ async function checkRemoteStateInBackground(forceState = null) {
     const state = forceState || (await fetchRealTimeCloudState());
     if (!state) return;
 
+    const deletedSet = new Set(Array.isArray(state.deletedIds) ? state.deletedIds : []);
+
     // 1. Toplantı Çağrıları, 1 Saat Kala Sarı, 5 Dakika Kala Kırmızı ve Yönetici Onayı Bildirimleri
     const meetings = Array.isArray(state.meetings) ? state.meetings : [];
     for (const m of meetings) {
+      if (!m || !m.id || deletedSet.has(m.id)) continue;
       const isInvited = (m.participants || []).some((p) => normalizeTR(p) === myNameNorm) || isOmer;
       const recLabel = m.recordType === 'Eğitim' ? 'Eğitim' : 'Toplantı';
 
@@ -316,9 +319,6 @@ self.addEventListener('activate', (event) => {
       for (const client of clientList) {
         try {
           client.postMessage({ type: 'FORCE_RELOAD_VERSION', version: CACHE_NAME });
-          if ('navigate' in client && client.url) {
-            await client.navigate(client.url);
-          }
         } catch (e) {}
       }
       ensureSwLoop();

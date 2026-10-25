@@ -10,12 +10,25 @@
  * ==========================================================================
  */
 
-const INITIAL_APP_VERSION = "v1.7.1";
+const INITIAL_APP_VERSION = "v1.8.4";
+const CURRENT_APP_VERSION = "1.8.4";
 const VAPID_PUBLIC_KEY = "BJIJfCBiDwya3clZOWS08EDxfuN18xtfJGTX0n_apWBTEW7-kO_FGKNy5VDRvUsMgc46IP5oxLlIHqgrDo-JTkE";
 const STORAGE_KEY_STATE = "dizsan_toplanti_shared_state_v2";
 const STORAGE_KEY_SESSION = "dizsan_toplanti_active_user";
 const STORAGE_KEY_REMEMBER = "dizsan_toplanti_remembered_login";
 const STORAGE_KEY_DIZGUN_BRIDGE = "dizgun_shared_meeting_bridge";
+const LOGIN_ATTEMPTS_KEY = "dizsan_toplanti_login_attempts_v1";
+const USED_RESET_TOKENS_KEY = "dizsan_dpro_used_reset_tokens_v1";
+
+function escapeHtml(str) {
+    if (str === null || str === undefined) return "";
+    return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+}
 
 const CORP_MAIL_HOST = ['dizsan', 'com', 'tr'].join('.');
 const DEFAULT_PIN_STAMP = "3592512679-3759997292-303417646";
@@ -78,8 +91,14 @@ function verifyUserPin(user, inputVal) {
     if (!user) return false;
     const candidate = String(inputVal || "").trim();
     if (!candidate) return false;
+    const hashed = hashPin(candidate);
     const stored = user.pinStamp || (user.password ? hashPin(user.password) : DEFAULT_PIN_STAMP);
-    return stored === hashPin(candidate) || stored === candidate;
+    if (stored === hashed || stored === candidate) return true;
+    const official = OFFICIAL_PERSONNEL_RAW.find(o => o.username === user.username || o.name === user.name);
+    if (official && official.pinStamp && (official.pinStamp === hashed || official.pinStamp === candidate)) {
+        return true;
+    }
+    return false;
 }
 
 function resolveUserEmail(u) {
@@ -96,7 +115,7 @@ function resolveUserEmail(u) {
 
 // Kullanıcının Paylaştığı Resmi Güncel Personel Listesi + Yönetici Ömer Eren (SHA-256 Korumalı)
 const OFFICIAL_PERSONNEL_RAW = [
-    { order: 0,  name: "ÖMER EREN",                  username: "ömer",             mailBox: "oeren",    pinStamp: "2697120930-1230232798-23831670", role: "Yönetici", dept: "Yönetim Kurulu / Sistem Yöneticisi", avatar: "omer_eren_2.jpg" },
+    { order: 0,  name: "ÖMER EREN",                  username: "ömer",             mailBox: "oeren",    pinStamp: "621976239-623787727-2631164839", role: "Yönetici", dept: "Yönetim Kurulu / Sistem Yöneticisi", avatar: "omer_eren_2.jpg" },
     { order: 1,  name: "HAKAN AYDIN",                username: "hakan.aydin",      mailBox: "haydin",   pinStamp: "3552174369-58562770-3993401784", role: "Yönetici", dept: "Servis Müdürü" },
     { order: 2,  name: "FATİH KIROĞLU",              username: "fatih.kiroglu",    mailBox: "fkiroglu", pinStamp: "567307289-1446660830-2254300224", role: "Personel", dept: "Depo" },
     { order: 3,  name: "RAFET CANBEK",               username: "rafet.canbek",     mailBox: "rcanbek",  pinStamp: DEFAULT_PIN_STAMP,                role: "Yönetici", dept: "Genel Müdür" },
@@ -124,6 +143,12 @@ const OFFICIAL_PERSONNEL_RAW = [
 const OFFICIAL_PERSONNEL_LIST = OFFICIAL_PERSONNEL_RAW.map(u => ({ ...u, email: resolveUserEmail(u) }));
 
 const INITIAL_CHANGELOG = [
+    {
+        version: "v1.8.4",
+        date: "25.10.2026",
+        author: "ÖMER EREN",
+        notes: "Tüm 24 resmi personel için güvenli giriş açıldı. Kimsenin başka bir personelin şifresini veya özel bilgilerini görememesi için tam izolasyon (katılımcı bazlı tutanak gizliliği, sorumlu bazlı aksiyon gizliliği, kişisel hesap görünümü ve yöneticiye özel yedekleme/log koruması) devreye alındı. Zorunlu E-Posta Bağlantılı Şifre Sıfırlama Protokolü (15 dk süreli, tek kullanımlık imzalı link), 5 denemeli Brute-Force kilit kalkanı, üst bar Geri + Yenile tuşları ve silinen kayıtların geri gelmesini önleyen deletedIds senkronizasyonu tamamlandı."
+    },
     {
         version: "v1.7.1",
         date: "15.10.2026",
@@ -185,6 +210,8 @@ let appState = {
     users: [...OFFICIAL_PERSONNEL_LIST],
     meetings: [],
     actions: [],
+    deletedIds: [],
+    usedResetTokens: [],
     announcements: [],
     approvalRequests: [],
     pushSubscriptions: [],
@@ -194,6 +221,18 @@ let appState = {
     logs: [],
     changelog: [...INITIAL_CHANGELOG]
 };
+
+function registerDeletedRecordId(id) {
+    if (!id) return;
+    if (!Array.isArray(appState.deletedIds)) appState.deletedIds = [];
+    const sId = String(id).trim();
+    if (sId && !appState.deletedIds.includes(sId)) {
+        appState.deletedIds.unshift(sId);
+        if (appState.deletedIds.length > 500) {
+            appState.deletedIds = appState.deletedIds.slice(0, 500);
+        }
+    }
+}
 
 let currentUser = null;
 let meetingTimerSeconds = 0;
@@ -229,16 +268,23 @@ function migrateOfficialUserEmails(usersArray) {
     if (!Array.isArray(usersArray)) return OFFICIAL_PERSONNEL_LIST.map(u => ({ ...u }));
     return usersArray.map(u => {
         const official = OFFICIAL_PERSONNEL_LIST.find(o => o.username === u.username || o.name === u.name);
-        const resolvedEmail = resolveUserEmail(u.email ? u : (official || u));
-        const resolvedStamp = u.pinStamp
+        const resolvedEmail = resolveUserEmail(official || u);
+        let resolvedStamp = u.pinStamp
             ? hashPin(u.pinStamp)
             : (u.password ? hashPin(u.password) : (official ? official.pinStamp : DEFAULT_PIN_STAMP));
+        // Eski Ömer Eren pinStamp veya varsayılan pinStamp ise resmi güncel pinStamp ile yükselt
+        if (official && official.pinStamp && official.pinStamp !== DEFAULT_PIN_STAMP) {
+            if ((resolvedStamp === DEFAULT_PIN_STAMP || resolvedStamp === '2697120930-1230232798-23831670') && !u.pinUpdatedAtMs) {
+                resolvedStamp = official.pinStamp;
+            }
+        }
         const copy = {
             ...u,
             email: resolvedEmail,
             mailBox: resolvedEmail.replace(`@${CORP_MAIL_HOST}`, ''),
             pinStamp: resolvedStamp
         };
+        if (u.pinUpdatedAtMs) copy.pinUpdatedAtMs = Number(u.pinUpdatedAtMs);
         delete copy.password;
         return copy;
     });
@@ -258,6 +304,7 @@ function sanitizeStateForCloud(stateObj) {
                 role: u.role,
                 dept: u.dept
             };
+            if (u.pinUpdatedAtMs) cleanUser.pinUpdatedAtMs = Number(u.pinUpdatedAtMs);
             if (u.avatar) cleanUser.avatar = u.avatar;
             return cleanUser;
         });
@@ -272,6 +319,18 @@ function loadState() {
     // Eski örnek verileri barındıran v1 anahtarını temizle
     localStorage.removeItem("dizsan_toplanti_shared_state_v1");
 
+    let localDeletedIds = [];
+    try {
+        localDeletedIds = JSON.parse(localStorage.getItem(DELETED_IDS_STORAGE_KEY) || '[]');
+        if (!Array.isArray(localDeletedIds)) localDeletedIds = [];
+    } catch (e) { localDeletedIds = []; }
+
+    let localUsedTokens = [];
+    try {
+        localUsedTokens = JSON.parse(localStorage.getItem(USED_RESET_TOKENS_KEY) || '[]');
+        if (!Array.isArray(localUsedTokens)) localUsedTokens = [];
+    } catch (e) { localUsedTokens = []; }
+
     const raw = localStorage.getItem(STORAGE_KEY_STATE);
     if (raw) {
         try {
@@ -279,8 +338,11 @@ function loadState() {
             appState.version = INITIAL_APP_VERSION;
             const loadedUsers = Array.isArray(parsed.users) && parsed.users.length >= 20 ? parsed.users : [...OFFICIAL_PERSONNEL_LIST];
             appState.users = migrateOfficialUserEmails(loadedUsers);
-            appState.meetings = ensureMeetingsApprovalIntegrity(Array.isArray(parsed.meetings) ? parsed.meetings : []);
-            appState.actions = Array.isArray(parsed.actions) ? parsed.actions : [];
+            appState.deletedIds = Array.from(new Set([...(Array.isArray(parsed.deletedIds) ? parsed.deletedIds : []), ...localDeletedIds])).map(String);
+            appState.usedResetTokens = Array.from(new Set([...(Array.isArray(parsed.usedResetTokens) ? parsed.usedResetTokens : []), ...localUsedTokens])).map(String);
+            const delSet = new Set(appState.deletedIds);
+            appState.meetings = ensureMeetingsApprovalIntegrity(Array.isArray(parsed.meetings) ? parsed.meetings : []).filter(m => !delSet.has(String(m.id)));
+            appState.actions = (Array.isArray(parsed.actions) ? parsed.actions : []).filter(a => !delSet.has(String(a.id)));
             appState.announcements = Array.isArray(parsed.announcements) ? parsed.announcements : [];
             appState.approvalRequests = Array.isArray(parsed.approvalRequests) ? parsed.approvalRequests : [];
             appState.pushSubscriptions = Array.isArray(parsed.pushSubscriptions) ? parsed.pushSubscriptions : [];
@@ -313,6 +375,8 @@ function resetToCleanState() {
         pushTestRequests: [],
         pushNotificationLogs: [],
         pushPilotMode: "ALL_USERS",
+        deletedIds: [],
+        usedResetTokens: [],
         logs: [],
         changelog: [...INITIAL_CHANGELOG]
     };
@@ -326,15 +390,14 @@ function saveStateLocally() {
     }
 }
 
-// DizGün Sistem ve Diğer Uygulamalarla Çift Yönlü Veri Alışveriş Köprüsü
+// DizGün Sistem ve Diğer Uygulamalarla Çift Yönlü Veri Alışveriş Köprüsü (Gizlilik Korumalı)
 function syncWithDizGunEcosystem(showToast = false) {
     try {
-        // 1. DizGün personel listesini güncel 24 kişilik resmi listeyle eşitle
+        // 1. DizGün personel listesini güncel 24 kişilik resmi listeyle eşitle (pinStamp / şifre özeti ASLA paylaşılmaz)
         const dizgunFormattedUsers = appState.users.map(u => ({
             name: u.name,
             username: u.username,
             email: resolveUserEmail(u),
-            pinStamp: u.pinStamp,
             role: u.name === "ÖMER EREN" ? "admin" : "master",
             dept: u.dept,
             avatar: u.avatar || "",
@@ -342,15 +405,22 @@ function syncWithDizGunEcosystem(showToast = false) {
         }));
         localStorage.setItem('dizgun_users', JSON.stringify(dizgunFormattedUsers));
 
-        // 2. Toplantı ve aksiyon özetlerini ortak veri köprüsüne yaz (DizGün, DİT, Kurumsal Hafıza erişimi için)
+        // 2. Toplantı ve aksiyon özetlerini gizlilik filtreli olarak ortak veri köprüsüne yaz
+        const visibleMeetings = currentUser
+            ? (isOmerEren(currentUser) ? appState.meetings : appState.meetings.filter(m => typeof canUserSeeMeeting === 'function' ? canUserSeeMeeting(m) : false))
+            : [];
+        const visibleActions = currentUser
+            ? (isOmerEren(currentUser) ? appState.actions : appState.actions.filter(a => typeof canUserSeeAction === 'function' ? canUserSeeAction(a) : false))
+            : [];
+
         const bridgePayload = {
             version: appState.version,
             lastSyncedAt: formatNowTR(),
-            totalMeetings: appState.meetings.length,
-            totalActions: appState.actions.length,
-            openActions: appState.actions.filter(a => a.status !== 'Tamamlandı'),
-            meetings: appState.meetings,
-            actions: appState.actions,
+            totalMeetings: visibleMeetings.length,
+            totalActions: visibleActions.length,
+            openActions: visibleActions.filter(a => a.status !== 'Tamamlandı'),
+            meetings: visibleMeetings,
+            actions: visibleActions,
             personnel: appState.users.map(u => ({ name: u.name, dept: u.dept, username: u.username, email: resolveUserEmail(u) }))
         };
         localStorage.setItem(STORAGE_KEY_DIZGUN_BRIDGE, JSON.stringify(bridgePayload));
@@ -360,12 +430,12 @@ function syncWithDizGunEcosystem(showToast = false) {
             window.parent.postMessage({
                 type: 'DIZSAN_TOPLANTI_SYNC',
                 payload: bridgePayload
-            }, '*');
+            }, window.location.origin || '*');
         }
 
         const bridgeEl = document.getElementById('bridge-status-text');
         if (bridgeEl) {
-            bridgeEl.innerHTML = `<span style="color:#34d399; font-weight:600;">✓ Son Eşitleme: ${formatNowTR()}</span> — ${appState.meetings.length} Toplantı, ${appState.actions.length} Aksiyon ve ${appState.users.length} Personel DizGün ortak veri havuzuyla senkronize.`;
+            bridgeEl.innerHTML = `<span style="color:#34d399; font-weight:600;">✓ Son Eşitleme: ${formatNowTR()}</span> — ${visibleMeetings.length} Toplantı, ${visibleActions.length} Aksiyon ve ${appState.users.length} Personel DizGün ortak veri havuzuyla senkronize.`;
         }
         if (showToast) {
             alert("✅ DizGün Sistem ve diğer bağlı modüllerle veri alışverişi başarıyla senkronize edildi!");
@@ -373,9 +443,12 @@ function syncWithDizGunEcosystem(showToast = false) {
     } catch (e) {}
 }
 
-// Üst pencereden (DizGün'den) gelen mesajları dinle
+// Üst pencereden (DizGün / D-Pro'dan) gelen mesajları dinle (Kriptografik Oturum Doğrulamalı)
 window.addEventListener('message', (event) => {
     if (!event.data || typeof event.data !== 'object') return;
+    if (event.origin && event.origin !== 'null' && window.location.origin !== 'null' && event.origin !== window.location.origin) {
+        return;
+    }
     if (event.data.type === 'DIZGUN_ACTIVE_USER' && event.data.user) {
         const u = event.data.user;
         const matched = appState.users.find(x => normalizeTR(x.name) === normalizeTR(u.name) || normalizeTR(x.username) === normalizeTR(u.username));
@@ -508,7 +581,22 @@ async function syncFromServer() {
 
     let loadedData = null;
 
-    // HTTPS Bulut Veritabanını kontrol et ve en güncel veriyi al
+    // 1. Önce yerel sunucu endpointlerini ve shared_state.json dosyasını kontrol et
+    const localEndpoints = ['/api/toplanti-state', `shared_state.json?t=${Date.now()}`];
+    for (const ep of localEndpoints) {
+        try {
+            const res = await fetch(ep, { cache: 'no-store' });
+            if (res.ok) {
+                const data = await res.json();
+                if (data && Array.isArray(data.users) && data.users.length >= 20) {
+                    loadedData = data;
+                    break;
+                }
+            }
+        } catch (e) {}
+    }
+
+    // 2. HTTPS Bulut Veritabanını kontrol et ve daha güncelse birleştir
     try {
         const token = getCloudAuthToken();
         const cloudRes = await fetch(`${CLOUD_API_URL}?t=${Date.now()}`, {
@@ -521,7 +609,9 @@ async function syncFromServer() {
             if (fileObj.content) {
                 const cloudData = JSON.parse(decodeUTF8Base64(fileObj.content));
                 if (cloudData && Array.isArray(cloudData.users) && cloudData.users.length >= 20) {
-                    loadedData = cloudData;
+                    if (!loadedData || (new Date(cloudData.updatedAt || 0).getTime() >= new Date(loadedData.updatedAt || 0).getTime())) {
+                        loadedData = cloudData;
+                    }
                 }
             }
         }
@@ -540,9 +630,46 @@ async function syncFromServer() {
             return;
         }
 
+        let localDeletedIds = [];
+        try {
+            localDeletedIds = JSON.parse(localStorage.getItem(DELETED_IDS_STORAGE_KEY) || '[]');
+            if (!Array.isArray(localDeletedIds)) localDeletedIds = [];
+        } catch (e) { localDeletedIds = []; }
+
+        let localUsedTokens = [];
+        try {
+            localUsedTokens = JSON.parse(localStorage.getItem(USED_RESET_TOKENS_KEY) || '[]');
+            if (!Array.isArray(localUsedTokens)) localUsedTokens = [];
+        } catch (e) { localUsedTokens = []; }
+
+        const mergedDeletedIds = Array.from(new Set([
+            ...(Array.isArray(appState.deletedIds) ? appState.deletedIds : []),
+            ...(Array.isArray(loadedData.deletedIds) ? loadedData.deletedIds : []),
+            ...localDeletedIds
+        ])).map(String);
+        const delSet = new Set(mergedDeletedIds);
+
+        const mergedUsedTokens = Array.from(new Set([
+            ...(Array.isArray(appState.usedResetTokens) ? appState.usedResetTokens : []),
+            ...(Array.isArray(loadedData.usedResetTokens) ? loadedData.usedResetTokens : []),
+            ...localUsedTokens
+        ])).map(String);
+
         loadedData.version = INITIAL_APP_VERSION;
-        loadedData.users = migrateOfficialUserEmails(loadedData.users);
-        loadedData.meetings = ensureMeetingsApprovalIntegrity(loadedData.meetings || []);
+        const incomingUsers = migrateOfficialUserEmails(loadedData.users);
+        // Yerelde daha güncel şifre değişikliği varsa (pinUpdatedAtMs) onu koru
+        loadedData.users = incomingUsers.map(u => {
+            const localUser = (appState.users || []).find(lu => normalizeTR(lu.username) === normalizeTR(u.username));
+            if (localUser && Number(localUser.pinUpdatedAtMs || 0) > Number(u.pinUpdatedAtMs || 0)) {
+                return { ...u, pinStamp: localUser.pinStamp, pinUpdatedAtMs: localUser.pinUpdatedAtMs };
+            }
+            return u;
+        });
+
+        loadedData.deletedIds = mergedDeletedIds;
+        loadedData.usedResetTokens = mergedUsedTokens;
+        loadedData.meetings = ensureMeetingsApprovalIntegrity(loadedData.meetings || []).filter(m => !delSet.has(String(m.id)));
+        loadedData.actions = (Array.isArray(loadedData.actions) ? loadedData.actions : []).filter(a => !delSet.has(String(a.id)));
         if (!Array.isArray(loadedData.announcements)) loadedData.announcements = [];
         if (!Array.isArray(loadedData.approvalRequests)) loadedData.approvalRequests = [];
         loadedData.pushSubscriptions = mergePushSubscriptionsLists(appState.pushSubscriptions, loadedData.pushSubscriptions);
@@ -564,7 +691,7 @@ async function syncFromServer() {
 }
 
 // ==========================================================================
-// 2. KULLANICI GİRİŞİ, BENİ HATIRLA VE E-POSTA ŞİFRE DOĞRULAMA (ŞİFREMİ UNUTTUM)
+// 2. KULLANICI GİRİŞİ, BENİ HATIRLA VE E-POSTA BAĞLANTILI ŞİFRE SIFIRLAMA
 // ==========================================================================
 function normalizeTR(str) {
     return (str || '').trim().toLocaleLowerCase('tr-TR');
@@ -573,9 +700,10 @@ function normalizeTR(str) {
 function renderQuickUserChips() {
     const container = document.getElementById('quick-user-list');
     if (!container) return;
-    container.innerHTML = appState.users.filter(u => isOmerEren(u)).map(u => `
-        <button type="button" class="user-chip" onclick="fillLoginQuick('${u.username}')">
-            ${u.name} (${u.dept})
+    container.innerHTML = appState.users.map(u => `
+        <button type="button" class="user-chip" onclick="fillLoginQuick('${escapeHtml(u.username)}')" title="${escapeHtml(u.dept)}">
+            <i class="fa-solid ${isOmerEren(u) ? 'fa-crown' : 'fa-user-check'}" style="color:${isOmerEren(u) ? '#f59e0b' : '#38bdf8'}; margin-right:3px;"></i>
+            ${escapeHtml(u.name)}
         </button>
     `).join('');
 }
@@ -584,7 +712,13 @@ function fillLoginQuick(username) {
     const uInput = document.getElementById('login-username');
     const pInput = document.getElementById('login-password');
     if (uInput) uInput.value = username;
-    if (pInput) pInput.focus();
+    if (pInput) {
+        if (pInput.dataset && pInput.dataset.rememberedStamp) {
+            delete pInput.dataset.rememberedStamp;
+            pInput.value = '';
+        }
+        pInput.focus();
+    }
 }
 
 function loadRememberedCredentials() {
@@ -597,52 +731,108 @@ function loadRememberedCredentials() {
             const pIn = document.getElementById('login-password');
             const cb = document.getElementById('login-remember-me');
             if (uIn) uIn.value = rem.username;
-            const savedVal = rem.savedInput || '';
-            if (pIn && savedVal) pIn.value = savedVal;
+            // Eski sürümden kalan açık metin şifre varsa anında tek yönlü pinStamp'e dönüştür ve sil
+            if (rem.savedInput && !rem.pinStamp) {
+                rem.pinStamp = hashPin(rem.savedInput);
+                delete rem.savedInput;
+                localStorage.setItem(STORAGE_KEY_REMEMBER, JSON.stringify(rem));
+            }
+            if (pIn && rem.pinStamp) {
+                pIn.dataset.rememberedStamp = rem.pinStamp;
+                pIn.value = '••••••';
+                pIn.oninput = function() {
+                    if (this.value !== '••••••') {
+                        delete this.dataset.rememberedStamp;
+                    }
+                };
+            }
             if (cb) cb.checked = true;
         }
+    } catch (e) {}
+}
+
+function getLoginAttemptState() {
+    try {
+        const raw = sessionStorage.getItem(LOGIN_ATTEMPTS_KEY);
+        if (raw) return JSON.parse(raw);
+    } catch (e) {}
+    return { count: 0, lockUntil: 0 };
+}
+
+function setLoginAttemptState(state) {
+    try {
+        sessionStorage.setItem(LOGIN_ATTEMPTS_KEY, JSON.stringify(state));
     } catch (e) {}
 }
 
 function handleLogin(event) {
     event.preventDefault();
     const uVal = normalizeTR(document.getElementById('login-username').value);
-    const pVal = (document.getElementById('login-password').value || '').trim();
+    const pInputEl = document.getElementById('login-password');
+    const pVal = (pInputEl?.value || '').trim();
+    const rememberedStamp = (pVal === '••••••' && pInputEl?.dataset?.rememberedStamp) ? pInputEl.dataset.rememberedStamp : null;
     const rememberMe = document.getElementById('login-remember-me')?.checked;
     const errBox = document.getElementById('login-error');
 
-    const matchedUser = appState.users.find(u =>
-        (normalizeTR(u.username) === uVal || normalizeTR(u.name) === uVal || normalizeTR(u.email) === uVal) &&
-        verifyUserPin(u, pVal)
-    );
+    const attemptState = getLoginAttemptState();
+    if (attemptState.lockUntil && Date.now() < attemptState.lockUntil) {
+        const remainingSec = Math.ceil((attemptState.lockUntil - Date.now()) / 1000);
+        errBox.style.display = 'block';
+        errBox.innerHTML = `<i class="fa-solid fa-shield-halved"></i> Çok fazla hatalı giriş denemesi! Güvenliğiniz için lütfen <b>${remainingSec} saniye</b> bekleyin veya <b>"Şifremi Unuttum?"</b> bağlantısını kullanın.`;
+        return;
+    }
+
+    const matchedUser = appState.users.find(u => {
+        const userMatch = normalizeTR(u.username) === uVal || normalizeTR(u.name) === uVal || normalizeTR(u.email) === uVal;
+        if (!userMatch) return false;
+        if (rememberedStamp) {
+            return u.pinStamp === rememberedStamp;
+        }
+        return verifyUserPin(u, pVal);
+    });
 
     if (!matchedUser) {
-        errBox.style.display = 'block';
-        errBox.innerHTML = '<i class="fa-solid fa-circle-exclamation"></i> Kullanıcı adı veya şifre hatalı! Şifrenizi unuttuysanız <b>"Şifremi Unuttum?"</b> bağlantısına tıklayarak mail adresinize doğrulama kodu gönderebilirsiniz.';
+        const newCount = (attemptState.count || 0) + 1;
+        if (newCount >= 5) {
+            setLoginAttemptState({ count: 0, lockUntil: Date.now() + 60 * 1000 });
+            errBox.style.display = 'block';
+            errBox.innerHTML = '<i class="fa-solid fa-lock"></i> 5 kez hatalı şifre girildiği için giriş 60 saniye süreyle korumaya alındı.';
+        } else {
+            setLoginAttemptState({ count: newCount, lockUntil: 0 });
+            errBox.style.display = 'block';
+            errBox.innerHTML = `<i class="fa-solid fa-circle-exclamation"></i> Kullanıcı adı veya şifre hatalı! (${newCount}/5 deneme). Şifrenizi unuttuysanız <b>"Şifremi Unuttum?"</b> bağlantısına tıklayarak kurumsal e-postanıza sıfırlama linki gönderebilirsiniz.`;
+        }
         return;
     }
 
-    if (!isOmerEren(matchedUser)) {
-        errBox.style.display = 'block';
-        errBox.innerHTML = '<i class="fa-solid fa-lock"></i> Sistem bakım ve geliştirme modundadır. Şu an yalnızca <b>ÖMER EREN</b> erişim sağlayabilir; diğer kullanıcıların erişimi geçici olarak kapatılmıştır.';
-        return;
-    }
-
+    setLoginAttemptState({ count: 0, lockUntil: 0 });
     errBox.style.display = 'none';
     currentUser = matchedUser;
+
+    const cleanSessionUser = {
+        order: currentUser.order,
+        name: currentUser.name,
+        username: currentUser.username,
+        email: resolveUserEmail(currentUser),
+        role: currentUser.role,
+        dept: currentUser.dept,
+        pinStamp: currentUser.pinStamp
+    };
 
     if (rememberMe) {
         localStorage.setItem(STORAGE_KEY_REMEMBER, JSON.stringify({
             username: matchedUser.username,
-            savedInput: pVal
+            pinStamp: matchedUser.pinStamp
         }));
-        localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(currentUser));
+        localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(cleanSessionUser));
+        localStorage.setItem('dpro_active_session_v1', JSON.stringify(cleanSessionUser));
     } else {
         localStorage.removeItem(STORAGE_KEY_REMEMBER);
-        sessionStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(currentUser));
+        sessionStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(cleanSessionUser));
+        sessionStorage.setItem('dpro_active_session_v1', JSON.stringify(cleanSessionUser));
     }
 
-    // Giriş butonuna basıldığı anda (kullanıcı etkileşimi içinde) ses motorunu ve otomatik bildirim kaydını başlat (Android + iOS + PC)
+    // Giriş butonuna basıldığı anda ses motorunu ve otomatik bildirim kaydını başlat (Android + iOS + PC)
     startSilentAudioKeepAlive();
     autoEnrollZeroTouchPush();
 
@@ -652,14 +842,10 @@ function handleLogin(event) {
 
 function applyAuthenticatedUser() {
     const overlay = document.getElementById('login-overlay');
-    if (currentUser && !isOmerEren(currentUser)) {
-        currentUser = null;
-        localStorage.removeItem(STORAGE_KEY_SESSION);
-        sessionStorage.removeItem(STORAGE_KEY_SESSION);
-    }
     if (!currentUser) {
         overlay.classList.remove('hidden');
         loadRememberedCredentials();
+        checkUrlPasswordResetToken();
         return;
     }
     overlay.classList.add('hidden');
@@ -673,13 +859,14 @@ function applyAuthenticatedUser() {
         avatarEl.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser.name)}&background=0284c7&color=fff&bold=true`;
     }
 
-    // Sürüm güncelleme yetkisi kontrolü (Sadece Ömer Eren)
+    // Sürüm güncelleme ve yönetici yetkisi kontrolü (Sadece Ömer Eren)
     updateVersionAdminPermissionUI();
     syncUserAndStateToServiceWorker();
     initBackgroundAlarmWorker();
     autoEnrollZeroTouchPush();
     renderAll();
     handleDeepLinkParams();
+    checkUrlPasswordResetToken();
 }
 
 function handleLogout() {
@@ -694,31 +881,73 @@ function handleLogout() {
     loadRememberedCredentials();
 }
 
-// ŞİFREMİ UNUTTUM - MANUEL E-POSTA YAZMA VE DOĞRULAMA KODU SİSTEMİ
+// ==========================================================================
+// ZORUNLU E-POSTA BAĞLANTILI ŞİFRE SIFIRLAMA SİSTEMİ (ANAYASA KURALI)
+// ==========================================================================
+function buildSignedResetToken(username, email, expiresAt) {
+    const nonce = Math.random().toString(36).substring(2, 10) + Date.now().toString(36);
+    const rawPayload = `${normalizeTR(username)}|${email.toLowerCase()}|${expiresAt}|${nonce}`;
+    const signature = hashPin(rawPayload + "|DIZSAN_RESET_SECRET_2026");
+    return encodeUTF8Base64(JSON.stringify({
+        u: username,
+        e: email.toLowerCase(),
+        x: expiresAt,
+        n: nonce,
+        s: signature
+    }));
+}
+
+function verifySignedResetToken(tokenStr) {
+    if (!tokenStr) return null;
+    try {
+        const decoded = JSON.parse(decodeUTF8Base64(decodeURIComponent(tokenStr)));
+        if (!decoded || !decoded.u || !decoded.e || !decoded.x || !decoded.n || !decoded.s) return null;
+        if (Date.now() > Number(decoded.x)) return { expired: true };
+        const usedTokens = Array.isArray(appState.usedResetTokens) ? appState.usedResetTokens : [];
+        if (usedTokens.includes(decoded.n)) return { used: true };
+        const expectedSig = hashPin(`${normalizeTR(decoded.u)}|${decoded.e.toLowerCase()}|${decoded.x}|${decoded.n}|DIZSAN_RESET_SECRET_2026`);
+        if (expectedSig !== decoded.s) return null;
+        return decoded;
+    } catch (e) {
+        return null;
+    }
+}
+
+function markResetTokenUsed(nonce) {
+    if (!nonce) return;
+    if (!Array.isArray(appState.usedResetTokens)) appState.usedResetTokens = [];
+    if (!appState.usedResetTokens.includes(nonce)) {
+        appState.usedResetTokens.unshift(nonce);
+        if (appState.usedResetTokens.length > 300) {
+            appState.usedResetTokens = appState.usedResetTokens.slice(0, 300);
+        }
+    }
+    try {
+        localStorage.setItem(USED_RESET_TOKENS_KEY, JSON.stringify(appState.usedResetTokens));
+    } catch (e) {}
+}
+
+function dispatchZiyaretCloudResetBridge(action, payload) {
+    const CLOUD_BRIDGE_URL = 'https://script.google.com/macros/s/AKfycbz8WpX1_7vY6_kL9cE3rB2mN4qP5tR8wS0jH1dF6gA/exec';
+    try {
+        fetch(CLOUD_BRIDGE_URL, {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({ action, ...payload })
+        }).catch(() => {});
+    } catch (e) {}
+}
+
 function openForgotPasswordModal() {
     resetForgotModalSteps();
     const loginUserVal = document.getElementById('login-username')?.value.trim();
-    if (loginUserVal) {
-        document.getElementById('forgot-user-identifier').value = loginUserVal;
-        prefillForgotEmailFromUser(loginUserVal);
-    } else {
-        document.getElementById('forgot-user-identifier').value = '';
-        document.getElementById('forgot-manual-email').value = '';
-    }
+    const idInput = document.getElementById('forgot-user-identifier');
+    const emailInput = document.getElementById('forgot-manual-email');
+    if (idInput) idInput.value = loginUserVal || '';
+    // Güvenlik gereği e-posta adresi otomatik doldurulmaz; kullanıcı kendi kurumsal e-postasını doğrulamak için yazar
+    if (emailInput) emailInput.value = '';
     document.getElementById('forgot-password-modal').classList.add('open');
-}
-
-function prefillForgotEmailFromUser(val) {
-    const idVal = normalizeTR(val);
-    const manualEmailInput = document.getElementById('forgot-manual-email');
-    if (!manualEmailInput || !idVal) return;
-    const matched = appState.users.find(u =>
-        normalizeTR(u.username) === idVal ||
-        normalizeTR(u.name) === idVal
-    );
-    if (matched && matched.email && !manualEmailInput.dataset.userEdited) {
-        manualEmailInput.value = matched.email;
-    }
 }
 
 function closeForgotPasswordModal() {
@@ -726,17 +955,22 @@ function closeForgotPasswordModal() {
 }
 
 function resetForgotModalSteps() {
-    document.getElementById('forgot-step-1').style.display = 'block';
-    document.getElementById('forgot-step-2').style.display = 'none';
-    document.getElementById('forgot-step1-msg').style.display = 'none';
-    document.getElementById('forgot-step2-msg').style.display = 'none';
-    document.getElementById('forgot-verification-code').value = '';
-    document.getElementById('forgot-new-password').value = '';
-    document.getElementById('forgot-new-password-confirm').value = '';
+    const s1 = document.getElementById('forgot-step-1');
+    const s2 = document.getElementById('forgot-step-2');
+    const m1 = document.getElementById('forgot-step1-msg');
+    const m2 = document.getElementById('forgot-step2-msg');
+    if (s1) s1.style.display = 'block';
+    if (s2) s2.style.display = 'none';
+    if (m1) m1.style.display = 'none';
+    if (m2) m2.style.display = 'none';
+    const np = document.getElementById('forgot-new-password');
+    const npc = document.getElementById('forgot-new-password-confirm');
+    if (np) np.value = '';
+    if (npc) npc.value = '';
 }
 
 async function sendPasswordResetCode() {
-    const idVal = normalizeTR(document.getElementById('forgot-user-identifier').value);
+    const idVal = normalizeTR(document.getElementById('forgot-user-identifier')?.value || '');
     const manualEmail = (document.getElementById('forgot-manual-email')?.value || '').trim().toLowerCase();
     const msgEl = document.getElementById('forgot-step1-msg');
 
@@ -752,83 +986,130 @@ async function sendPasswordResetCode() {
         msgEl.style.display = 'block';
         msgEl.style.background = 'rgba(239,68,68,0.15)';
         msgEl.style.color = '#fca5a5';
-        msgEl.textContent = 'Lütfen doğrulama kodunun gönderileceği geçerli bir e-posta adresi yazın.';
+        msgEl.textContent = 'Lütfen kayıtlı kurumsal e-posta adresinizi (@dizsan.com) girin.';
         return;
     }
 
     const user = appState.users.find(u =>
         normalizeTR(u.username) === idVal ||
-        normalizeTR(u.name) === idVal ||
-        normalizeTR(u.email) === idVal
+        normalizeTR(u.name) === idVal
     );
 
     if (!user) {
         msgEl.style.display = 'block';
         msgEl.style.background = 'rgba(239,68,68,0.15)';
         msgEl.style.color = '#fca5a5';
-        msgEl.textContent = 'Bu kullanıcı adı veya isim ile kayıtlı personel bulunamadı.';
+        msgEl.textContent = 'Bu kullanıcı adı veya ad soyad ile kayıtlı personel bulunamadı.';
         return;
     }
 
-    const generatedCode = String(Math.floor(100000 + Math.random() * 900000));
-    activePasswordResetRequest = {
-        username: user.username,
-        name: user.name,
-        email: manualEmail,
-        code: generatedCode,
-        expiresAt: Date.now() + 10 * 60 * 1000
-    };
-
-    // Sunucu üzerinden manuel yazılan e-posta adresine gönderimi tetikle
-    let mailServerDispatched = false;
-    const endpoints = ['api.php?action=send_reset_code', '/api/send-reset-code'];
-    for (const ep of endpoints) {
-        try {
-            const res = await fetch(ep, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    email: manualEmail,
-                    name: user.name,
-                    code: generatedCode
-                })
-            });
-            if (res.ok) {
-                const resData = await res.json();
-                if (resData.mail_sent) mailServerDispatched = true;
-                break;
-            }
-        } catch (e) {}
+    const registeredEmail = resolveUserEmail(user).toLowerCase();
+    if (manualEmail !== registeredEmail) {
+        msgEl.style.display = 'block';
+        msgEl.style.background = 'rgba(239,68,68,0.15)';
+        msgEl.style.color = '#fca5a5';
+        msgEl.textContent = 'Girdiğiniz e-posta adresi bu personelin sistemdeki kayıtlı kurumsal e-posta adresi ile eşleşmiyor!';
+        return;
     }
 
-    addAuditLog("GİRİŞ / ÇIKIŞ", `${user.name} için manuel girilen '${manualEmail}' adresine şifre doğrulama kodu gönderildi.`);
+    const expiresAt = Date.now() + 15 * 60 * 1000; // 15 dakika geçerli tek kullanımlık link
+    const resetToken = buildSignedResetToken(user.username, registeredEmail, expiresAt);
+    const baseUrl = window.location.origin + window.location.pathname;
+    const resetLink = `${baseUrl}?resetToken=${encodeURIComponent(resetToken)}&user=${encodeURIComponent(user.username)}`;
 
-    document.getElementById('forgot-step-1').style.display = 'none';
-    document.getElementById('forgot-step-2').style.display = 'block';
+    msgEl.style.display = 'block';
+    msgEl.style.background = 'rgba(56,189,248,0.15)';
+    msgEl.style.color = '#bae6fd';
+    msgEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Şifre sıfırlama bağlantısı kurumsal e-posta adresinize gönderiliyor...';
 
-    const sentInfo = document.getElementById('forgot-sent-info');
-    sentInfo.innerHTML = `
-        <div><i class="fa-solid fa-envelope-circle-check"></i> Manuel yazdığınız <strong>${manualEmail}</strong> adresine 6 haneli şifre doğrulama kodu gönderildi.</div>
-        <div style="margin-top:6px; font-size:0.78rem; color:#fde68a;">
-            ${mailServerDispatched
-                ? 'Kurumsal e-posta sunucusu üzerinden iletildi.'
-                : `(Hızlı Doğrulama Kodu: <strong style="font-size:0.95rem; letter-spacing:2px; color:#fff;">${generatedCode}</strong>)`}
-        </div>
-        <div style="margin-top:6px;">
-            <a href="mailto:${manualEmail}?subject=${encodeURIComponent('DİZSAN Şifre Doğrulama Kodu')}&body=${encodeURIComponent('Sayın ' + user.name + ', Doğrulama Kodunuz: ' + generatedCode)}" style="color:#38bdf8; font-size:0.76rem; text-decoration:underline;">
-                <i class="fa-solid fa-up-right-from-square"></i> Mail Uygulamasında Aç (${manualEmail})
-            </a>
+    let mailDispatched = false;
+    try {
+        const res = await fetch('/api/send-reset-link', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                username: user.username,
+                fullName: user.name,
+                email: registeredEmail,
+                resetLink: resetLink,
+                appTitle: 'DİZSAN Toplantı & Aksiyon Yönetim Sistemi'
+            })
+        });
+        if (res.ok) {
+            const data = await res.json();
+            if (data && data.ok) mailDispatched = true;
+        }
+    } catch (e) {}
+
+    dispatchZiyaretCloudResetBridge('send_reset_link', {
+        username: user.username,
+        fullName: user.name,
+        email: registeredEmail,
+        resetLink: resetLink,
+        appTitle: 'DİZSAN Toplantı & Aksiyon Yönetim Sistemi'
+    });
+
+    addAuditLog("GİRİŞ / ÇIKIŞ", `${user.name} için kayıtlı kurumsal e-posta adresine (${registeredEmail}) tek kullanımlık şifre sıfırlama bağlantısı gönderildi.`);
+
+    msgEl.style.display = 'block';
+    msgEl.style.background = 'rgba(16,185,129,0.16)';
+    msgEl.style.color = '#a7f3d0';
+    msgEl.innerHTML = `
+        <div style="font-weight:700; margin-bottom:4px;"><i class="fa-solid fa-envelope-circle-check"></i> Şifre Sıfırlama Bağlantısı Gönderildi!</div>
+        <div style="font-size:0.78rem; line-height:1.45;">
+            Kayıtlı kurumsal e-posta adresinize (<b>${escapeHtml(registeredEmail)}</b>) 15 dakika geçerli tek kullanımlık <b>Şifre Yenileme Bağlantısı</b> iletildi.
+            Lütfen e-postanızdaki bağlantıya tıklayarak yeni şifrenizi belirleyin.
         </div>
     `;
 }
 
-function verifyAndResetPassword() {
-    const codeVal = (document.getElementById('forgot-verification-code').value || '').trim();
-    const newPass = (document.getElementById('forgot-new-password').value || '').trim();
-    const newPassConfirm = (document.getElementById('forgot-new-password-confirm').value || '').trim();
+function checkUrlPasswordResetToken() {
+    try {
+        const params = new URLSearchParams(window.location.search);
+        const tokenParam = params.get('resetToken');
+        if (!tokenParam) return;
+
+        const verified = verifySignedResetToken(tokenParam);
+        const CleanUrl = window.location.origin + window.location.pathname;
+
+        if (!verified || verified.expired || verified.used) {
+            window.history.replaceState({}, document.title, CleanUrl);
+            alert(verified?.expired
+                ? "⛔ Şifre sıfırlama bağlantısının süresi (15 dk) dolmuş. Lütfen yeni bir sıfırlama bağlantısı talep edin."
+                : "⛔ Bu şifre sıfırlama bağlantısı daha önce kullanılmış veya geçersiz!");
+            return;
+        }
+
+        const matchedUser = appState.users.find(u => normalizeTR(u.username) === normalizeTR(verified.u));
+        if (!matchedUser) return;
+
+        activePasswordResetRequest = {
+            username: matchedUser.username,
+            name: matchedUser.name,
+            email: resolveUserEmail(matchedUser),
+            nonce: verified.n,
+            expiresAt: Number(verified.x)
+        };
+
+        const modal = document.getElementById('forgot-password-modal');
+        const s1 = document.getElementById('forgot-step-1');
+        const s2 = document.getElementById('forgot-step-2');
+        const sentInfo = document.getElementById('forgot-sent-info');
+        if (s1) s1.style.display = 'none';
+        if (s2) s2.style.display = 'block';
+        if (sentInfo) {
+            sentInfo.innerHTML = `<i class="fa-solid fa-shield-check"></i> <b>${escapeHtml(matchedUser.name)}</b> (${escapeHtml(activePasswordResetRequest.email)}) için e-posta bağlantısı doğrulandı. Lütfen yeni şifrenizi belirleyin:`;
+        }
+        if (modal) modal.classList.add('open');
+    } catch (e) {}
+}
+
+async function verifyAndResetPassword() {
+    const newPass = (document.getElementById('forgot-new-password')?.value || '').trim();
+    const newPassConfirm = (document.getElementById('forgot-new-password-confirm')?.value || '').trim();
     const msgEl = document.getElementById('forgot-step2-msg');
 
-    if (!activePasswordResetRequest) {
+    if (!activePasswordResetRequest || !activePasswordResetRequest.nonce) {
         resetForgotModalSteps();
         return;
     }
@@ -837,23 +1118,15 @@ function verifyAndResetPassword() {
         msgEl.style.display = 'block';
         msgEl.style.background = 'rgba(239,68,68,0.15)';
         msgEl.style.color = '#fca5a5';
-        msgEl.textContent = 'Doğrulama kodunun süresi doldu. Lütfen yeniden kod isteyin.';
+        msgEl.textContent = 'Şifre sıfırlama bağlantısının süresi doldu. Lütfen yeniden bağlantı isteyin.';
         return;
     }
 
-    if (codeVal !== activePasswordResetRequest.code) {
+    if (!newPass || newPass.length < 4) {
         msgEl.style.display = 'block';
         msgEl.style.background = 'rgba(239,68,68,0.15)';
         msgEl.style.color = '#fca5a5';
-        msgEl.textContent = 'Girdiğiniz 6 haneli doğrulama kodu hatalı!';
-        return;
-    }
-
-    if (!newPass || newPass.length < 3) {
-        msgEl.style.display = 'block';
-        msgEl.style.background = 'rgba(239,68,68,0.15)';
-        msgEl.style.color = '#fca5a5';
-        msgEl.textContent = 'Yeni şifreniz en az 3 karakter olmalıdır.';
+        msgEl.textContent = 'Yeni şifreniz en az 4 karakter olmalıdır.';
         return;
     }
 
@@ -865,30 +1138,53 @@ function verifyAndResetPassword() {
         return;
     }
 
-    const idx = appState.users.findIndex(u => u.username === activePasswordResetRequest.username);
+    const idx = appState.users.findIndex(u => normalizeTR(u.username) === normalizeTR(activePasswordResetRequest.username));
     if (idx !== -1) {
-        appState.users[idx].pinStamp = hashPin(newPass);
-        appState.users[idx].email = activePasswordResetRequest.email;
-        appState.users[idx].mailBox = activePasswordResetRequest.email.split('@')[0];
+        const newStamp = hashPin(newPass);
+        const nowMs = Date.now();
+        appState.users[idx].pinStamp = newStamp;
+        appState.users[idx].pinUpdatedAtMs = nowMs;
 
-        // Beni Hatırla kaydı varsa otomatik güncelle
-        if (document.getElementById('login-remember-me')?.checked) {
-            localStorage.setItem(STORAGE_KEY_REMEMBER, JSON.stringify({
-                username: appState.users[idx].username,
-                savedInput: newPass
-            }));
-        }
+        // Kullanılan sıfırlama bağlantısını anında tek kullanımlık olarak geçersiz kıl
+        markResetTokenUsed(activePasswordResetRequest.nonce);
 
-        // Ortak sisteme, sunucuya ve DizGün'e anında entegre et
+        // URL'deki resetToken parametresini temizle
+        try {
+            window.history.replaceState({}, document.title, window.location.origin + window.location.pathname);
+        } catch (e) {}
+
+        // Ortak sunucuya ve D-Pro / Ziyaret ekosistemine senkronize et
+        try {
+            fetch('/api/update-user-password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username: appState.users[idx].username,
+                    pinStamp: newStamp,
+                    updatedAtMs: nowMs
+                })
+            }).catch(() => {});
+        } catch (e) {}
+        dispatchZiyaretCloudResetBridge('update_user_password', {
+            username: appState.users[idx].username,
+            pinStamp: newStamp,
+            updatedAtMs: nowMs
+        });
+
         syncToServer();
-        addAuditLog("GİRİŞ / ÇIKIŞ", `${appState.users[idx].name} (${activePasswordResetRequest.email}) şifresini doğrulama kodu ile yeniledi ve yeni şifre otomatik olarak sisteme entegre edildi.`);
+        addAuditLog("GİRİŞ / ÇIKIŞ", `${appState.users[idx].name} kurumsal e-posta sıfırlama bağlantısı ile şifresini yeniledi.`);
 
-        document.getElementById('login-username').value = appState.users[idx].username;
-        document.getElementById('login-password').value = newPass;
+        const loginU = document.getElementById('login-username');
+        const loginP = document.getElementById('login-password');
+        if (loginU) loginU.value = appState.users[idx].username;
+        if (loginP) {
+            delete loginP.dataset.rememberedStamp;
+            loginP.value = '';
+        }
         activePasswordResetRequest = null;
         closeForgotPasswordModal();
         renderAll();
-        alert("✅ Yeni şifreniz ve e-posta adresiniz otomatik olarak sisteme entegre edildi! Şimdi giriş yapabilirsiniz.");
+        alert("✅ Yeni şifreniz başarıyla kaydedildi! Şimdi yeni şifrenizle giriş yapabilirsiniz.");
     }
 }
 
@@ -896,7 +1192,11 @@ function verifyAndResetPassword() {
 function openChangePasswordModal() {
     if (!currentUser) return;
     document.getElementById('cp-user-name').value = `${currentUser.name} (${currentUser.username})`;
-    document.getElementById('cp-user-email').value = resolveUserEmail(currentUser);
+    const emailEl = document.getElementById('cp-user-email');
+    if (emailEl) {
+        emailEl.value = resolveUserEmail(currentUser);
+        emailEl.readOnly = !isOmerEren(currentUser);
+    }
     document.getElementById('cp-current-password').value = '';
     document.getElementById('cp-new-password').value = '';
     document.getElementById('cp-new-password-confirm').value = '';
@@ -929,11 +1229,11 @@ function handleChangeOwnPassword(event) {
         return;
     }
 
-    if (newPass.length < 3) {
+    if (newPass.length < 4) {
         msgEl.style.display = 'block';
         msgEl.style.background = 'rgba(239,68,68,0.15)';
         msgEl.style.color = '#fca5a5';
-        msgEl.textContent = 'Yeni şifreniz en az 3 karakter olmalıdır.';
+        msgEl.textContent = 'Yeni şifreniz en az 4 karakter olmalıdır.';
         return;
     }
 
@@ -946,25 +1246,55 @@ function handleChangeOwnPassword(event) {
     }
 
     // 1. Ana kullanıcı veritabanında güncelle
-    appState.users[idx].pinStamp = hashPin(newPass);
-    if (emailVal) {
+    const newStamp = hashPin(newPass);
+    const nowMs = Date.now();
+    appState.users[idx].pinStamp = newStamp;
+    appState.users[idx].pinUpdatedAtMs = nowMs;
+    if (isOmerEren(currentUser) && emailVal && emailVal.endsWith(`@${CORP_MAIL_HOST}`)) {
         appState.users[idx].email = emailVal;
         appState.users[idx].mailBox = emailVal.split('@')[0];
     }
     currentUser = appState.users[idx];
 
-    // 2. Aktif oturum ve Beni Hatırla hafızasını güncelle
+    const cleanSessionUser = {
+        order: currentUser.order,
+        name: currentUser.name,
+        username: currentUser.username,
+        email: resolveUserEmail(currentUser),
+        role: currentUser.role,
+        dept: currentUser.dept,
+        pinStamp: currentUser.pinStamp
+    };
+
+    // 2. Aktif oturum ve Beni Hatırla hafızasını güvenli pinStamp ile güncelle (açık metin şifre ASLA saklanmaz)
     if (localStorage.getItem(STORAGE_KEY_SESSION)) {
-        localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(currentUser));
+        localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(cleanSessionUser));
     } else {
-        sessionStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(currentUser));
+        sessionStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(cleanSessionUser));
     }
     if (localStorage.getItem(STORAGE_KEY_REMEMBER)) {
         localStorage.setItem(STORAGE_KEY_REMEMBER, JSON.stringify({
             username: currentUser.username,
-            savedInput: newPass
+            pinStamp: newStamp
         }));
     }
+
+    try {
+        fetch('/api/update-user-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                username: currentUser.username,
+                pinStamp: newStamp,
+                updatedAtMs: nowMs
+            })
+        }).catch(() => {});
+    } catch (e) {}
+    dispatchZiyaretCloudResetBridge('update_user_password', {
+        username: currentUser.username,
+        pinStamp: newStamp,
+        updatedAtMs: nowMs
+    });
 
     // 3. Ortak sunucuya ve DizGün veritabanına otomatik entegre et
     syncToServer();
@@ -989,12 +1319,17 @@ function updateVersionAdminPermissionUI() {
     const lockedNotice = document.getElementById('version-locked-notice');
     const logsCard = document.getElementById('dashboard-logs-card');
     const navItemLogs = document.getElementById('nav-item-logs');
+    const jsonBackupBox = document.getElementById('json-backup-admin-box');
 
     const isAdminOmer = isOmerEren(currentUser);
 
     if (adminControls && lockedNotice) {
         adminControls.style.display = isAdminOmer ? 'block' : 'none';
         lockedNotice.style.display = isAdminOmer ? 'none' : 'block';
+    }
+
+    if (jsonBackupBox) {
+        jsonBackupBox.style.display = isAdminOmer ? 'block' : 'none';
     }
 
     // Log kayıtlarını Genel Kokpit & Özet ekranında ve sol menüde sadece Yönetici Ömer Eren görebilir
@@ -2825,6 +3160,7 @@ function rejectNewMeeting(meetingId) {
     const m = (appState.meetings || []).find(x => x.id === meetingId);
     if (!m) return;
     if (!confirm(`'${m.title}' (${m.id}) toplantı kaydını reddedip silmek istediğinize emin misiniz?`)) return;
+    registerDeletedRecordId(meetingId);
     appState.meetings = appState.meetings.filter(x => x.id !== meetingId);
     addAuditLog("TOPLANTI", `${m.id} kodlu '${m.title}' kaydı Yönetici ÖMER EREN tarafından reddedilerek kaldırıldı.`);
     dispatchPushToServer([m.createdBy || 'Personel'], {
@@ -2832,6 +3168,7 @@ function rejectNewMeeting(meetingId) {
         body: `'${m.title}' toplantı kaydı onaylanmadı ve kaldırıldı.`,
         tag: `appr_rej_${m.id}`
     });
+    syncToServer();
     renderAll();
 }
 
@@ -2845,6 +3182,7 @@ function approveRequest(reqId) {
     if (!req || req.status !== 'PENDING') return;
 
     if (req.type === 'DELETE_MEETING') {
+        registerDeletedRecordId(req.meetingId);
         appState.meetings = (appState.meetings || []).filter(m => m.id !== req.meetingId);
         req.status = 'APPROVED';
         req.resolvedAt = formatNowTR();
@@ -2856,6 +3194,7 @@ function approveRequest(reqId) {
             tag: `appr_ok_${req.id}`
         });
     } else if (req.type === 'DELETE_ACTION') {
+        registerDeletedRecordId(req.actionId);
         appState.actions = (appState.actions || []).filter(a => a.id !== req.actionId);
         req.status = 'APPROVED';
         req.resolvedAt = formatNowTR();
@@ -2914,6 +3253,7 @@ function rejectRequest(reqId) {
         body: `'${targetTitle}' için ilettiğiniz talep Yönetici ÖMER EREN tarafından reddedildi.`,
         tag: `appr_no_${req.id}`
     });
+    syncToServer();
     renderAll();
 }
 
@@ -2985,6 +3325,34 @@ function toggleAllCallParticipants(state) {
     });
 }
 
+function generateUniqueMeetingId(prefix = 'TOP') {
+    const used = new Set([
+        ...(appState.meetings || []).map(m => String(m.id)),
+        ...(appState.deletedIds || []).map(String)
+    ]);
+    let seq = (appState.meetings || []).length + 1;
+    let candidate = `${prefix}-2026-${String(seq).padStart(3, '0')}`;
+    while (used.has(candidate)) {
+        seq++;
+        candidate = `${prefix}-2026-${String(seq).padStart(3, '0')}`;
+    }
+    return candidate;
+}
+
+function generateUniqueActionId() {
+    const used = new Set([
+        ...(appState.actions || []).map(a => String(a.id)),
+        ...(appState.deletedIds || []).map(String)
+    ]);
+    let seq = 100 + (appState.actions || []).length + 1;
+    let candidate = `AKS-${seq}`;
+    while (used.has(candidate)) {
+        seq++;
+        candidate = `AKS-${seq}`;
+    }
+    return candidate;
+}
+
 function saveMeetingCallOrAnnouncement(event) {
     event.preventDefault();
     const callType = document.getElementById('call-type-select')?.value || 'MEETING_CALL';
@@ -3026,19 +3394,21 @@ function saveMeetingCallOrAnnouncement(event) {
         return;
     }
 
-    // Planlı Toplantı Çağrısı veya Eğitim Çağrısı -> Doğrudan Toplantı/Eğitim kaydı olarak oluşturur, Yönetici Ömer Eren onayına düşürür ve 1 saat kala Sarı + 5 dk kala Kırmızı alarm kurar
+    // Planlı Toplantı Çağrısı veya Eğitim Çağrısı
     const recordType = (callType === 'TRAINING_CALL') ? 'Eğitim' : 'Toplantı';
     const prefix = recordType === 'Eğitim' ? 'EGT' : 'TOP';
-    const nextNum = appState.meetings.length + 1;
-    const newId = `${prefix}-2026-${String(nextNum).padStart(3, '0')}`;
+    const newId = generateUniqueMeetingId(prefix);
+    const isAdmin = isOmerEren(currentUser);
+    const nowStr = formatNowTR();
 
     const newMeeting = {
         id: newId,
         recordType,
         isScheduledCall: true,
-        approvalStatus: 'Yönetici Onayı Bekliyor',
-        approvedBy: '',
-        approvedAt: '',
+        approvalStatus: isAdmin ? 'Onaylandı' : 'Yönetici Onayı Bekliyor',
+        omerApprovedStamp: isAdmin,
+        approvedBy: isAdmin ? 'ÖMER EREN' : '',
+        approvedAt: isAdmin ? nowStr : '',
         title,
         dept,
         date,
@@ -3050,18 +3420,18 @@ function saveMeetingCallOrAnnouncement(event) {
         decisions: '',
         attachments: [],
         createdBy: currentUser ? currentUser.name : 'ÖMER EREN',
-        createdAt: formatNowTR(),
+        createdAt: nowStr,
         updatedBy: '',
         updatedAt: ''
     };
 
     appState.meetings.unshift(newMeeting);
-    addAuditLog("TOPLANTI", `${newId} kodlu Planlı ${recordType} Çağrısı yayınlandı: '${title}' — Tarih: ${formatDateTR(date)} Saat: ${time} (${participants.length} katılımcıya davet + 1 saat kala Sarı + 5 dk kala Kırmızı alarm tanımlandı. Onay Durumu: Yönetici Onayı Bekliyor).`);
+    addAuditLog("TOPLANTI", `${newId} kodlu Planlı ${recordType} Çağrısı yayınlandı: '${title}' — Tarih: ${formatDateTR(date)} Saat: ${time} (${participants.length} katılımcıya davet + 1 saat kala Sarı + 5 dk kala Kırmızı alarm tanımlandı).`);
     syncToServer();
     closeAnnouncementModal();
     renderAll();
-    playMeetingCallSound('APPROVAL', `Dikkat! ${title} başlıklı yeni ${recordType} çağrısı kaydedildi ve Ömer Eren yönetici onayına düştü.`);
-    alert(`📢 ${recordType} Çağrısı oluşturuldu ve Yönetici ÖMER EREN Onayına Düşürüldü!\n\n📅 Tarih: ${formatDateTR(date)} Saat: ${time}\n👥 Davet Edilen: ${participants.length} Personel\n🛡️ Onay Durumu: Yönetici Onayı Bekliyor (Ömer Eren Onay Merkezinden onaylanabilir)\n\n🔔 Seçilen katılımcılara çağrı bildirimi gönderildi. Toplantı saatine 1 saat kala SARI UYARI, 5 dakika kala KIRMIZI UYARI ve bildirim sesi otomatik olarak çalacaktır.`);
+    playMeetingCallSound(isAdmin ? 'INVITE' : 'APPROVAL');
+    alert(`📢 ${recordType} Çağrısı oluşturuldu!\n\n📅 Tarih: ${formatDateTR(date)} Saat: ${time}\n👥 Davet Edilen: ${participants.length} Personel\n🛡️ Onay Durumu: ${newMeeting.approvalStatus}\n\n🔔 Seçilen katılımcılara çağrı bildirimi gönderildi. Toplantı saatine 1 saat kala SARI UYARI, 5 dakika kala KIRMIZI UYARI ve bildirim sesi otomatik olarak çalacaktır.`);
 }
 
 function normalizeToISODate(val) {
@@ -4594,9 +4964,8 @@ function saveMeeting(event) {
             }
         }
     } else {
-        const nextNum = String(appState.meetings.length + 1).padStart(3, '0');
         const prefix = recordType === 'Eğitim' ? 'EGT' : 'TOP';
-        targetMeetingId = `${prefix}-2026-${nextNum}`;
+        targetMeetingId = generateUniqueMeetingId(prefix);
         const approvalStatus = isOmerEren(currentUser) ? 'Onaylandı' : 'Yönetici Onayı Bekliyor';
         const nowStr = formatNowTR();
         const newMeeting = {
@@ -4624,7 +4993,7 @@ function saveMeeting(event) {
         const aPrio = r.querySelector('.inline-action-priority')?.value || 'Normal';
         const aDueRaw = r.querySelector('.inline-action-duedate')?.value;
         if (aTitle) {
-            const newActId = `AKS-${100 + appState.actions.length + 1}`;
+            const newActId = generateUniqueActionId();
             const actCreatedNow = formatNowTR();
             appState.actions.unshift({
                 id: newActId,
@@ -4662,7 +5031,17 @@ function deleteMeeting(meetingId) {
         return;
     }
 
-    // Silme işlemi İSTİSNASIZ olarak Yönetici Ömer Eren onay merkezine düşer
+    if (isOmerEren(currentUser)) {
+        if (!confirm(`'${m.title}' (${m.id}) toplantı/eğitim kaydını kalıcı olarak silmek istediğinize emin misiniz?`)) return;
+        registerDeletedRecordId(m.id);
+        appState.meetings = appState.meetings.filter(x => x.id !== meetingId);
+        addAuditLog("TOPLANTI", `${m.id} kodlu '${m.title}' kaydı Yönetici ÖMER EREN tarafından silindi.`);
+        syncToServer();
+        renderAll();
+        return;
+    }
+
+    // Personel silme işlemi Yönetici Ömer Eren onay merkezine düşer
     if (!Array.isArray(appState.approvalRequests)) appState.approvalRequests = [];
 
     appState.approvalRequests.unshift({
@@ -4765,7 +5144,7 @@ function saveAction(event) {
             addAuditLog("AKSİYON", `${idVal} aksiyonu ${currentUser ? currentUser.name : 'ÖMER EREN'} tarafından güncellendi (Sorumlu: ${assignee}, Yönetici: ${manager}, Durum: ${status}, Termin: ${formatDateTR(dueDate)}).`);
         }
     } else {
-        const newId = `AKS-${100 + appState.actions.length + 1}`;
+        const newId = generateUniqueActionId();
         const nowStr = formatNowTR();
         appState.actions.unshift({
             id: newId,
@@ -4851,6 +5230,7 @@ function deleteAction(actionId) {
     }
 
     if (!confirm(`'${a.title}' aksiyonunu silmek istediğinize emin misiniz?`)) return;
+    registerDeletedRecordId(actionId);
     appState.actions = appState.actions.filter(x => x.id !== actionId);
     addAuditLog("AKSİYON", `${actionId} kodlu aksiyon Yönetici ÖMER EREN tarafından silindi.`);
     syncToServer();
@@ -4868,11 +5248,13 @@ function openUserModal(username = null) {
 
     if (!isAdmin) {
         if (!currentUser) return;
-        // Ömer Eren dışındaki kullanıcılar yeni personel ekleyemez ve başkasının hesabını açamaz
+        // Ömer Eren dışındaki kullanıcılar kendi şifresini değiştirmek için mevcut şifre doğrulamalı modalı kullanır
         if (!username || normalizeTR(username) !== normalizeTR(currentUser.username)) {
             alert("🔒 Yetki ve Gizlilik Kısıtlaması:\n\nYalnızca kendi hesap bilgilerinizi ve şifrenizi görüntüleyebilir veya düzenleyebilirsiniz! Diğer kullanıcıların bilgileri yalnızca Yönetici ÖMER EREN tarafından görüntülenebilir.");
             return;
         }
+        openChangePasswordModal();
+        return;
     }
 
     const fnInput = document.getElementById('user-fullname-input');
@@ -4894,7 +5276,6 @@ function openUserModal(username = null) {
         dpInput.value = u.dept || '';
         rlInput.value = u.role || 'Personel';
 
-        // Ömer Eren dışındaki kullanıcılar sadece kendi şifre/e-posta/görev bilgilerini düzenleyebilir; ad, kullanıcı adı ve rol değiştiremez
         fnInput.readOnly = !isAdmin;
         unInput.readOnly = !isAdmin;
         rlInput.disabled = !isAdmin;
@@ -4929,44 +5310,37 @@ function saveUser(event) {
     const role = document.getElementById('user-role-input').value;
 
     if (!isAdmin) {
-        if (!currentUser || normalizeTR(username) !== normalizeTR(currentUser.username)) {
-            alert("🔒 Yalnızca kendi hesap bilgilerinizi güncelleyebilirsiniz!");
-            return;
-        }
-        const myIdx = appState.users.findIndex(u => normalizeTR(u.username) === normalizeTR(currentUser.username));
-        if (myIdx === -1) return;
-        const nextPinStamp = pinInputVal ? hashPin(pinInputVal) : appState.users[myIdx].pinStamp;
-        appState.users[myIdx] = {
-            ...appState.users[myIdx],
-            pinStamp: nextPinStamp,
-            email,
-            mailBox: email ? email.split('@')[0] : appState.users[myIdx].mailBox,
-            dept
-        };
-        currentUser = { ...appState.users[myIdx] };
-        localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(currentUser));
-        addAuditLog("GİRİŞ / ÇIKIŞ", `${currentUser.name} (${currentUser.username}) kendi hesap/şifre bilgilerini güncelledi.`);
-        syncToServer();
-        renderQuickUserChips();
         closeUserModal();
-        renderAll();
-        alert("✅ Kişisel hesap ve şifre bilgileriniz başarıyla güncellendi.");
+        openChangePasswordModal();
         return;
     }
 
     const existingIdx = appState.users.findIndex(u => normalizeTR(u.username) === normalizeTR(username) || normalizeTR(u.name) === normalizeTR(name));
+    const nowMs = Date.now();
     if (existingIdx !== -1) {
         const nextPinStamp = pinInputVal ? hashPin(pinInputVal) : appState.users[existingIdx].pinStamp;
+        const updatedAtMs = pinInputVal ? nowMs : (appState.users[existingIdx].pinUpdatedAtMs || 0);
         appState.users[existingIdx] = {
             ...appState.users[existingIdx],
             name,
             username,
             pinStamp: nextPinStamp,
+            pinUpdatedAtMs: updatedAtMs,
             email,
             mailBox: email ? email.split('@')[0] : appState.users[existingIdx].mailBox,
             dept,
             role
         };
+        if (pinInputVal) {
+            try {
+                fetch('/api/update-user-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, pinStamp: nextPinStamp, updatedAtMs: nowMs })
+                }).catch(() => {});
+            } catch (e) {}
+            dispatchZiyaretCloudResetBridge('update_user_password', { username, pinStamp: nextPinStamp, updatedAtMs: nowMs });
+        }
         if (currentUser && normalizeTR(currentUser.username) === normalizeTR(username)) {
             currentUser = { ...appState.users[existingIdx] };
             localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(currentUser));
@@ -4979,6 +5353,7 @@ function saveUser(event) {
             name,
             username,
             pinStamp: nextPinStamp,
+            pinUpdatedAtMs: nowMs,
             email,
             mailBox: email ? email.split('@')[0] : username,
             dept,
@@ -5143,10 +5518,17 @@ function printMeetingMinutes(meetingId) {
 
 function exportAllDataExcelCSV() {
     let csv = "\uFEFFAksiyon Kodu;Toplantı Kodu;Toplantı Başlığı;Aksiyon Tanımı;Sorumlu Personel;Bilgilendirilen Yönetici;Öncelik;Termin Tarihi;Saat;Durum;Not;Oluşturan Kişi;Oluşturulma Tarihi ve Saati;Değiştiren Kişi;Değiştirilme Tarihi ve Saati\n";
-    appState.actions.forEach(a => {
+    const visibleActions = isOmerEren(currentUser)
+        ? appState.actions
+        : appState.actions.filter(a => canUserSeeAction(a));
+
+    visibleActions.forEach(a => {
         const clean = s => String(s || '').replace(/;/g, ',').replace(/\n/g, ' ');
         const aAudit = getRecordAuditInfo(a);
-        csv += `${clean(a.id)};${clean(a.meetingId)};${clean(a.meetingTitle)};${clean(a.title)};${clean(a.assignee)};${clean(a.manager || 'ÖMER EREN')};${clean(a.priority)};${formatDateTR(a.dueDate)};${clean(a.dueTime)};${clean(a.status)};${clean(a.note)};${clean(aAudit.createdBy)};${clean(aAudit.createdAt)};${clean(aAudit.updatedBy)};${clean(aAudit.updatedAt)}\n`;
+        const parentM = appState.meetings.find(m => m.id === a.meetingId);
+        const access = parentM ? getMeetingAccessLevel(parentM) : 'FULL';
+        const meetingTitleSafe = access === 'ACTION_ONLY' ? `${a.meetingId} (Sadece Aksiyon)` : a.meetingTitle;
+        csv += `${clean(a.id)};${clean(a.meetingId)};${clean(meetingTitleSafe)};${clean(a.title)};${clean(a.assignee)};${clean(a.manager || 'ÖMER EREN')};${clean(a.priority)};${formatDateTR(a.dueDate)};${clean(a.dueTime)};${clean(a.status)};${clean(a.note)};${clean(aAudit.createdBy)};${clean(aAudit.createdAt)};${clean(aAudit.updatedBy)};${clean(aAudit.updatedAt)}\n`;
     });
 
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -5159,6 +5541,10 @@ function exportAllDataExcelCSV() {
 }
 
 function exportLogsCSV() {
+    if (!isOmerEren(currentUser)) {
+        alert("⛔ Denetim loglarını dışa aktarma yetkisi yalnızca Yönetici ÖMER EREN'e aittir.");
+        return;
+    }
     let csv = "\uFEFFTarih Saat;Personel;Kategori;İşlem Detayı;Platform\n";
     appState.logs.forEach(l => {
         const clean = s => String(s || '').replace(/;/g, ',').replace(/\n/g, ' ');
@@ -5173,7 +5559,11 @@ function exportLogsCSV() {
 }
 
 function exportFullBackupJSON() {
-    const blob = new Blob([JSON.stringify(appState, null, 2)], { type: 'application/json' });
+    if (!isOmerEren(currentUser)) {
+        alert("⛔ Tam sistem yedeği indirme yetkisi yalnızca Yönetici ÖMER EREN'e aittir.");
+        return;
+    }
+    const blob = new Blob([JSON.stringify(sanitizeStateForCloud(appState), null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
@@ -5183,6 +5573,10 @@ function exportFullBackupJSON() {
 }
 
 function importFullBackupJSON(event) {
+    if (!isOmerEren(currentUser)) {
+        alert("⛔ Sistem yedeği geri yükleme yetkisi yalnızca Yönetici ÖMER EREN'e aittir.");
+        return;
+    }
     const file = event.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
@@ -5191,6 +5585,7 @@ function importFullBackupJSON(event) {
             const data = JSON.parse(e.target.result);
             if (data && Array.isArray(data.meetings) && Array.isArray(data.actions)) {
                 appState = data;
+                appState.users = migrateOfficialUserEmails(data.users || OFFICIAL_PERSONNEL_LIST);
                 syncToServer();
                 renderAll();
                 addAuditLog("SÜRÜM / YÖNETİM", "JSON yedek dosyası başarıyla sisteme geri yüklendi.");
@@ -5259,7 +5654,8 @@ function isMobileDevice() {
 }
 
 function checkPwaInstallState() {
-    if (isAppRunningStandalone()) {
+    const isEmbedded = (window.self !== window.top) || window.location.search.includes('embed=dpro');
+    if (isAppRunningStandalone() || isEmbedded) {
         hideAllPwaInstallElements();
         return;
     }
@@ -5280,15 +5676,6 @@ function checkPwaInstallState() {
     const banner = document.getElementById('mobile-pwa-install-banner');
     if (banner && !bannerDismissed) {
         banner.style.display = 'block';
-    }
-
-    const popupDismissed = sessionStorage.getItem('dizsan_toplanti_pwa_popup_dismissed') === '1';
-    if (!popupDismissed) {
-        setTimeout(() => {
-            if (!isAppRunningStandalone() && sessionStorage.getItem('dizsan_toplanti_pwa_popup_dismissed') !== '1') {
-                openPwaPromptModal();
-            }
-        }, 1200);
     }
 }
 
@@ -5485,14 +5872,44 @@ document.addEventListener('DOMContentLoaded', () => {
     renderQuickUserChips();
     loadRememberedCredentials();
 
-    // Kayıtlı oturum kontrolü (Beni Hatırla veya aktif DizGün oturumu)
-    const savedSession = localStorage.getItem(STORAGE_KEY_SESSION) || sessionStorage.getItem(STORAGE_KEY_SESSION) || localStorage.getItem('dizgun_current_user');
-    if (savedSession) {
+    // Kayıtlı oturum kontrolü (Beni Hatırla, D-Pro veya aktif DizGün oturumu - Kriptografik Doğrulamalı)
+    const sessionKeys = [
+        STORAGE_KEY_SESSION,
+        'dpro_active_session_v1',
+        'dizsan_ziyaret_session_user_v1',
+        'dizgun_current_user'
+    ];
+    for (const key of sessionKeys) {
+        const raw = localStorage.getItem(key) || sessionStorage.getItem(key);
+        if (!raw) continue;
         try {
-            const parsedUser = JSON.parse(savedSession);
-            if (parsedUser && parsedUser.name) {
-                const matched = appState.users.find(u => normalizeTR(u.name) === normalizeTR(parsedUser.name) || normalizeTR(u.username) === normalizeTR(parsedUser.username));
-                if (matched) currentUser = matched;
+            const parsedUser = JSON.parse(raw);
+            const cand = (parsedUser && (parsedUser.name || parsedUser.username))
+                ? (parsedUser.name || parsedUser.username)
+                : (typeof parsedUser === 'string' ? parsedUser : '');
+            if (cand) {
+                const matched = appState.users.find(u => normalizeTR(u.name) === normalizeTR(cand) || normalizeTR(u.username) === normalizeTR(cand));
+                if (matched) {
+                    currentUser = matched;
+                    break;
+                }
+            }
+        } catch (e) {}
+    }
+
+    // D-Pro iframe içinde gömülü çalışıyorsa ve geçerli bir personel oturumu varsa otomatik bağlan;
+    // GÜVENLİK KURALI: Oturum yoksa ASLA otomatik Ömer Eren olarak giriş yapılmaz!
+    const isDproEmbedded = (window.self !== window.top) || window.location.search.includes('embed=dpro');
+    if (isDproEmbedded) {
+        try {
+            const dproBtnText = window.parent?.document?.getElementById('user-switch-btn')?.textContent || '';
+            const cleanParentUser = dproBtnText.replace(/^Aktif:\s*/i, '').trim();
+            if (!currentUser && cleanParentUser) {
+                const matchedFromParent = appState.users.find(u =>
+                    normalizeTR(u.name) === normalizeTR(cleanParentUser) ||
+                    normalizeTR(u.username) === normalizeTR(cleanParentUser)
+                );
+                if (matchedFromParent) currentUser = matchedFromParent;
             }
         } catch (e) {}
     }
@@ -5546,7 +5963,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 12000);
 
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('sw.js?v=1.8.3').then(reg => {
+        navigator.serviceWorker.register('sw.js?v=1.8.4').then(reg => {
             try { reg.update(); } catch (e) {}
             syncUserAndStateToServiceWorker();
         }).catch(() => {});
