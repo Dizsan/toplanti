@@ -1,6 +1,6 @@
 {
   "version": "v1.7.1",
-  "updatedAt": "2026-10-25T20:33:15.633Z",
+  "updatedAt": "2026-10-25T20:33:16.898Z",
   "users": [
     {
       "order": 0,
@@ -223,6 +223,14 @@
   "meetings": [],
   "actions": [],
   "logs": [
+    {
+      "id": "LOG-1792960396466",
+      "timestamp": "25.10.2026 23:33:16",
+      "user": "ÖMER EREN",
+      "category": "TOPLANTI",
+      "detail": "TOP-2026-001 ('Deneme') silme talebi (ÖMER EREN) Yönetici ÖMER EREN onayıyla gerçekleştirildi ve kayıt silindi.",
+      "platform": "macOS / Masaüstü"
+    },
     {
       "id": "LOG-1792960395630",
       "timestamp": "25.10.2026 23:33:15",
@@ -1007,12 +1015,14 @@
     {
       "id": "ONAY-1792270009514",
       "type": "DELETE_MEETING",
-      "status": "PENDING",
+      "status": "APPROVED",
       "meetingId": "TOP-2026-001",
       "meetingTitle": "Deneme",
       "requestedBy": "ÖMER EREN",
       "requestedAt": "17.10.2026 23:46:49",
-      "reason": "Kayıt silme talebi"
+      "reason": "Kayıt silme talebi",
+      "resolvedAt": "25.10.2026 23:33:16",
+      "resolvedBy": "ÖMER EREN"
     },
     {
       "id": "ONAY-1792074546010",
@@ -1027,7 +1037,7 @@
       "resolvedBy": "ÖMER EREN"
     }
   ],
-  "stateRevision": 50,
+  "stateRevision": 53,
   "pushSubscriptions": [
     {
       "id": "SUB-1792959510584-152",
