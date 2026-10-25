@@ -1,7 +1,7 @@
 {
   "appId": "toplanti",
   "appName": "Dizsan Toplantı & Aksiyon",
-  "version": "1.8.4",
+  "version": "1.8.5",
   "build": 184,
   "releasedAt": "2026-10-26 00:10:00",
   "releaseNotes": "24 personel için tam giriş ve şifre/veri mahremiyet izolasyonu, zorunlu e-posta bağlantılı şifre sıfırlama, silinen kayıt (tombstone) senkronizasyonu, mükerrer buton temizliği ve evrensel Geri/Yenile navigasyonu aktif edildi.",
