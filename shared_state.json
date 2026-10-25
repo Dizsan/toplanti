@@ -1,6 +1,6 @@
 {
-  "version": "v1.8.3",
-  "updatedAt": "2026-10-16T13:00:54.978286",
+  "version": "v1.7.1",
+  "updatedAt": "2026-10-25T20:18:30.585Z",
   "users": [
     {
       "order": 0,
@@ -1042,8 +1042,21 @@
       "resolvedBy": "ÖMER EREN"
     }
   ],
-  "stateRevision": 47,
+  "stateRevision": 48,
   "pushSubscriptions": [
+    {
+      "id": "SUB-1792959510584-152",
+      "username": "ömer",
+      "userFullName": "ÖMER EREN",
+      "endpoint": "https://fcm.googleapis.com/fcm/send/eWTTrgDnum4:APA91bG0DBKbD82GEVchn0QvPg2F0m_LXV7Rf7gCPpP3R94iJEg6Jhgs1THL4BKJEwdWawOMFLFiv-20DDnbwJHB0o9zQ2d_l_EBUyhFlflaVL62zlo1cMxrc2SYXm7_FcyyQZpnUWNP",
+      "p256dh": "BOK_YD7ObWkg_HIUvfFxK3wMT56XYoFkGvJKlpXuKu9KoebzwUe0RIZ2-NME-3d5Nsg7fzzdDTztLcXWXWgR0U0",
+      "auth": "Q703fXPCQprzPPRtTZh7Pg",
+      "browser": "Samsung Internet",
+      "platform": "Android",
+      "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/30.0 Chrome/143.0.0.0 Mobile Safari/537.36",
+      "isActive": true,
+      "updatedAt": "25.10.2026 23:18:30"
+    },
     {
       "id": "SUB-1792129863940-504",
       "username": "fatih.kiroglu",
@@ -1121,6 +1134,45 @@
       "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/30.0 Chrome/143.0.0.0 Mobile Safari/537.36",
       "isActive": true,
       "updatedAt": "17.10.2026 23:46:22"
+    },
+    {
+      "id": "SUB-1792240978719-94",
+      "username": "ömer",
+      "userFullName": "ÖMER EREN",
+      "endpoint": "https://fcm.googleapis.com/fcm/send/dDb9Wsd_C6I:APA91bGTqmgZ_Nr6dTO0U-OwChnTkzplNJxz2VZlLUa360WKlJGiQvA85fkwKoSYNO630tMypHarbhPbYklcWBQ6iLwcvaBpwCHZtzKIRVh3vPpDiWOvqzYV5-OALNiBKiihkvBD3Gs6",
+      "p256dh": "BFn5XrOh_dWyOuNMj3wvaPqddZqFHylnKv4yXY_ZRIt71qqfUjJ_8P0xl6wT59cnKYUTUXpu1_dPpF_0sBkN4i4",
+      "auth": "tyACla9mvcbBD_538W2sHQ",
+      "browser": "Samsung Internet",
+      "platform": "Android",
+      "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/30.0 Chrome/143.0.0.0 Mobile Safari/537.36",
+      "isActive": true,
+      "updatedAt": "17.10.2026 15:42:58"
+    },
+    {
+      "id": "SUB-1792197315193-680",
+      "username": "ömer",
+      "userFullName": "ÖMER EREN",
+      "endpoint": "https://fcm.googleapis.com/fcm/send/exVzUVvgqcA:APA91bGLVdPBf-A2xr6eN7sO59tg-QNbwqiLhCXAIm7Nk29S3sciGHlgkepBa5J1Gr38QfzQvORNHL3YO1qlksQNwarI7gdrQUJq1r4oLW3753b0dVmcCofUHaHIXxS4AWTFhfvTbwX3",
+      "p256dh": "BE7grWkFf4w9LaxTUku21OU4m1ZnEIomtur30RUki3IVPnRY03Uccodj6Q4J_rSW1ONxzC_c5P6mAMx6kXxWD_U",
+      "auth": "l-C65BT04mz1xj_d34ukpQ",
+      "browser": "Samsung Internet",
+      "platform": "Android",
+      "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/30.0 Chrome/143.0.0.0 Mobile Safari/537.36",
+      "isActive": true,
+      "updatedAt": "17.10.2026 13:24:06"
+    },
+    {
+      "id": "SUB-1792167125747-335",
+      "username": "ömer",
+      "userFullName": "ÖMER EREN",
+      "endpoint": "https://fcm.googleapis.com/fcm/send/czHstmU0E04:APA91bEcPBWukeXhqmz-abb3eFGJGZU3Ya8_39aQyIyvGxJiAgULb-oYikVCstxoWjROt6NnZw2VnXc4xVIj790ZXburXCI-Ly7kJgGIkR_98LPADKR5GxArGYNW9mg2kIvWGmnLLcWI",
+      "p256dh": "BLXapvNoox9KVZi8sSOVZUWUUNy2WX-1EeC0Mv4qO8gLnPMNjgVZZXGqXhRti_0glu77gkhPhvKJ-Qnear4pSmY",
+      "auth": "6TkpmQYtbx98qUNqpEd17w",
+      "browser": "Samsung Internet",
+      "platform": "Android",
+      "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/30.0 Chrome/143.0.0.0 Mobile Safari/537.36",
+      "isActive": true,
+      "updatedAt": "16.10.2026 19:14:34"
     }
   ],
   "pushTestRequests": [
