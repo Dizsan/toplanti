@@ -1,6 +1,6 @@
 {
   "version": "v4.9.2",
-  "updatedAt": "2026-10-26T19:29:06.840Z",
+  "updatedAt": "2026-10-26T19:33:57.331Z",
   "users": [
     {
       "order": 0,
@@ -421,28 +421,17 @@
       "createdAt": "26.10.2026 22:25:00",
       "updatedBy": "ÖMER EREN",
       "updatedAt": "26.10.2026 22:25:54"
-    },
-    {
-      "id": "AKS-101",
-      "meetingId": "TOP-2026-002",
-      "meetingTitle": "Finans ve Ödeme Toplantısı Planlama",
-      "title": "Gökhan Özbulut",
-      "assignee": "ÖMER EREN",
-      "manager": "ÖMER EREN",
-      "priority": "Kritik",
-      "dueDate": "2026-10-27",
-      "dueTime": "09:00",
-      "status": "Bekliyor",
-      "note": "",
-      "remindOneDayBefore": true,
-      "remindSameDay": true,
-      "createdBy": "ÖMER EREN",
-      "createdAt": "26.10.2026 20:56:07",
-      "updatedBy": "",
-      "updatedAt": ""
     }
   ],
   "logs": [
+    {
+      "id": "LOG-1793043237328",
+      "timestamp": "26.10.2026 22:33:57",
+      "user": "ÖMER EREN",
+      "category": "AKSİYON",
+      "detail": "AKS-101 kodlu aksiyon Yönetici ÖMER EREN tarafından silindi.",
+      "platform": "macOS / Masaüstü"
+    },
     {
       "id": "LOG-1793042945047",
       "timestamp": "26.10.2026 22:29:05",
@@ -1344,7 +1333,7 @@
       "resolvedBy": "ÖMER EREN"
     }
   ],
-  "stateRevision": 179,
+  "stateRevision": 181,
   "pushSubscriptions": [
     {
       "id": "SUB-1793029403205-553",
@@ -2059,6 +2048,8 @@
   },
   "versionUpdatedAt": "2026-10-26 22:08:59",
   "versionReleaseNotes": "Toplantı kartı tıklama detayı, davetli/gelen/gelmeyen yoklaması ve mazeret alanı, tiklemeli gündem açıklamaları, konuşulmayan maddeleri başka toplantıya planlama, sorumlulu-terminli alınan kararlar ve aksiyon tamamlama tarihi/saati + ertesi gün / gün aşırı hatırlatma motoru yayınlandı",
-  "deletedIds": [],
+  "deletedIds": [
+    "AKS-101"
+  ],
   "usedResetTokens": []
 }
