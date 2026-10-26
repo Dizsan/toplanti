@@ -1,6 +1,6 @@
 {
   "version": "v1.8.5",
-  "updatedAt": "2026-10-26T14:56:46.382Z",
+  "updatedAt": "2026-10-26T15:43:23.208Z",
   "users": [
     {
       "order": 0,
@@ -1119,8 +1119,21 @@
       "resolvedBy": "ÖMER EREN"
     }
   ],
-  "stateRevision": 70,
+  "stateRevision": 71,
   "pushSubscriptions": [
+    {
+      "id": "SUB-1793029403205-553",
+      "username": "necati.demirci",
+      "userFullName": "NECATİ DEMİRCİ",
+      "endpoint": "https://fcm.googleapis.com/fcm/send/dpgsI52gYsY:APA91bEQWhCu_tqKDdPHWkKRrkO61V20mm3r9_I98dPKo7n6rZQDRqVBJJB35KV6gdoR01hladVZ_2Y3zwVm_DINKhmUwp96tvnFls3i5yX2qWQbyZClHe4wDOd5PW_0E8wl0OFAZ2RY",
+      "p256dh": "BJPKYDoBzwdsF2ol6bN73-WSDqCgim_MtOyDSN4V2XhmIXWyoD7t_k0ePheQem1WDt-buBRmHSBU6NcTtZ2PLN0",
+      "auth": "OX82Dly8NMV-xMFaTrnqXw",
+      "browser": "Google Chrome",
+      "platform": "Android",
+      "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Mobile Safari/537.36",
+      "isActive": true,
+      "updatedAt": "26.10.2026 18:43:23"
+    },
     {
       "id": "SUB-1793023647055-259",
       "username": "mustafa.ilgen",
