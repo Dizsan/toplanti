@@ -1,6 +1,6 @@
 {
   "version": "v1.8.5",
-  "updatedAt": "2026-10-25T20:33:16.898Z",
+  "updatedAt": "2026-10-26T10:54:23.309Z",
   "users": [
     {
       "order": 0,
@@ -914,6 +914,12 @@
   ],
   "changelog": [
     {
+      "version": "v1.8.5",
+      "date": "25.10.2026",
+      "author": "ÖMER EREN",
+      "notes": "Tüm 24 resmi personel için güvenli giriş açıldı. Kimsenin başka bir personelin şifresini veya özel bilgilerini görememesi için tam izolasyon (katılımcı bazlı tutanak gizliliği, sorumlu bazlı aksiyon gizliliği, kişisel hesap görünümü ve yöneticiye özel yedekleme/log koruması) devreye alındı. Zorunlu E-Posta Bağlantılı Şifre Sıfırlama Protokolü (15 dk süreli, tek kullanımlık imzalı link), 5 denemeli Brute-Force kilit kalkanı, üst bar Geri + Yenile tuşları ve silinen kayıtların geri gelmesini önleyen deletedIds senkronizasyonu tamamlandı."
+    },
+    {
       "version": "v1.7.1",
       "date": "15.10.2026",
       "author": "ÖMER EREN",
@@ -1037,8 +1043,21 @@
       "resolvedBy": "ÖMER EREN"
     }
   ],
-  "stateRevision": 53,
+  "stateRevision": 54,
   "pushSubscriptions": [
+    {
+      "id": "SUB-1793012063308-127",
+      "username": "rafet.canbek",
+      "userFullName": "RAFET CANBEK",
+      "endpoint": "https://fcm.googleapis.com/fcm/send/c4jER86VgVw:APA91bGejGEcsC5Bb9-kf0poZzHngvg6cFVCYraoCAvY2jQFB-LOvm9kSynSvEAYrWBesMdr8U58Vvv7B6_WqMUKG6PEX9BKunufhslvyrTLt7nRtRGK7a6XgFLAHvp-s2u4XzKwnafJ",
+      "p256dh": "BDc6-HjVW4zDGZ3mEAvO0G0PMtKaYQ4t2TQVvla74jOjY21S-Dapd_j0h-OCj_DeYklIP3Bonbnw2TjehMFL7ms",
+      "auth": "NtPYUEh7ZKHcMAWBdwyTyw",
+      "browser": "Google Chrome",
+      "platform": "Android",
+      "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Mobile Safari/537.36",
+      "isActive": true,
+      "updatedAt": "26.10.2026 13:54:23"
+    },
     {
       "id": "SUB-1792959510584-152",
       "username": "ömer",
