@@ -1,6 +1,6 @@
 {
   "version": "v4.9.2",
-  "updatedAt": "2026-10-26T19:25:57.781Z",
+  "updatedAt": "2026-10-26T19:29:05.064Z",
   "users": [
     {
       "order": 0,
@@ -291,6 +291,7 @@
         "FATİH KIROĞLU",
         "RAFET CANBEK",
         "GÖKHAN ÖZBULUT",
+        "ERTUĞRUL ERDEM",
         "NECATİ DEMİRCİ",
         "MURAT KARAOĞLU",
         "MURAT SALMAN",
@@ -298,17 +299,101 @@
         "MUSTAFA İLGEN"
       ],
       "externalParticipants": [],
-      "notes": "1. Vdf Çalışma Prensibi\n2. Tespit Edilen Eksiklerin Giderilmesi\n3. İşleyiş ve İş Akış Şablonu",
-      "decisions": "1. Vdf Çalışma Prensibinden Bahsedildi \n2. Kayıp Müşteri Raporu Aktarıldı\n3. İşleyiş Anlatıldı\n4. Turgut Gülerin Pleyt arızası konuşuldu ilgi ve iletişimden bahsedildi",
+      "notes": "1. Vdf Çalışma Prensibi [Konuşuldu]\n   ↳ Açıklama: Çalışmöa Prensibi Aktarıldı Vadelerden bahsedildi\n2. Tespit Edilen Eksiklerin Giderilmesi [Konuşuldu]\n   ↳ Açıklama: Müşteri ilgi alaka iletişim işi sonlandırma\n3. İşleyiş ve İş Akış Şablonu [Konuşuldu]\n   ↳ Açıklama: Genel Prensipten bahsedildi",
+      "decisions": "1. Vdf Çalışma Prensibinden Bahsedildi (Sorumlu: ÖMER EREN | Termin: 26.10.2026)\n2. Kayıp Müşteri Raporu Aktarıldı (Sorumlu: ÖMER EREN | Termin: 26.10.2026)\n3. İşleyiş Anlatıldı (Sorumlu: ÖMER EREN | Termin: 26.10.2026)\n4. Turgut Gülerin Pleyt arızası konuşuldu ilgi ve iletişimden bahsedildi (Sorumlu: ÖMER EREN | Termin: 26.10.2026)",
       "attachments": [],
       "approvalStatus": "Onaylandı",
       "omerApprovedStamp": true,
       "approvedBy": "ÖMER EREN",
-      "approvedAt": "26.10.2026 20:56:38",
+      "approvedAt": "26.10.2026 22:29:05",
       "createdBy": "ÖMER EREN",
       "createdAt": "26.10.2026 16:40:09",
       "updatedBy": "ÖMER EREN",
-      "updatedAt": "26.10.2026 20:56:38"
+      "updatedAt": "26.10.2026 22:29:05",
+      "invitedParticipants": [
+        "ÖMER EREN",
+        "HAKAN AYDIN",
+        "FATİH KIROĞLU",
+        "RAFET CANBEK",
+        "GÖKHAN ÖZBULUT",
+        "ERTUĞRUL ERDEM",
+        "NECATİ DEMİRCİ",
+        "MURAT KARAOĞLU",
+        "MURAT SALMAN",
+        "YILDIRAY KARAGÖZ",
+        "MUSTAFA İLGEN"
+      ],
+      "attendedParticipants": [
+        "ÖMER EREN",
+        "HAKAN AYDIN",
+        "FATİH KIROĞLU",
+        "RAFET CANBEK",
+        "GÖKHAN ÖZBULUT",
+        "NECATİ DEMİRCİ",
+        "MURAT KARAOĞLU",
+        "MURAT SALMAN",
+        "YILDIRAY KARAGÖZ",
+        "MUSTAFA İLGEN"
+      ],
+      "absentParticipants": [
+        {
+          "name": "ERTUĞRUL ERDEM",
+          "reason": "Özel Nedenler"
+        }
+      ],
+      "agendaItems": [
+        {
+          "id": "agd-0-2558",
+          "title": "Vdf Çalışma Prensibi",
+          "discussed": true,
+          "explanation": "Çalışmöa Prensibi Aktarıldı Vadelerden bahsedildi",
+          "transferredToMeetingId": ""
+        },
+        {
+          "id": "agd-1-3770",
+          "title": "Tespit Edilen Eksiklerin Giderilmesi",
+          "discussed": true,
+          "explanation": "Müşteri ilgi alaka iletişim işi sonlandırma",
+          "transferredToMeetingId": ""
+        },
+        {
+          "id": "agd-2-2436",
+          "title": "İşleyiş ve İş Akış Şablonu",
+          "discussed": true,
+          "explanation": "Genel Prensipten bahsedildi",
+          "transferredToMeetingId": ""
+        }
+      ],
+      "decisionItems": [
+        {
+          "id": "dec-0-8766",
+          "text": "Vdf Çalışma Prensibinden Bahsedildi",
+          "responsible": "ÖMER EREN",
+          "dueDate": "2026-10-26",
+          "status": "Bekliyor"
+        },
+        {
+          "id": "dec-1-6625",
+          "text": "Kayıp Müşteri Raporu Aktarıldı",
+          "responsible": "ÖMER EREN",
+          "dueDate": "2026-10-26",
+          "status": "Bekliyor"
+        },
+        {
+          "id": "dec-2-1137",
+          "text": "İşleyiş Anlatıldı",
+          "responsible": "ÖMER EREN",
+          "dueDate": "2026-10-26",
+          "status": "Bekliyor"
+        },
+        {
+          "id": "dec-3-8702",
+          "text": "Turgut Gülerin Pleyt arızası konuşuldu ilgi ve iletişimden bahsedildi",
+          "responsible": "ÖMER EREN",
+          "dueDate": "2026-10-26",
+          "status": "Bekliyor"
+        }
+      ]
     }
   ],
   "actions": [
@@ -358,6 +443,14 @@
     }
   ],
   "logs": [
+    {
+      "id": "LOG-1793042945047",
+      "timestamp": "26.10.2026 22:29:05",
+      "user": "ÖMER EREN",
+      "category": "TOPLANTI",
+      "detail": "TOP-2026-001 kodlu 'Genel Değerlendirme ve Bilgilendirme Toplantısı' kaydı Yönetici ÖMER EREN tarafından güncellendi (Davetli: 11, Gelen: 10, Gelmeyen: 1).",
+      "platform": "macOS / Masaüstü"
+    },
     {
       "id": "LOG-1793042756203",
       "timestamp": "26.10.2026 22:25:56",
@@ -1251,7 +1344,7 @@
       "resolvedBy": "ÖMER EREN"
     }
   ],
-  "stateRevision": 176,
+  "stateRevision": 178,
   "pushSubscriptions": [
     {
       "id": "SUB-1793029403205-553",
