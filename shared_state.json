@@ -1,6 +1,6 @@
 {
   "version": "v1.8.5",
-  "updatedAt": "2026-10-26T17:51:43.761Z",
+  "updatedAt": "2026-10-26T17:54:08.499Z",
   "users": [
     {
       "order": 0,
@@ -243,21 +243,29 @@
         "MUSTAFA İLGEN"
       ],
       "externalParticipants": [],
-      "notes": "1. Vdf Çalışma Prensibi\n2. Tespit Edilen Eksiklerin Giderilmesi\n3. İşleyiş ve İş Akış Şablonu\n4. Yapılacaklar\n5. Stok Durumu Çıkartılacak\n6. Görev Alanları Belirlenecek",
-      "decisions": "",
+      "notes": "1. Vdf Çalışma Prensibi\n2. Tespit Edilen Eksiklerin Giderilmesi\n3. İşleyiş ve İş Akış Şablonu",
+      "decisions": "1. Vdf Çalışma Prensibinden Bahsedildi \n2. Kayıp Müşteri Raporu Aktarıldı\n3. İşleyiş Anlatıldı\n4. Turgut Gülerin Pleyt arızası konuşuldu ilgi ve iletişimden bahsedildi",
       "attachments": [],
       "approvalStatus": "Onaylandı",
       "omerApprovedStamp": true,
       "approvedBy": "ÖMER EREN",
-      "approvedAt": "26.10.2026 17:56:43",
+      "approvedAt": "26.10.2026 20:54:05",
       "createdBy": "ÖMER EREN",
       "createdAt": "26.10.2026 16:40:09",
       "updatedBy": "ÖMER EREN",
-      "updatedAt": "26.10.2026 17:56:43"
+      "updatedAt": "26.10.2026 20:54:05"
     }
   ],
   "actions": [],
   "logs": [
+    {
+      "id": "LOG-1793037245726",
+      "timestamp": "26.10.2026 20:54:05",
+      "user": "ÖMER EREN",
+      "category": "TOPLANTI",
+      "detail": "TOP-2026-001 kodlu 'Genel Değerlendirme ve Bilgilendirme Toplantısı' kaydı Yönetici ÖMER EREN tarafından güncellendi.",
+      "platform": "macOS / Masaüstü"
+    },
     {
       "id": "LOG-1793026603378",
       "timestamp": "26.10.2026 17:56:43",
@@ -1119,7 +1127,7 @@
       "resolvedBy": "ÖMER EREN"
     }
   ],
-  "stateRevision": 72,
+  "stateRevision": 74,
   "pushSubscriptions": [
     {
       "id": "SUB-1793037103760-881",
