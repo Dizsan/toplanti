@@ -1,4 +1,4 @@
-const CACHE_NAME = 'dizsan-toplanti-v4.9.2';
+const CACHE_NAME = 'dizsan-toplanti-v4.9.4';
 const ASSETS = [
   './',
   './index.html',
@@ -208,8 +208,9 @@ async function checkRemoteStateInBackground(forceState = null) {
       if (!m || !m.id || deletedSet.has(m.id)) continue;
       const isInvited = (m.participants || []).some((p) => normalizeTR(p) === myNameNorm) || isOmer;
       const recLabel = m.recordType === 'Eğitim' ? 'Eğitim' : 'Toplantı';
+      const isEditedRecord = Boolean(m.updatedBy || m.updatedAt);
 
-      if (isInvited) {
+      if (isInvited && !isEditedRecord) {
         const diffMins = getMinutesDiff(m.date, m.time);
         if (diffMins !== null) {
           if (diffMins >= -15 && diffMins <= 5) {
@@ -230,7 +231,7 @@ async function checkRemoteStateInBackground(forceState = null) {
               'YELLOW_1H'
             );
           } else if (diffMins > 60 && diffMins <= 60 * 24 * 14) {
-            const tag = `alert_invite_${m.id}_${myNameNorm}_${m.date}_${m.time}`;
+            const tag = `alert_invite_${m.id}_${myNameNorm}`;
             await showSystemNotification(
               `📢 Yeni ${recLabel} Çağrısı: ${m.title}`,
               `📅 Tarih: ${formatDateTR(m.date)} Saat: ${m.time} • Yer: ${m.location || 'Toplantı Salonu'} (Davetlisiniz)`,
@@ -270,10 +271,10 @@ async function checkRemoteStateInBackground(forceState = null) {
       );
     }
 
-    // 3. Ömer Eren için Silme / Değiştirme Onay Talepleri Bildirimi
+    // 3. Ömer Eren için Silme Onay Talepleri Bildirimi (Düzenleme/Değiştirme taleplerinde bildirim kapalı)
     if (isOmer && Array.isArray(state.approvalRequests)) {
       for (const req of state.approvalRequests) {
-        if (req.status !== 'PENDING') continue;
+        if (req.status !== 'PENDING' || req.type === 'EDIT_MEETING') continue;
         const reqTag = `omer_req_${req.id}`;
         const typeLabel = req.type === 'DELETE_MEETING' ? 'Silme Onayı' : 'Değiştirme (Düzenleme) Onayı';
         await showSystemNotification(

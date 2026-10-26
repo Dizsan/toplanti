@@ -3154,6 +3154,7 @@ function checkAndTriggerMeetingCallAlerts() {
         if (diffMins === null) return;
 
         const recLabel = m.recordType === 'Eğitim' ? 'Eğitim' : 'Toplantı';
+        const isEditedRecord = Boolean(m.updatedBy || m.updatedAt);
 
         // A) 5 DAKİKA KALA (veya toplantının ilk 15 dakikası içinde): KIRMIZI UYARI & SES
         if (diffMins >= -15 && diffMins <= 5) {
@@ -3161,7 +3162,7 @@ function checkAndTriggerMeetingCallAlerts() {
                 ? `ŞU AN BAŞLADI! (${Math.abs(Math.floor(diffMins))} dk oldu)`
                 : `BAŞLAMASINA ${Math.ceil(diffMins)} DAKİKA KALDI!`;
             const soundKey = `alert_red5m_${m.id}_${myNameNorm}_${m.date}_${m.time}`;
-            if (!sessionStorage.getItem(soundKey)) {
+            if (!isEditedRecord && !sessionStorage.getItem(soundKey)) {
                 playMeetingCallSound('RED_5M');
                 sendBrowserNotification(
                     `🟥 KIRMIZI UYARI: ${recLabel} 5 Dakika İçinde Başlıyor!`,
@@ -3170,6 +3171,7 @@ function checkAndTriggerMeetingCallAlerts() {
                     'RED_5M'
                 );
             }
+            sessionStorage.setItem(soundKey, '1');
 
             bannersHtml.push(`
                 <div class="meeting-call-banner red-5m">
@@ -3205,7 +3207,7 @@ function checkAndTriggerMeetingCallAlerts() {
         else if (diffMins > 5 && diffMins <= 60) {
             const minsLeft = Math.ceil(diffMins);
             const soundKey = `alert_yellow1h_${m.id}_${myNameNorm}_${m.date}_${m.time}`;
-            if (!sessionStorage.getItem(soundKey)) {
+            if (!isEditedRecord && !sessionStorage.getItem(soundKey)) {
                 playMeetingCallSound('YELLOW_1H');
                 sendBrowserNotification(
                     `🟨 SARI UYARI: ${recLabel} Saatine ${minsLeft} Dakika Kaldı!`,
@@ -3214,6 +3216,7 @@ function checkAndTriggerMeetingCallAlerts() {
                     'YELLOW_1H'
                 );
             }
+            sessionStorage.setItem(soundKey, '1');
 
             bannersHtml.push(`
                 <div class="meeting-call-banner yellow-1h">
@@ -3247,8 +3250,10 @@ function checkAndTriggerMeetingCallAlerts() {
         }
         // C) PLANLANAN TOPLANTI ÇAĞRISI / DAVETİ (60 dakikadan fazla var, örn: Yarın 16:00)
         else if (diffMins > 60 && diffMins <= 60 * 24 * 14) {
-            const soundKey = `alert_invite_${m.id}_${myNameNorm}_${m.date}_${m.time}`;
-            if (!localStorage.getItem(soundKey)) {
+            const soundKey = `alert_invite_${m.id}_${myNameNorm}`;
+            const legacySoundKey = `alert_invite_${m.id}_${myNameNorm}_${m.date}_${m.time}`;
+            const isEditedRecord = Boolean(m.updatedBy || m.updatedAt);
+            if (!isEditedRecord && !localStorage.getItem(soundKey) && !localStorage.getItem(legacySoundKey)) {
                 playMeetingCallSound('INVITE');
                 sendBrowserNotification(
                     `📢 Yeni ${recLabel} Çağrısı / Daveti`,
@@ -3256,8 +3261,9 @@ function checkAndTriggerMeetingCallAlerts() {
                     soundKey,
                     'INVITE'
                 );
-                localStorage.setItem(soundKey, '1');
             }
+            localStorage.setItem(soundKey, '1');
+            localStorage.setItem(legacySoundKey, '1');
 
             const hrsLeft = Math.floor(diffMins / 60);
             const remMins = Math.round(diffMins % 60);
@@ -3378,14 +3384,17 @@ function renderOmerApprovalCenter() {
             const notifKey = `omer_notif_req_${req.id}`;
             if (!localStorage.getItem(notifKey)) {
                 localStorage.setItem(notifKey, '1');
-                const actionLabel = req.type === 'DELETE_MEETING' ? 'silme' : 'değiştirme';
-                playMeetingCallSound('APPROVAL', `Dikkat! ${req.requestedBy}, ${req.meetingTitle} toplantısı için ${actionLabel} onayı talep etti.`);
-                sendBrowserNotification(
-                    `🛡️ Ömer Eren Onayı Bekleniyor (${req.type === 'DELETE_MEETING' ? 'Silme' : 'Değiştirme'})`,
-                    `${req.requestedBy}: "${req.meetingTitle}" (${req.meetingId}) için ${actionLabel} onayı bekliyor.`,
-                    notifKey,
-                    'APPROVAL'
-                );
+                // Kayıt edilmiş toplantı/eğitim düzenlemelerinde bildirim tetikleme
+                if (req.type !== 'EDIT_MEETING') {
+                    const actionLabel = req.type === 'DELETE_MEETING' ? 'silme' : 'değiştirme';
+                    playMeetingCallSound('APPROVAL', `Dikkat! ${req.requestedBy}, ${req.meetingTitle} toplantısı için ${actionLabel} onayı talep etti.`);
+                    sendBrowserNotification(
+                        `🛡️ Ömer Eren Onayı Bekleniyor (${req.type === 'DELETE_MEETING' ? 'Silme' : 'Değiştirme'})`,
+                        `${req.requestedBy}: "${req.meetingTitle}" (${req.meetingId}) için ${actionLabel} onayı bekliyor.`,
+                        notifKey,
+                        'APPROVAL'
+                    );
+                }
             }
         });
     }
@@ -3580,11 +3589,6 @@ function approveRequest(reqId) {
         req.resolvedAt = formatNowTR();
         req.resolvedBy = 'ÖMER EREN';
         addAuditLog("TOPLANTI", `${req.meetingId} ('${req.meetingTitle}') değiştirme/düzenleme talebi (${req.requestedBy}) Yönetici ÖMER EREN onayıyla uygulandı.`);
-        dispatchPushToServer([req.requestedBy], {
-            title: `✅ Değişiklik Talebiniz Onaylandı`,
-            body: `'${req.meetingTitle}' güncelleme talebiniz Yönetici ÖMER EREN tarafından onaylandı ve uygulandı.`,
-            tag: `appr_ok_${req.id}`
-        });
     }
 
     syncToServer();
@@ -3605,11 +3609,13 @@ function rejectRequest(reqId) {
     req.resolvedBy = 'ÖMER EREN';
     const targetTitle = req.meetingTitle || req.actionTitle || 'Kayıt';
     addAuditLog("TOPLANTI", `${req.meetingId || req.actionId} ('${targetTitle}') için ${req.requestedBy} tarafından gönderilen talep Yönetici ÖMER EREN tarafından reddedildi.`);
-    dispatchPushToServer([req.requestedBy], {
-        title: `❌ Onay Talebiniz Reddedildi`,
-        body: `'${targetTitle}' için ilettiğiniz talep Yönetici ÖMER EREN tarafından reddedildi.`,
-        tag: `appr_no_${req.id}`
-    });
+    if (req.type !== 'EDIT_MEETING') {
+        dispatchPushToServer([req.requestedBy], {
+            title: `❌ Onay Talebiniz Reddedildi`,
+            body: `'${targetTitle}' için ilettiğiniz talep Yönetici ÖMER EREN tarafından reddedildi.`,
+            tag: `appr_no_${req.id}`
+        });
+    }
     syncToServer();
     renderAll();
 }
@@ -5470,7 +5476,17 @@ function formatDecisionItemsToLegacyText(decisionItems) {
         .join('\n');
 }
 
+function syncParticipantCheckStyles() {
+    document.querySelectorAll('.participant-check').forEach(lbl => {
+        const cb = lbl.querySelector('input[type="checkbox"]');
+        if (cb) {
+            lbl.classList.toggle('is-checked', cb.checked);
+        }
+    });
+}
+
 function onInvitedParticipantCheckboxChange() {
+    syncParticipantCheckStyles();
     const checkedNames = Array.from(document.querySelectorAll('input[name="meeting-participant"]:checked')).map(cb => cb.value);
     checkedNames.forEach(name => {
         if (!currentDraftAttendance[name]) {
@@ -5499,7 +5515,6 @@ function updateParticipantAbsentReason(personName, reasonVal) {
         currentDraftAttendance[personName] = { status: 'ABSENT', reason: '' };
     }
     currentDraftAttendance[personName].reason = reasonVal;
-    // Diğer özet kutusundaki eşleşen input varsa senkronize et
     document.querySelectorAll(`.absent-reason-input[data-person="${CSS.escape(personName)}"]`).forEach(el => {
         if (el.value !== reasonVal) el.value = reasonVal;
     });
@@ -5530,7 +5545,7 @@ function renderAttendanceManagementUI() {
     const rowsContainer = document.getElementById('attendance-rows-container');
     const countersBar = document.getElementById('attendance-counters-bar');
     const summaryBoxes = document.getElementById('attendance-summary-boxes');
-    if (!rowsContainer || !countersBar || !summaryBoxes) return;
+    if (!rowsContainer || !countersBar) return;
 
     const invitedNames = Array.from(document.querySelectorAll('input[name="meeting-participant"]:checked')).map(cb => cb.value);
 
@@ -5544,24 +5559,28 @@ function renderAttendanceManagementUI() {
     const absentNames = invitedNames.filter(n => currentDraftAttendance[n]?.status === 'ABSENT');
 
     countersBar.innerHTML = `
-        <span class="badge badge-normal" style="font-size:0.78rem; padding:4px 10px;">
-            <i class="fa-solid fa-envelope-open-text"></i> Davet Edilen Katılımcılar: <strong>${invitedNames.length} Kişi</strong>
+        <span class="badge badge-normal" style="font-size:0.76rem; padding:4px 10px;">
+            <i class="fa-solid fa-users"></i> Davetli: <strong>${invitedNames.length}</strong>
         </span>
-        <span class="badge badge-done" style="font-size:0.78rem; padding:4px 10px;">
-            <i class="fa-solid fa-user-check"></i> Gelen Katılımcılar: <strong>${attendedNames.length} Kişi</strong>
+        <span class="badge badge-done" style="font-size:0.76rem; padding:4px 10px;">
+            <i class="fa-solid fa-user-check"></i> Katılan: <strong>${attendedNames.length}</strong>
         </span>
-        <span class="badge ${absentNames.length > 0 ? 'badge-critical' : 'badge-pending'}" style="font-size:0.78rem; padding:4px 10px;">
-            <i class="fa-solid fa-user-xmark"></i> Gelmeyen Katılımcılar: <strong>${absentNames.length} Kişi</strong>
+        <span class="badge ${absentNames.length > 0 ? 'badge-critical' : 'badge-pending'}" style="font-size:0.76rem; padding:4px 10px;">
+            <i class="fa-solid fa-user-xmark"></i> Katılmayan: <strong>${absentNames.length}</strong>
         </span>
     `;
 
+    if (summaryBoxes) {
+        summaryBoxes.innerHTML = '';
+        summaryBoxes.style.display = 'none';
+    }
+
     if (invitedNames.length === 0) {
         rowsContainer.innerHTML = `
-            <div style="grid-column:1/-1; text-align:center; padding:1rem; color:var(--text-sec); font-size:0.8rem; border:1px dashed var(--border-color); border-radius:10px;">
-                Yukarıdaki listeden davet edilen katılımcıları işaretlediğinizde Gelen / Gelmeyen yoklama listesi burada açılır.
+            <div style="grid-column:1/-1; text-align:center; padding:0.75rem; color:var(--text-sec); font-size:0.78rem; border:1px dashed var(--border-color); border-radius:10px;">
+                Yukarıdan katılımcı seçtiğinizde yoklama listesi burada açılır.
             </div>
         `;
-        summaryBoxes.innerHTML = '';
         return;
     }
 
@@ -5575,12 +5594,12 @@ function renderAttendanceManagementUI() {
 
         return `
             <div class="attendance-row ${isAbsent ? 'status-absent' : 'status-attended'}">
-                <div style="display:flex; justify-content:space-between; align-items:center; gap:0.4rem; flex-wrap:wrap;">
-                    <div>
-                        <strong style="font-size:0.82rem; color:#fff; display:block;">${name}</strong>
-                        <span style="font-size:0.69rem; color:var(--text-sec);">${deptStr}</span>
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:0.4rem;">
+                    <div style="min-width:0;">
+                        <strong style="font-size:0.8rem; color:#fff; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${name}</strong>
+                        <span style="font-size:0.68rem; color:var(--text-sec);">${deptStr}</span>
                     </div>
-                    <div style="display:flex; gap:0.35rem;">
+                    <div style="display:flex; gap:0.3rem; flex-shrink:0;">
                         <button type="button" class="attendance-toggle-btn ${!isAbsent ? 'active-attended' : ''}" onclick="setParticipantAttendanceStatus('${safeNameAttr}', 'ATTENDED')">
                             <i class="fa-solid fa-check"></i> Geldi
                         </button>
@@ -5591,13 +5610,10 @@ function renderAttendanceManagementUI() {
                 </div>
                 ${isAbsent ? `
                     <div class="absent-reason-box">
-                        <label style="font-size:0.7rem; color:#fca5a5; font-weight:700; display:block; margin-bottom:4px;">
-                            <i class="fa-solid fa-comment-medical"></i> ${name} — Gelmeme Nedeni / Mazereti *
-                        </label>
-                        <input type="text" class="form-control absent-reason-input" data-person="${safeNameAttr}" style="padding:0.4rem 0.6rem; font-size:0.78rem; border-color:rgba(239,68,68,0.45);" placeholder="Gelmeme nedenini yazın (Örn: İzinli, Raporlu, Sahada...)" value="${safeReasonAttr}" oninput="updateParticipantAbsentReason('${safeNameAttr}', this.value)">
-                        <div style="display:flex; gap:0.25rem; flex-wrap:wrap; margin-top:0.35rem;">
+                        <input type="text" class="form-control absent-reason-input" data-person="${safeNameAttr}" style="width:100%; box-sizing:border-box; padding:0.38rem 0.6rem; font-size:0.76rem; border-color:rgba(239,68,68,0.45);" placeholder="${name} için gelmeme nedeni (Örn: İzinli, Sahada...)" value="${safeReasonAttr}" oninput="updateParticipantAbsentReason('${safeNameAttr}', this.value)">
+                        <div style="display:flex; gap:0.25rem; flex-wrap:wrap; margin-top:0.3rem;">
                             ${['İzinli', 'Raporlu', 'Müşteri Ziyaretinde', 'Şehir Dışında', 'Servis Yoğunluğu'].map(preset => `
-                                <button type="button" style="background:rgba(239,68,68,0.16); border:1px solid rgba(239,68,68,0.35); color:#fecaca; border-radius:5px; padding:1px 6px; font-size:0.66rem; cursor:pointer;" onclick="setQuickAbsentReason('${safeNameAttr}', '${preset}')">${preset}</button>
+                                <button type="button" style="background:rgba(239,68,68,0.16); border:1px solid rgba(239,68,68,0.35); color:#fecaca; border-radius:5px; padding:1px 6px; font-size:0.65rem; cursor:pointer;" onclick="setQuickAbsentReason('${safeNameAttr}', '${preset}')">${preset}</button>
                             `).join('')}
                         </div>
                     </div>
@@ -5605,52 +5621,21 @@ function renderAttendanceManagementUI() {
             </div>
         `;
     }).join('');
-
-    summaryBoxes.innerHTML = `
-        <div style="background:rgba(16,185,129,0.08); border:1px solid rgba(16,185,129,0.35); border-radius:10px; padding:0.65rem 0.8rem;">
-            <div style="font-size:0.78rem; font-weight:800; color:#6ee7b7; margin-bottom:0.35rem;">
-                <i class="fa-solid fa-user-check"></i> ✅ Gelen Katılımcılar (${attendedNames.length} Kişi)
-            </div>
-            <div style="display:flex; flex-wrap:wrap; gap:0.35rem;">
-                ${attendedNames.length > 0
-                    ? attendedNames.map(n => `<span class="participant-tag" style="background:rgba(16,185,129,0.18); border-color:rgba(16,185,129,0.4); color:#d1fae5;"><i class="fa-solid fa-check" style="color:#34d399;"></i> ${n}</span>`).join('')
-                    : `<span style="font-size:0.75rem; color:var(--text-sec);">Henüz gelen katılımcı seçilmedi.</span>`
-                }
-            </div>
-        </div>
-        <div style="background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.38); border-radius:10px; padding:0.65rem 0.8rem;">
-            <div style="font-size:0.78rem; font-weight:800; color:#fca5a5; margin-bottom:0.35rem;">
-                <i class="fa-solid fa-user-xmark"></i> ❌ Gelmeyen Katılımcılar ve Gelmeme Nedenleri (${absentNames.length} Kişi)
-            </div>
-            ${absentNames.length > 0 ? `
-                <div style="display:flex; flex-direction:column; gap:0.4rem;">
-                    ${absentNames.map(n => {
-                        const rVal = escapeHtmlAttr(currentDraftAttendance[n]?.reason || '');
-                        const sName = escapeHtmlAttr(n);
-                        return `
-                            <div style="display:flex; align-items:center; gap:0.45rem; flex-wrap:wrap; background:rgba(15,23,42,0.75); padding:0.35rem 0.5rem; border-radius:7px; border:1px solid rgba(239,68,68,0.35);">
-                                <strong style="font-size:0.75rem; color:#fecaca; min-width:120px;"><i class="fa-solid fa-user-slash"></i> ${n}:</strong>
-                                <input type="text" class="form-control absent-reason-input" data-person="${sName}" style="flex:1; min-width:150px; padding:0.3rem 0.55rem; font-size:0.76rem;" placeholder="Gelmeme nedenini buraya yazın..." value="${rVal}" oninput="updateParticipantAbsentReason('${sName}', this.value)">
-                            </div>
-                        `;
-                    }).join('')}
-                </div>
-            ` : `<span style="font-size:0.75rem; color:var(--text-sec);">Gelmeyen katılımcı yok (Davet edilen herkes katıldı).</span>`}
-        </div>
-    `;
 }
 
 // --- GÜNDEM MADDELERİ (TİKLEMELİ + ALTTA AÇIKLAMA KUTUCUĞU + KONUŞULMAYANLAR LİSTESİ) ---
 function addAgendaItemFromQuickInput() {
     const input = document.getElementById('quick-agenda-item-input');
-    if (!input) return;
+    if (!input) {
+        addAgendaItemRow('', false, '', true);
+        return;
+    }
     const val = input.value.trim();
     if (!val) {
         addAgendaItemRow('', false, '', true);
         return;
     }
     const cleanTitle = val.replace(/^\d+[\.\)\-]\s*/, '').trim();
-    // Eğer listede tek bir boş satır varsa onu doldur
     if (currentDraftAgendaItems.length === 1 && !currentDraftAgendaItems[0].title.trim()) {
         currentDraftAgendaItems[0].title = cleanTitle;
     } else {
@@ -5664,7 +5649,6 @@ function addAgendaItemFromQuickInput() {
     }
     input.value = '';
     renderDraftAgendaItems();
-    input.focus();
 }
 
 function addAgendaItemRow(title = '', discussed = false, explanation = '', focusNew = false) {
@@ -5742,34 +5726,30 @@ function renderDraftAgendaItems(focusItemId = null) {
 
         return `
             <div class="agenda-item-card ${isDiscussed ? 'discussed' : 'undiscussed'}">
-                <div style="display:flex; align-items:center; gap:0.6rem; flex-wrap:wrap;">
-                    <label style="display:inline-flex; align-items:center; gap:0.45rem; cursor:pointer; margin:0; padding:0.35rem 0.65rem; border-radius:8px; background:${isDiscussed ? 'rgba(16,185,129,0.22)' : 'rgba(255,255,255,0.06)'}; border:1px solid ${isDiscussed ? '#10b981' : 'rgba(255,255,255,0.18)'}; color:${isDiscussed ? '#6ee7b7' : '#cbd5e1'}; font-size:0.78rem; font-weight:800; user-select:none;" title="Konuşulduysa tik atın, konuşulmadıysa boş bırakın">
-                        <input type="checkbox" style="width:18px; height:18px; accent-color:#10b981; cursor:pointer;" ${isDiscussed ? 'checked' : ''} onchange="toggleAgendaItemDiscussed('${it.id}', this.checked)">
-                        <span>${isDiscussed ? '✅ Konuşuldu' : '⬜ Konuşulmadı'}</span>
+                <div style="display:flex; align-items:center; gap:0.55rem;">
+                    <span style="font-weight:800; color:#38bdf8; font-size:0.86rem; min-width:22px;">${idx + 1}.</span>
+
+                    <input type="text" id="agenda-title-${it.id}" class="form-control" style="flex:1; min-width:0; padding:0.45rem 0.65rem; font-size:0.84rem; font-weight:600;" placeholder="${idx + 1}. Gündem maddesini yazın..." value="${safeTitle}" oninput="updateAgendaItemTitle('${it.id}', this.value)" onkeydown="handleAgendaTitleKeydown(event, '${it.id}')">
+
+                    <label style="display:inline-flex; align-items:center; gap:0.45rem; cursor:pointer; margin:0; padding:0.38rem 0.65rem; border-radius:8px; background:${isDiscussed ? 'rgba(2,132,199,0.25)' : 'rgba(255,255,255,0.04)'}; border:1.5px solid ${isDiscussed ? '#38bdf8' : 'rgba(148,163,184,0.28)'}; color:${isDiscussed ? '#ffffff' : '#94a3b8'}; font-size:0.76rem; font-weight:700; user-select:none; white-space:nowrap; flex-shrink:0;" title="Görüşüldüyse işaretleyin">
+                        <input type="checkbox" class="blue-tick-checkbox" ${isDiscussed ? 'checked' : ''} onchange="toggleAgendaItemDiscussed('${it.id}', this.checked)">
+                        <span>${isDiscussed ? 'Konuşuldu' : 'Konuşulmadı'}</span>
                     </label>
 
-                    <span style="font-weight:800; color:var(--dizsan-light); font-size:0.88rem; min-width:24px;">${idx + 1}.</span>
-
-                    <input type="text" id="agenda-title-${it.id}" class="form-control" style="flex:1; min-width:200px; font-weight:600;" placeholder="${idx + 1}. Gündem maddesi başlığını yazın..." value="${safeTitle}" oninput="updateAgendaItemTitle('${it.id}', this.value)" onkeydown="handleAgendaTitleKeydown(event, '${it.id}')">
-
-                    <button type="button" class="btn btn-danger btn-sm" style="padding:0.4rem 0.6rem;" onclick="removeAgendaItemRow('${it.id}')" title="Gündem Maddesini Sil">
+                    <button type="button" class="btn btn-danger btn-sm" style="padding:0.4rem 0.55rem; flex-shrink:0;" onclick="removeAgendaItemRow('${it.id}')" title="Gündem Maddesini Sil">
                         <i class="fa-solid fa-trash"></i>
                     </button>
                 </div>
 
                 ${isDiscussed ? `
                     <div class="agenda-explanation-box">
-                        <label style="font-size:0.75rem; font-weight:800; color:#6ee7b7; display:block; margin-bottom:0.35rem;">
-                            <i class="fa-solid fa-comment-dots"></i> ${idx + 1}. Gündem Maddesi Açıklaması / Konuşulan Detaylar:
-                        </label>
-                        <textarea id="agenda-exp-${it.id}" class="form-control" rows="2" style="background:rgba(15,23,42,0.85); border-color:rgba(52,211,153,0.45); font-size:0.83rem;" placeholder="Bu gündem maddesinde konuşulanları, değerlendirmeleri ve açıklamaları buraya girin..." oninput="updateAgendaItemExplanation('${it.id}', this.value)">${safeExp}</textarea>
+                        <textarea id="agenda-exp-${it.id}" class="form-control" rows="2" style="width:100%; box-sizing:border-box; background:rgba(15,23,42,0.9); border-color:rgba(56,189,248,0.4);" placeholder="${idx + 1}. gündem maddesinde konuşulan detayları / notları buraya yazın..." oninput="updateAgendaItemExplanation('${it.id}', this.value)">${safeExp}</textarea>
                     </div>
-                ` : `
-                    <div style="margin-top:0.35rem; font-size:0.72rem; color:#fde68a; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.4rem;">
-                        <span><i class="fa-regular fa-clock"></i> Bu madde konuşulduysa sol üstteki kutucuğa tik koyup açıklamasını girebilirsiniz. Tik konulmazsa <strong>Konuşulmayan Maddeler</strong> listesine alınır.</span>
-                        ${it.transferredToMeetingId ? `<span class="badge badge-normal" style="font-size:0.68rem;">➔ ${it.transferredToMeetingId} Toplantısına Aktarıldı</span>` : ''}
+                ` : (it.transferredToMeetingId ? `
+                    <div style="margin-top:0.35rem; font-size:0.72rem; color:#38bdf8;">
+                        <i class="fa-solid fa-share"></i> <strong>${it.transferredToMeetingId}</strong> toplantısına aktarıldı
                     </div>
-                `}
+                ` : '')}
             </div>
         `;
     }).join('');
@@ -5804,28 +5784,15 @@ function renderUndiscussedAgendaSummary() {
     if (footerBtn) footerBtn.style.display = 'inline-flex';
 
     box.innerHTML = `
-        <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:0.75rem;">
-            <div style="flex:1; min-width:240px;">
-                <strong style="color:#fde68a; font-size:0.86rem; display:block; margin-bottom:0.25rem;">
-                    <i class="fa-solid fa-clock-rotate-left" style="color:#fbbf24;"></i> ⏳ Toplantıda Konuşulmayan Gündem Maddeleri (${undiscussed.length} Madde)
-                </strong>
-                <div style="font-size:0.75rem; color:#fef3c7; margin-bottom:0.5rem;">
-                    Tik konulmayan (konuşulmayan) maddeler aşağıda listelenmiştir. Bu maddeleri başka bir toplantıya aktarmak için <strong>"Başka Toplantı Planlama Ekranını Aç"</strong> butonuna tıklayın:
-                </div>
-                <div style="display:flex; flex-direction:column; gap:0.3rem;">
-                    ${undiscussed.map(u => `
-                        <div style="font-size:0.8rem; color:#fff; background:rgba(15,23,42,0.75); padding:0.35rem 0.6rem; border-radius:6px; border-left:3px solid #f59e0b;">
-                            ⬜ <strong>Madde ${u.orderNum}:</strong> ${escapeHtmlAttr(u.title)}
-                            ${u.transferredToMeetingId ? `<span style="color:#38bdf8; font-size:0.72rem; margin-left:6px;">(➔ ${u.transferredToMeetingId} toplantısına planlandı)</span>` : ''}
-                        </div>
-                    `).join('')}
-                </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;">
+            <div style="font-size:0.8rem; color:#fde68a;">
+                <i class="fa-solid fa-clock-rotate-left" style="color:#fbbf24;"></i>
+                <strong>Konuşulmayan ${undiscussed.length} gündem maddesi var:</strong>
+                <span style="color:#fef3c7;">${undiscussed.map(u => `${u.orderNum}. ${escapeHtmlAttr(u.title)}`).join(' • ')}</span>
             </div>
-            <div style="display:flex; align-items:center;">
-                <button type="button" class="btn btn-sm" style="background:linear-gradient(135deg,#f59e0b,#d97706); color:#0f172a; font-weight:800; padding:0.55rem 0.95rem;" onclick="openFollowupMeetingModalFromCurrentDraft()">
-                    <i class="fa-solid fa-calendar-plus"></i> Başka Toplantı Planlama Ekranını Aç (${undiscussed.length} Madde)
-                </button>
-            </div>
+            <button type="button" class="btn btn-sm" style="background:linear-gradient(135deg,#f59e0b,#d97706); color:#0f172a; font-weight:800; padding:0.4rem 0.8rem; font-size:0.75rem; white-space:nowrap;" onclick="openFollowupMeetingModalFromCurrentDraft()">
+                <i class="fa-solid fa-calendar-plus"></i> Sonraki Toplantıya Aktar (${undiscussed.length})
+            </button>
         </div>
     `;
 }
@@ -5889,7 +5856,7 @@ function renderDraftDecisionItems(focusDecId = null) {
 
     const userOptions = [
         `<option value="Tüm Katılımcılar / Genel">Tüm Katılımcılar / Genel</option>`,
-        ...appState.users.map(u => `<option value="${escapeHtmlAttr(u.name)}">${escapeHtmlAttr(u.name)} (${escapeHtmlAttr(u.dept)})</option>`)
+        ...appState.users.map(u => `<option value="${escapeHtmlAttr(u.name)}">${escapeHtmlAttr(u.name)}</option>`)
     ];
 
     container.innerHTML = currentDraftDecisionItems.map((dec, idx) => {
@@ -5898,12 +5865,12 @@ function renderDraftDecisionItems(focusDecId = null) {
 
         return `
             <div class="decision-item-row">
-                <span style="font-weight:800; color:#38bdf8; font-size:0.86rem; min-width:26px;">${idx + 1}.</span>
+                <span style="font-weight:800; color:#38bdf8; font-size:0.84rem;">${idx + 1}.</span>
                 <div>
                     <input type="text" id="dec-text-${dec.id}" class="form-control" placeholder="${idx + 1}. Alınan kararı yazın..." value="${safeText}" oninput="updateDecisionItemField('${dec.id}', 'text', this.value)" onkeydown="handleDecisionInputKeydown(event, '${dec.id}')">
                 </div>
                 <div>
-                    <select class="form-control" onchange="updateDecisionItemField('${dec.id}', 'responsible', this.value)" title="Alınan Karar Sorumlusu">
+                    <select class="form-control" onchange="updateDecisionItemField('${dec.id}', 'responsible', this.value)" title="Karar Sorumlusu">
                         ${userOptions.map(opt => {
                             const isSel = opt.includes(`value="${escapeHtmlAttr(dec.responsible)}"`);
                             return isSel ? opt.replace('<option ', '<option selected ') : opt;
@@ -5911,13 +5878,13 @@ function renderDraftDecisionItems(focusDecId = null) {
                     </select>
                 </div>
                 <div>
-                    <input type="date" id="dec-date-${dec.id}" class="form-control" value="${isoDue}" onchange="updateDecisionItemField('${dec.id}', 'dueDate', this.value)" oninput="updateDecisionItemField('${dec.id}', 'dueDate', this.value)" title="Karar Termin Tarihi">
+                    <input type="date" id="dec-date-${dec.id}" class="form-control" value="${isoDue}" onchange="updateDecisionItemField('${dec.id}', 'dueDate', this.value)" oninput="updateDecisionItemField('${dec.id}', 'dueDate', this.value)" title="Termin Tarihi">
                 </div>
-                <div style="display:flex; gap:0.35rem; align-items:center;">
-                    <button type="button" class="btn btn-primary btn-sm" style="padding:0.42rem 0.6rem; font-size:0.72rem; white-space:nowrap;" onclick="convertDecisionToInlineAction('${dec.id}')" title="Bu Kararı Tamamlama Tarih ve Saatli Aksiyon Olarak Ekle">
+                <div style="display:flex; gap:0.3rem; align-items:center; justify-content:flex-end;">
+                    <button type="button" class="btn btn-primary btn-sm" style="padding:0.4rem 0.5rem; font-size:0.71rem; white-space:nowrap;" onclick="convertDecisionToInlineAction('${dec.id}')" title="Bu Kararı Aksiyon Olarak Ekle">
                         <i class="fa-solid fa-bolt"></i> Aksiyon
                     </button>
-                    <button type="button" class="btn btn-danger btn-sm" style="padding:0.42rem 0.6rem;" onclick="removeDecisionItemRow('${dec.id}')" title="Karar Satırını Sil">
+                    <button type="button" class="btn btn-danger btn-sm" style="padding:0.4rem 0.5rem;" onclick="removeDecisionItemRow('${dec.id}')" title="Karar Satırını Sil">
                         <i class="fa-solid fa-trash"></i>
                     </button>
                 </div>
@@ -6037,8 +6004,8 @@ function populateAndOpenFollowupModal(data) {
     const itemsBox = document.getElementById('followup-undiscussed-items-list');
     if (itemsBox) {
         itemsBox.innerHTML = data.undiscussedItems.map((it, idx) => `
-            <label style="display:flex; align-items:center; gap:0.55rem; padding:0.45rem 0.65rem; background:rgba(15,23,42,0.85); border:1px solid rgba(245,158,11,0.35); border-radius:8px; cursor:pointer; font-size:0.82rem; color:#fff;">
-                <input type="checkbox" name="followup-agenda-check" value="${escapeHtmlAttr(it.id)}" data-title="${escapeHtmlAttr(it.title)}" checked style="width:17px; height:17px; accent-color:#f59e0b;">
+            <label style="display:flex; align-items:center; gap:0.55rem; padding:0.45rem 0.65rem; background:rgba(15,23,42,0.85); border:1px solid rgba(56,189,248,0.35); border-radius:8px; cursor:pointer; font-size:0.82rem; color:#fff;">
+                <input type="checkbox" class="blue-tick-checkbox" name="followup-agenda-check" value="${escapeHtmlAttr(it.id)}" data-title="${escapeHtmlAttr(it.title)}" checked>
                 <span><strong>${idx + 1}.</strong> ${escapeHtmlAttr(it.title)}</span>
             </label>
         `).join('');
@@ -6049,8 +6016,8 @@ function populateAndOpenFollowupModal(data) {
         partBox.innerHTML = appState.users.map(u => {
             const isChecked = (data.participants || []).includes(u.name);
             return `
-                <label class="participant-check">
-                    <input type="checkbox" name="followup-participant" value="${escapeHtmlAttr(u.name)}" ${isChecked ? 'checked' : ''}>
+                <label class="participant-check ${isChecked ? 'is-checked' : ''}">
+                    <input type="checkbox" name="followup-participant" value="${escapeHtmlAttr(u.name)}" ${isChecked ? 'checked' : ''} onchange="syncParticipantCheckStyles()">
                     <span>${u.name} <small style="color:var(--text-sec);">(${u.dept})</small></span>
                 </label>
             `;
@@ -6069,6 +6036,7 @@ function toggleAllFollowupParticipants(state) {
     document.querySelectorAll('input[name="followup-participant"]').forEach(cb => {
         cb.checked = state;
     });
+    syncParticipantCheckStyles();
 }
 
 function saveFollowupMeetingPlan(event) {
@@ -6138,7 +6106,6 @@ function saveFollowupMeetingPlan(event) {
 
     appState.meetings.unshift(followupMeeting);
 
-    // Kaynak toplantıdaki konuşulmayan maddelere hangi toplantıya aktarıldığını işle
     if (sourceId) {
         const srcMeeting = appState.meetings.find(m => m.id === sourceId);
         if (srcMeeting) {
@@ -6153,7 +6120,6 @@ function saveFollowupMeetingPlan(event) {
         }
     }
 
-    // Eğer şu an açık bir taslak varsa oradaki maddeleri de işaretle
     currentDraftAgendaItems.forEach(ag => {
         if (transferredIds.has(ag.id)) {
             ag.transferredToMeetingId = newMeetingId;
@@ -6199,7 +6165,7 @@ function openMeetingModal(meetingId = null) {
         }
         if (printBtn) printBtn.style.display = 'inline-flex';
         setMeetingRecordType(m.recordType || 'Toplantı');
-        document.getElementById('meeting-modal-title').innerHTML = `<i class="fa-solid fa-clipboard-check" style="color:var(--dizsan-light);"></i> ${m.recordType === 'Eğitim' ? 'Eğitim' : 'Toplantı'} Detayı, Yoklama, Gündem & Karar Yönetimi (${m.id})`;
+        document.getElementById('meeting-modal-title').innerHTML = `<i class="fa-solid fa-clipboard-check" style="color:var(--dizsan-light);"></i> ${m.recordType === 'Eğitim' ? 'Eğitim' : 'Toplantı'} Detayı & Karar Yönetimi (${m.id})`;
         document.getElementById('meeting-id').value = m.id;
         document.getElementById('meeting-title-input').value = m.title;
         document.getElementById('meeting-dept-input').value = m.dept;
@@ -6224,6 +6190,7 @@ function openMeetingModal(meetingId = null) {
         document.querySelectorAll('input[name="meeting-participant"]').forEach(cb => {
             cb.checked = attInfo.invited.includes(cb.value);
         });
+        syncParticipantCheckStyles();
         renderAttendanceManagementUI();
 
         currentDraftAgendaItems = parseAgendaItemsFromMeeting(m);
@@ -6254,7 +6221,7 @@ function openMeetingModal(meetingId = null) {
     } else {
         if (printBtn) printBtn.style.display = 'none';
         setMeetingRecordType('Toplantı');
-        document.getElementById('meeting-modal-title').innerHTML = `<i class="fa-solid fa-handshake" style="color:var(--dizsan-light);"></i> Yeni Toplantı / Eğitim ve Tutanak Kaydı`;
+        document.getElementById('meeting-modal-title').innerHTML = `<i class="fa-solid fa-handshake" style="color:var(--dizsan-light);"></i> Yeni Toplantı / Eğitim Kaydı`;
         document.getElementById('meeting-id').value = '';
         document.getElementById('meeting-title-input').value = '';
         document.getElementById('meeting-dept-input').value = 'Genel Yönetim';
@@ -6271,6 +6238,7 @@ function openMeetingModal(meetingId = null) {
                 currentDraftAttendance[cb.value] = { status: 'ATTENDED', reason: '' };
             }
         });
+        syncParticipantCheckStyles();
         renderAttendanceManagementUI();
 
         currentDraftAgendaItems = [
@@ -6331,35 +6299,33 @@ function renderExistingMeetingActionsInModal(meetingId) {
 
     box.style.display = 'block';
     box.innerHTML = `
-        <div style="font-size:0.78rem; font-weight:800; color:#bae6fd; margin-bottom:0.45rem;">
-            <i class="fa-solid fa-list-check"></i> Bu Toplantıya Ait Mevcut Aksiyonlar (${mActions.length} Adet)
+        <div style="font-size:0.76rem; font-weight:700; color:#bae6fd; margin-bottom:0.4rem;">
+            <i class="fa-solid fa-list-check"></i> Mevcut Aksiyonlar (${mActions.length})
         </div>
-        <div style="display:flex; flex-direction:column; gap:0.45rem;">
+        <div style="display:flex; flex-direction:column; gap:0.4rem;">
             ${mActions.map(a => {
                 const st = evaluateActionReminderStatus(a);
                 const compDisp = getActionCompletedDisplay(a);
                 return `
-                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; padding:0.6rem 0.75rem; border-radius:10px; background:rgba(15,23,42,0.82); border:1px solid ${a.status === 'Tamamlandı' ? 'rgba(16,185,129,0.4)' : 'rgba(245,158,11,0.4)'};">
-                        <div style="flex:1; min-width:220px;">
-                            <div style="font-weight:700; font-size:0.83rem; color:#fff;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; padding:0.5rem 0.65rem; border-radius:8px; background:rgba(15,23,42,0.82); border:1px solid ${a.status === 'Tamamlandı' ? 'rgba(16,185,129,0.4)' : 'rgba(56,189,248,0.3)'};">
+                        <div style="flex:1; min-width:200px;">
+                            <div style="font-weight:700; font-size:0.81rem; color:#fff;">
                                 <span style="color:var(--dizsan-light);">${a.id}:</span> ${a.title}
                             </div>
-                            <div style="font-size:0.74rem; color:#cbd5e1; margin-top:3px; display:flex; flex-wrap:wrap; gap:0.65rem;">
-                                <span><i class="fa-solid fa-user-check" style="color:#38bdf8;"></i> Sorumlu: <strong>${a.assignee}</strong></span>
-                                <span><i class="fa-regular fa-clock" style="color:#fbbf24;"></i> Hedef Tamamlama: <strong style="color:#fde68a;">${formatDateTR(a.dueDate)} ${a.dueTime || '17:00'}</strong></span>
-                                ${compDisp ? `<span style="color:#6ee7b7; font-weight:700;">✅ Kapanış: ${compDisp}</span>` : ''}
-                            </div>
-                            <div style="margin-top:4px;">
-                                <span class="countdown-pill ${st.type}" style="font-size:0.69rem;">${st.badgeText}</span>
+                            <div style="font-size:0.72rem; color:#cbd5e1; margin-top:2px; display:flex; flex-wrap:wrap; gap:0.55rem; align-items:center;">
+                                <span><i class="fa-solid fa-user" style="color:#38bdf8;"></i> <strong>${a.assignee}</strong></span>
+                                <span><i class="fa-regular fa-clock" style="color:#fbbf24;"></i> <strong style="color:#fde68a;">${formatDateTR(a.dueDate)} ${a.dueTime || '17:00'}</strong></span>
+                                <span class="countdown-pill ${st.type}" style="font-size:0.66rem; padding:1px 6px;">${st.shortText || st.badgeText}</span>
+                                ${compDisp ? `<span style="color:#6ee7b7; font-weight:700;">✅ ${compDisp}</span>` : ''}
                             </div>
                         </div>
-                        <div style="display:flex; align-items:center; gap:0.4rem;">
-                            <select class="form-control" style="padding:0.3rem 0.5rem; font-size:0.75rem; font-weight:700; width:auto;" onchange="quickChangeActionStatus('${a.id}', this.value)">
+                        <div style="display:flex; align-items:center; gap:0.35rem;">
+                            <select class="form-control" style="padding:0.28rem 0.45rem; font-size:0.74rem; font-weight:700; width:auto;" onchange="quickChangeActionStatus('${a.id}', this.value)">
                                 <option value="Bekliyor" ${a.status === 'Bekliyor' ? 'selected' : ''}>⏳ Bekliyor</option>
                                 <option value="Devam Ediyor" ${a.status === 'Devam Ediyor' ? 'selected' : ''}>🔄 Devam Ediyor</option>
                                 <option value="Tamamlandı" ${a.status === 'Tamamlandı' ? 'selected' : ''}>✅ Tamamlandı</option>
                             </select>
-                            <button type="button" class="btn btn-secondary btn-sm" onclick="openActionModal('${a.id}')" title="Aksiyon Tamamlama Tarih ve Saatini Düzenle">
+                            <button type="button" class="btn btn-secondary btn-sm" style="padding:0.32rem 0.5rem;" onclick="openActionModal('${a.id}')" title="Aksiyonu Düzenle">
                                 <i class="fa-solid fa-pen"></i>
                             </button>
                         </div>
@@ -6373,36 +6339,36 @@ function renderExistingMeetingActionsInModal(meetingId) {
 function addInlineActionRow() {
     const container = document.getElementById('inline-actions-container');
     const row = document.createElement('div');
-    row.style.cssText = 'display:grid; grid-template-columns: 2fr 1.2fr 0.85fr 1fr 0.85fr auto; gap:0.45rem; align-items:end; background:rgba(15,23,42,0.65); padding:0.55rem; border-radius:10px; border:1px solid rgba(56,189,248,0.28);';
+    row.className = 'inline-action-row';
     const tomorrowIso = new Date(Date.now() + 86400000).toISOString().split('T')[0];
 
     row.innerHTML = `
         <div>
-            <label style="font-size:0.69rem; color:#bae6fd; display:block; margin-bottom:2px;">Aksiyon / Görev Açıklaması *</label>
+            <label style="font-size:0.68rem; color:#bae6fd; display:block; margin-bottom:2px;">Aksiyon / Görev Açıklaması *</label>
             <input type="text" class="form-control inline-action-title" placeholder="Yapılacak aksiyonu yazın..." required>
         </div>
         <div>
-            <label style="font-size:0.69rem; color:#bae6fd; display:block; margin-bottom:2px;">Sorumlu Personel *</label>
+            <label style="font-size:0.68rem; color:#bae6fd; display:block; margin-bottom:2px;">Sorumlu *</label>
             <select class="form-control inline-action-assignee">
-                ${appState.users.map(u => `<option value="${u.name}">${u.name} (${u.dept})</option>`).join('')}
+                ${appState.users.map(u => `<option value="${u.name}">${u.name}</option>`).join('')}
             </select>
         </div>
         <div>
-            <label style="font-size:0.69rem; color:#bae6fd; display:block; margin-bottom:2px;">Öncelik</label>
+            <label style="font-size:0.68rem; color:#bae6fd; display:block; margin-bottom:2px;">Öncelik</label>
             <select class="form-control inline-action-priority">
-                <option value="Normal">🔵 Normal</option>
-                <option value="Kritik">🚨 Kritik</option>
+                <option value="Normal">Normal</option>
+                <option value="Kritik">Kritik</option>
             </select>
         </div>
         <div>
-            <label style="font-size:0.69rem; color:#fde68a; display:block; margin-bottom:2px;">Tamamlama Tarihi *</label>
+            <label style="font-size:0.68rem; color:#fde68a; display:block; margin-bottom:2px;">Termin Tarihi *</label>
             <input type="date" class="form-control inline-action-duedate" value="${tomorrowIso}" required>
         </div>
         <div>
-            <label style="font-size:0.69rem; color:#fde68a; display:block; margin-bottom:2px;">Tamamlama Saati *</label>
+            <label style="font-size:0.68rem; color:#fde68a; display:block; margin-bottom:2px;">Saat *</label>
             <input type="time" class="form-control inline-action-duetime" value="17:00" required>
         </div>
-        <button type="button" class="btn btn-danger btn-sm" style="height:38px;" onclick="this.parentElement.remove()" title="Satırı Kaldır"><i class="fa-solid fa-xmark"></i></button>
+        <button type="button" class="btn btn-danger btn-sm" style="height:34px; padding:0 0.5rem;" onclick="this.parentElement.remove()" title="Satırı Kaldır"><i class="fa-solid fa-xmark"></i></button>
     `;
     container.appendChild(row);
     if (window.initAutoDateInputs) window.initAutoDateInputs(row);
@@ -6530,9 +6496,14 @@ function saveMeeting(event) {
                     updatedAt: editNow
                 };
                 addAuditLog("TOPLANTI", `${idVal} kodlu '${title}' kaydı Yönetici ÖMER EREN tarafından güncellendi (Davetli: ${invitedParticipants.length}, Gelen: ${attendedParticipants.length}, Gelmeyen: ${absentParticipants.length}).`);
-                playMeetingCallSound('INVITE');
+                // Düzenleme yapıldığında tekrar bildirim veya ses verme
+                const myNorm = normalizeTR(editorName);
+                try {
+                    localStorage.setItem(`alert_invite_${idVal}_${myNorm}`, '1');
+                    localStorage.setItem(`alert_invite_${idVal}_${myNorm}_${date}_${time}`, '1');
+                } catch (e) {}
             } else {
-                // Mevcut toplantı personel tarafından değiştirildiğinde Yönetici Ömer Eren onay kuyruğuna düşer
+                // Mevcut toplantı personel tarafından değiştirildiğinde Yönetici Ömer Eren onay kuyruğuna düşer (bildirimsiz)
                 if (!Array.isArray(appState.approvalRequests)) appState.approvalRequests = [];
                 appState.approvalRequests.unshift({
                     id: 'ONAY-' + Date.now(),
@@ -6555,8 +6526,6 @@ function saveMeeting(event) {
                     }
                 });
                 addAuditLog("TOPLANTI", `${editorName}, ${idVal} kodlu '${title}' kaydı için değiştirme (düzenleme) talebi oluşturdu (Yönetici ÖMER EREN onayı bekleniyor).`);
-                playMeetingCallSound('APPROVAL', `Dikkat! ${title} toplantısı için değiştirme onayı bekleniyor.`);
-                alert(`🛡️ Değiştirme Talebi Yönetici ÖMER EREN Onayına Düşürüldü!\n\n'${title}' (${idVal}) kaydında yaptığınız değişiklikler ekranın üst kısmındaki "🛡️ ÖMER EREN YÖNETİCİ ONAY MERKEZİ"ne düşmüştür.`);
             }
         }
     } else {

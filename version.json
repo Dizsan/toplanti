@@ -1,9 +1,9 @@
 {
   "appId": "toplanti",
   "appName": "Dizsan Toplantı & Aksiyon",
-  "version": "4.9.2",
-  "build": 492,
-  "releasedAt": "2026-10-26 22:08:59",
-  "releaseNotes": "Toplantı kartı tıklama detayı, davetli/gelen/gelmeyen yoklaması ve mazeret alanı, tiklemeli gündem açıklamaları, konuşulmayan maddeleri başka toplantıya planlama, sorumlulu-terminli alınan kararlar ve aksiyon tamamlama tarihi/saati + ertesi gün / gün aşırı hatırlatma motoru yayınlandı",
+  "version": "4.9.4",
+  "build": 494,
+  "releasedAt": "2026-10-26 22:51:22",
+  "releaseNotes": "Toplantı/Eğitim formu profesyonel hizalama, mavi tikli katılımcı yoklaması ve düzenlemede bildirim/ses kapatma güncellemesi (v4.9.4)",
   "author": "Ömer Eren & DİZSAN"
 }

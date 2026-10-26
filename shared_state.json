@@ -1,6 +1,6 @@
 {
   "version": "v4.9.2",
-  "updatedAt": "2026-10-26T19:50:32.462Z",
+  "updatedAt": "26.10.2026 22:51:22",
   "users": [
     {
       "order": 0,
@@ -1341,7 +1341,7 @@
       "resolvedBy": "ÖMER EREN"
     }
   ],
-  "stateRevision": 185,
+  "stateRevision": 167,
   "pushSubscriptions": [
     {
       "id": "SUB-1793029403205-553",
@@ -2048,16 +2048,15 @@
       "fail_count": 0
     }
   ],
-  "appVersion": "4.9.2",
+  "appVersion": "4.9.4",
   "latestVersion": {
     "version": "4.9.2",
     "releaseNotes": "Toplantı kartı tıklama detayı, davetli/gelen/gelmeyen yoklaması ve mazeret alanı, tiklemeli gündem açıklamaları, konuşulmayan maddeleri başka toplantıya planlama, sorumlulu-terminli alınan kararlar ve aksiyon tamamlama tarihi/saati + ertesi gün / gün aşırı hatırlatma motoru yayınlandı",
     "releasedAt": "2026-10-26 22:08:59"
   },
-  "versionUpdatedAt": "2026-10-26 22:08:59",
-  "versionReleaseNotes": "Toplantı kartı tıklama detayı, davetli/gelen/gelmeyen yoklaması ve mazeret alanı, tiklemeli gündem açıklamaları, konuşulmayan maddeleri başka toplantıya planlama, sorumlulu-terminli alınan kararlar ve aksiyon tamamlama tarihi/saati + ertesi gün / gün aşırı hatırlatma motoru yayınlandı",
-  "deletedIds": [
-    "AKS-101"
-  ],
-  "usedResetTokens": []
+  "versionUpdatedAt": "2026-10-26 22:51:22",
+  "versionReleaseNotes": "Toplantı/Eğitim formu profesyonel hizalama, mavi tikli katılımcı yoklaması ve düzenlemede bildirim/ses kapatma güncellemesi (v4.9.4)",
+  "deletedIds": [],
+  "usedResetTokens": [],
+  "updatedAtMs": 1793044282325
 }
