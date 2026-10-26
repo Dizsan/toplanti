@@ -1,6 +1,6 @@
 {
   "version": "v4.9.2",
-  "updatedAt": "2026-10-26T19:08:59.292Z",
+  "updatedAt": "2026-10-26T19:25:00.673Z",
   "users": [
     {
       "order": 0,
@@ -234,8 +234,8 @@
         "GÖKHAN ÖZBULUT"
       ],
       "externalParticipants": [],
-      "notes": "1. Genel Borç şablonu çıkartıldı durum değerlendirmesi yapıldı",
-      "decisions": "1. Yarın Sgk ve Personel ödeme detayları verilecek",
+      "notes": "1. Genel Borç şablonu çıkartıldı durum değerlendirmesi yapıldı [Konuşuldu]\n   ↳ Açıklama: Genel Durum Çıkartıldı",
+      "decisions": "",
       "attachments": [
         {
           "id": "ATT-TOP-2026-002-PDF",
@@ -252,11 +252,30 @@
       "approvalStatus": "Onaylandı",
       "omerApprovedStamp": true,
       "approvedBy": "ÖMER EREN",
-      "approvedAt": "26.10.2026 20:56:05",
+      "approvedAt": "26.10.2026 22:25:00",
       "createdBy": "ÖMER EREN",
       "createdAt": "26.10.2026 20:56:05",
       "updatedBy": "ÖMER EREN",
-      "updatedAt": "26.10.2026 21:00:00"
+      "updatedAt": "26.10.2026 22:25:00",
+      "invitedParticipants": [
+        "ÖMER EREN",
+        "GÖKHAN ÖZBULUT"
+      ],
+      "attendedParticipants": [
+        "ÖMER EREN",
+        "GÖKHAN ÖZBULUT"
+      ],
+      "absentParticipants": [],
+      "agendaItems": [
+        {
+          "id": "agd-0-3702",
+          "title": "Genel Borç şablonu çıkartıldı durum değerlendirmesi yapıldı",
+          "discussed": true,
+          "explanation": "Genel Durum Çıkartıldı",
+          "transferredToMeetingId": ""
+        }
+      ],
+      "decisionItems": []
     },
     {
       "id": "TOP-2026-001",
@@ -294,6 +313,31 @@
   ],
   "actions": [
     {
+      "id": "AKS-102",
+      "meetingId": "TOP-2026-002",
+      "meetingTitle": "Finans ve Ödeme Toplantısı Planlama",
+      "title": "Yarın Sgk ve Personel ödeme detayları verilecek",
+      "assignee": "ÖMER EREN",
+      "manager": "ÖMER EREN",
+      "priority": "Kritik",
+      "dueDate": "2026-10-27",
+      "dueTime": "17:00",
+      "status": "Bekliyor",
+      "note": "",
+      "completedDate": "",
+      "completedTime": "",
+      "completedAt": "",
+      "remindOneDayBefore": true,
+      "remindSameDay": true,
+      "remindNextDay": true,
+      "remindEveryOtherDay": true,
+      "createdDate": "2026-10-26",
+      "createdBy": "ÖMER EREN",
+      "createdAt": "26.10.2026 22:25:00",
+      "updatedBy": "",
+      "updatedAt": ""
+    },
+    {
       "id": "AKS-101",
       "meetingId": "TOP-2026-002",
       "meetingTitle": "Finans ve Ödeme Toplantısı Planlama",
@@ -314,6 +358,22 @@
     }
   ],
   "logs": [
+    {
+      "id": "LOG-1793042700670",
+      "timestamp": "26.10.2026 22:25:00",
+      "user": "ÖMER EREN",
+      "category": "AKSİYON",
+      "detail": "AKS-102 kodlu aksiyon 'ÖMER EREN' personeline ve Yönetici ÖMER EREN'e ertesi gün ve gün aşırı hatırlatıcılı olarak atandı (Tamamlama: 27.10.2026 17:00).",
+      "platform": "macOS / Masaüstü"
+    },
+    {
+      "id": "LOG-1793042700651",
+      "timestamp": "26.10.2026 22:25:00",
+      "user": "ÖMER EREN",
+      "category": "TOPLANTI",
+      "detail": "TOP-2026-002 kodlu 'Finans ve Ödeme Toplantısı Planlama' kaydı Yönetici ÖMER EREN tarafından güncellendi (Davetli: 2, Gelen: 2, Gelmeyen: 0).",
+      "platform": "macOS / Masaüstü"
+    },
     {
       "id": "LOG-1793026603378",
       "timestamp": "26.10.2026 17:56:43",
@@ -1175,7 +1235,7 @@
       "resolvedBy": "ÖMER EREN"
     }
   ],
-  "stateRevision": 166,
+  "stateRevision": 169,
   "pushSubscriptions": [
     {
       "id": "SUB-1793029403205-553",
