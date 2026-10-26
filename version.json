@@ -1,9 +1,9 @@
 {
   "appId": "toplanti",
   "appName": "Dizsan Toplantı & Aksiyon",
-  "version": "1.8.5",
-  "build": 184,
-  "releasedAt": "2026-10-26 00:10:00",
-  "releaseNotes": "24 personel için tam giriş ve şifre/veri mahremiyet izolasyonu, zorunlu e-posta bağlantılı şifre sıfırlama, silinen kayıt (tombstone) senkronizasyonu, mükerrer buton temizliği ve evrensel Geri/Yenile navigasyonu aktif edildi.",
+  "version": "4.9.1",
+  "build": 491,
+  "releasedAt": "2026-10-26 21:38:08",
+  "releaseNotes": "Aksiyon tamamlama tarihi ve saati, kapanmayan devam eden aksiyonlar için ertesi gün uyarı ve gün aşırı hatırlatma motoru eklendi",
   "author": "Ömer Eren & DİZSAN"
 }

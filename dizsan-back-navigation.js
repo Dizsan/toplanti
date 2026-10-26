@@ -404,17 +404,29 @@
     function injectTopNavbarBackButton() {
         const targetContainer = document.querySelector('.navbar-left, .topbar-left, .header-left');
         let btn = document.getElementById('dizsan-global-back-btn');
-        if (!btn) {
-            const targetContainer = document.querySelector('.navbar-left, .topbar-left, .header-left');
-            if (targetContainer) {
-                btn = document.createElement('button');
-                btn.type = 'button';
-                btn.id = 'dizsan-global-back-btn';
-                btn.className = 'dizsan-global-back-btn visible';
-                btn.title = 'Geri Dön';
-                btn.innerHTML = '<i class="fa-solid fa-arrow-left"></i> <span>Geri</span>';
-                btn.onclick = handleInAppBack;
-                targetContainer.insertBefore(btn, targetContainer.firstChild);
+        if (!btn && targetContainer) {
+            btn = document.createElement('button');
+            btn.type = 'button';
+            btn.id = 'dizsan-global-back-btn';
+            btn.className = 'dizsan-global-back-btn visible';
+            btn.title = 'Geri Dön';
+            btn.innerHTML = '<i class="fa-solid fa-arrow-left"></i> <span>Geri</span>';
+            btn.onclick = handleInAppBack;
+            targetContainer.insertBefore(btn, targetContainer.firstChild);
+        }
+        let refreshBtn = document.getElementById('dizsan-global-refresh-btn');
+        if (!refreshBtn && targetContainer) {
+            refreshBtn = document.createElement('button');
+            refreshBtn.type = 'button';
+            refreshBtn.id = 'dizsan-global-refresh-btn';
+            refreshBtn.className = 'dizsan-global-refresh-btn';
+            refreshBtn.title = 'Uygulamayı ve Verileri Yenile';
+            refreshBtn.innerHTML = '<i class="fa-solid fa-arrows-rotate"></i> <span>Yenile</span>';
+            refreshBtn.onclick = function () { refreshApplicationNow(refreshBtn); };
+            if (btn && btn.nextSibling) {
+                targetContainer.insertBefore(refreshBtn, btn.nextSibling);
+            } else {
+                targetContainer.appendChild(refreshBtn);
             }
         }
         updateBackButtonVisibility();
