@@ -1,6 +1,6 @@
 {
   "version": "v4.9.2",
-  "updatedAt": "2026-10-26T19:25:02.746Z",
+  "updatedAt": "2026-10-26T19:25:54.778Z",
   "users": [
     {
       "order": 0,
@@ -317,7 +317,7 @@
       "meetingId": "TOP-2026-002",
       "meetingTitle": "Finans ve Ödeme Toplantısı Planlama",
       "title": "Yarın Sgk ve Personel ödeme detayları verilecek",
-      "assignee": "ÖMER EREN",
+      "assignee": "GÖKHAN ÖZBULUT",
       "manager": "ÖMER EREN",
       "priority": "Kritik",
       "dueDate": "2026-10-27",
@@ -334,8 +334,8 @@
       "createdDate": "2026-10-26",
       "createdBy": "ÖMER EREN",
       "createdAt": "26.10.2026 22:25:00",
-      "updatedBy": "",
-      "updatedAt": ""
+      "updatedBy": "ÖMER EREN",
+      "updatedAt": "26.10.2026 22:25:54"
     },
     {
       "id": "AKS-101",
@@ -358,6 +358,14 @@
     }
   ],
   "logs": [
+    {
+      "id": "LOG-1793042754776",
+      "timestamp": "26.10.2026 22:25:54",
+      "user": "ÖMER EREN",
+      "category": "AKSİYON",
+      "detail": "AKS-102 aksiyonu ÖMER EREN tarafından güncellendi (Sorumlu: GÖKHAN ÖZBULUT, Durum: Bekliyor, Tamamlama Hedefi: 27.10.2026 17:00).",
+      "platform": "macOS / Masaüstü"
+    },
     {
       "id": "LOG-1793042700670",
       "timestamp": "26.10.2026 22:25:00",
@@ -1235,7 +1243,7 @@
       "resolvedBy": "ÖMER EREN"
     }
   ],
-  "stateRevision": 170,
+  "stateRevision": 172,
   "pushSubscriptions": [
     {
       "id": "SUB-1793029403205-553",
