@@ -1,6 +1,6 @@
 {
   "version": "v1.8.5",
-  "updatedAt": "2026-10-26T13:41:02.990Z",
+  "updatedAt": "2026-10-26T13:43:52.698Z",
   "users": [
     {
       "order": 0,
@@ -1094,8 +1094,21 @@
       "resolvedBy": "ÖMER EREN"
     }
   ],
-  "stateRevision": 60,
+  "stateRevision": 61,
   "pushSubscriptions": [
+    {
+      "id": "SUB-1793022232697-877",
+      "username": "rafet.canbek",
+      "userFullName": "RAFET CANBEK",
+      "endpoint": "https://fcm.googleapis.com/fcm/send/fW62DivZlyM:APA91bGNM6qRgZGTpD-qdCoKbFT7C7v-qUQmIQ1mChHJoWNKgWW9oeFc1Si2nRSgBMI4b7PtoYq9lXXEv0YCTpcEd2G3ftRLQeyKwU4VQhfQS1sMHbpHNS_7fpeNsdepOsSw4i9ATq9z",
+      "p256dh": "BDKp5zHxx42Ufg7g-u-Ew7oydrIfUw1MGfOhqqZlzAouxpKtaFiar97aCwsb1BregUq9gd1WCPAHcoToq4WVTOw",
+      "auth": "aFah_QROF6fUZgZ-MJcE1Q",
+      "browser": "Google Chrome",
+      "platform": "Android",
+      "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Mobile Safari/537.36",
+      "isActive": true,
+      "updatedAt": "26.10.2026 16:43:52"
+    },
     {
       "id": "SUB-1793012063308-127",
       "username": "rafet.canbek",
