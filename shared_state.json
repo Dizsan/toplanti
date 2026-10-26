@@ -1,6 +1,6 @@
 {
   "version": "v1.8.5",
-  "updatedAt": "2026-10-26T17:54:09.947Z",
+  "updatedAt": "2026-10-26T17:56:07.421Z",
   "users": [
     {
       "order": 0,
@@ -222,6 +222,31 @@
   ],
   "meetings": [
     {
+      "id": "TOP-2026-002",
+      "recordType": "Toplantı",
+      "title": "Finans ve Ödeme Toplantısı Planlama",
+      "dept": "Muhasebe & Finans",
+      "date": "2026-10-26",
+      "time": "17:30",
+      "location": "Dizsan Toplantı Salonu",
+      "participants": [
+        "ÖMER EREN",
+        "GÖKHAN ÖZBULUT"
+      ],
+      "externalParticipants": [],
+      "notes": "1. Genel Borç şablonu çıkartıldı durum değerlendirmesi yapıldı",
+      "decisions": "1. Yarın Sgk ve Personel ödeme detayları verilecek",
+      "attachments": [],
+      "approvalStatus": "Onaylandı",
+      "omerApprovedStamp": true,
+      "approvedBy": "ÖMER EREN",
+      "approvedAt": "26.10.2026 20:56:05",
+      "createdBy": "ÖMER EREN",
+      "createdAt": "26.10.2026 20:56:05",
+      "updatedBy": "",
+      "updatedAt": ""
+    },
+    {
       "id": "TOP-2026-001",
       "recordType": "Toplantı",
       "title": "Genel Değerlendirme ve Bilgilendirme Toplantısı",
@@ -256,8 +281,44 @@
       "updatedAt": "26.10.2026 20:54:05"
     }
   ],
-  "actions": [],
+  "actions": [
+    {
+      "id": "AKS-101",
+      "meetingId": "TOP-2026-002",
+      "meetingTitle": "Finans ve Ödeme Toplantısı Planlama",
+      "title": "Gökhan Özbulut",
+      "assignee": "ÖMER EREN",
+      "manager": "ÖMER EREN",
+      "priority": "Kritik",
+      "dueDate": "2026-10-27",
+      "dueTime": "09:00",
+      "status": "Bekliyor",
+      "note": "",
+      "remindOneDayBefore": true,
+      "remindSameDay": true,
+      "createdBy": "ÖMER EREN",
+      "createdAt": "26.10.2026 20:56:07",
+      "updatedBy": "",
+      "updatedAt": ""
+    }
+  ],
   "logs": [
+    {
+      "id": "LOG-1793037367416",
+      "timestamp": "26.10.2026 20:56:07",
+      "user": "ÖMER EREN",
+      "category": "AKSİYON",
+      "detail": "AKS-101 kodlu aksiyon 'ÖMER EREN' personeline ve Yönetici ÖMER EREN'e hatırlatıcılı olarak atandı (Termin: 27.10.2026).",
+      "platform": "macOS / Masaüstü"
+    },
+    {
+      "id": "LOG-1793037365415",
+      "timestamp": "26.10.2026 20:56:05",
+      "user": "ÖMER EREN",
+      "category": "TOPLANTI",
+      "detail": "TOP-2026-002 kodlu yeni toplantı ('Finans ve Ödeme Toplantısı Planlama') oluşturuldu (Onaylandı). Katılımcı: 2 personel.",
+      "platform": "macOS / Masaüstü"
+    },
     {
       "id": "LOG-1793037245726",
       "timestamp": "26.10.2026 20:54:05",
@@ -1127,7 +1188,7 @@
       "resolvedBy": "ÖMER EREN"
     }
   ],
-  "stateRevision": 75,
+  "stateRevision": 78,
   "pushSubscriptions": [
     {
       "id": "SUB-1793037103760-881",
