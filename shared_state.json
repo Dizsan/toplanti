@@ -1,6 +1,6 @@
 {
   "version": "v4.9.2",
-  "updatedAt": "2026-10-26T19:25:54.778Z",
+  "updatedAt": "2026-10-26T19:25:56.397Z",
   "users": [
     {
       "order": 0,
@@ -252,11 +252,11 @@
       "approvalStatus": "Onaylandı",
       "omerApprovedStamp": true,
       "approvedBy": "ÖMER EREN",
-      "approvedAt": "26.10.2026 22:25:00",
+      "approvedAt": "26.10.2026 22:25:56",
       "createdBy": "ÖMER EREN",
       "createdAt": "26.10.2026 20:56:05",
       "updatedBy": "ÖMER EREN",
-      "updatedAt": "26.10.2026 22:25:00",
+      "updatedAt": "26.10.2026 22:25:56",
       "invitedParticipants": [
         "ÖMER EREN",
         "GÖKHAN ÖZBULUT"
@@ -358,6 +358,14 @@
     }
   ],
   "logs": [
+    {
+      "id": "LOG-1793042756203",
+      "timestamp": "26.10.2026 22:25:56",
+      "user": "ÖMER EREN",
+      "category": "TOPLANTI",
+      "detail": "TOP-2026-002 kodlu 'Finans ve Ödeme Toplantısı Planlama' kaydı Yönetici ÖMER EREN tarafından güncellendi (Davetli: 2, Gelen: 2, Gelmeyen: 0).",
+      "platform": "macOS / Masaüstü"
+    },
     {
       "id": "LOG-1793042754776",
       "timestamp": "26.10.2026 22:25:54",
@@ -1243,7 +1251,7 @@
       "resolvedBy": "ÖMER EREN"
     }
   ],
-  "stateRevision": 172,
+  "stateRevision": 175,
   "pushSubscriptions": [
     {
       "id": "SUB-1793029403205-553",
