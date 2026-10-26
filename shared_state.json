@@ -1,6 +1,6 @@
 {
   "version": "v1.8.5",
-  "updatedAt": "2026-10-26T13:44:39.629Z",
+  "updatedAt": "2026-10-26T13:51:07.713Z",
   "users": [
     {
       "order": 0,
@@ -1052,7 +1052,8 @@
         "GÖKHAN ÖZBULUT",
         "ÖMER EREN",
         "FATİH KIROĞLU",
-        "HAKAN AYDIN"
+        "HAKAN AYDIN",
+        "NECATİ DEMİRCİ"
       ]
     }
   ],
@@ -1094,7 +1095,7 @@
       "resolvedBy": "ÖMER EREN"
     }
   ],
-  "stateRevision": 62,
+  "stateRevision": 63,
   "pushSubscriptions": [
     {
       "id": "SUB-1793022275064-601",
