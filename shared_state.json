@@ -1,6 +1,6 @@
 {
   "version": "v1.8.5",
-  "updatedAt": "2026-10-26T13:40:14.778Z",
+  "updatedAt": "2026-10-26T13:41:01.512Z",
   "users": [
     {
       "order": 0,
@@ -249,15 +249,23 @@
       "approvalStatus": "Onaylandı",
       "omerApprovedStamp": true,
       "approvedBy": "ÖMER EREN",
-      "approvedAt": "26.10.2026 16:40:09",
+      "approvedAt": "26.10.2026 16:40:59",
       "createdBy": "ÖMER EREN",
       "createdAt": "26.10.2026 16:40:09",
-      "updatedBy": "",
-      "updatedAt": ""
+      "updatedBy": "ÖMER EREN",
+      "updatedAt": "26.10.2026 16:40:59"
     }
   ],
   "actions": [],
   "logs": [
+    {
+      "id": "LOG-1793022059528",
+      "timestamp": "26.10.2026 16:40:59",
+      "user": "ÖMER EREN",
+      "category": "TOPLANTI",
+      "detail": "TOP-2026-001 kodlu 'Genel Değerlendirme ve Bilgilendirme Toplantısı' kaydı Yönetici ÖMER EREN tarafından güncellendi.",
+      "platform": "macOS / Masaüstü"
+    },
     {
       "id": "LOG-1793022009535",
       "timestamp": "26.10.2026 16:40:09",
@@ -1086,7 +1094,7 @@
       "resolvedBy": "ÖMER EREN"
     }
   ],
-  "stateRevision": 57,
+  "stateRevision": 59,
   "pushSubscriptions": [
     {
       "id": "SUB-1793012063308-127",
