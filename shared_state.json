@@ -1,6 +1,6 @@
 {
   "version": "v1.8.5",
-  "updatedAt": "2026-10-26T15:43:23.208Z",
+  "updatedAt": "2026-10-26T17:51:43.761Z",
   "users": [
     {
       "order": 0,
@@ -1119,8 +1119,21 @@
       "resolvedBy": "ÖMER EREN"
     }
   ],
-  "stateRevision": 71,
+  "stateRevision": 72,
   "pushSubscriptions": [
+    {
+      "id": "SUB-1793037103760-881",
+      "username": "ömer",
+      "userFullName": "ÖMER EREN",
+      "endpoint": "https://web.push.apple.com/QNRltEWIvUXQMsf_mPqRCSzCwU8ZKkZ5Wp-GJOucW1Qc8yEqaRZ50_o2BGjfwlY_jGO8phuZlAikcDBOvrF-tHSBMIZQvHvnYDlMlIXmEACQBxUfZCSiM2kk-5VsYrl6oo1ZY6JiPp_XxMg3h-pnCF7kzXw2a1OMVEkgyIhYQdo",
+      "p256dh": "BJfnftFlkeLGiRd5BO7VjsdMaQCXVh8aS-vqfgrr86q2TKI6C3sbDZV00g49gNH-1t7TnkQUxa-NvGA1gwrO0bA",
+      "auth": "LYt98U6AMImQazQOMJV7qw",
+      "browser": "Apple Web App (Ana Ekran)",
+      "platform": "macOS",
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/27.0.1 Safari/605.1.15",
+      "isActive": true,
+      "updatedAt": "26.10.2026 20:51:43"
+    },
     {
       "id": "SUB-1793029403205-553",
       "username": "necati.demirci",
