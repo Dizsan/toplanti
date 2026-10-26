@@ -10,8 +10,8 @@
  * ==========================================================================
  */
 
-const INITIAL_APP_VERSION = "v1.8.5";
-const CURRENT_APP_VERSION = "1.8.5";
+const INITIAL_APP_VERSION = "v4.9.2";
+const CURRENT_APP_VERSION = "4.9.2";
 const VAPID_PUBLIC_KEY = "BJIJfCBiDwya3clZOWS08EDxfuN18xtfJGTX0n_apWBTEW7-kO_FGKNy5VDRvUsMgc46IP5oxLlIHqgrDo-JTkE";
 const STORAGE_KEY_STATE = "dizsan_toplanti_shared_state_v2";
 const STORAGE_KEY_SESSION = "dizsan_toplanti_active_user";
@@ -290,106 +290,7 @@ function migrateOfficialUserEmails(usersArray) {
     });
 }
 
-// --- INDEXEDDB TABANLI BÜYÜK PDF / BELGE EKİ SAKLAMA MOTORU (5MB LOCALSTORAGE LİMİTİNİ AŞAR) ---
-const ATTACHMENT_IDB_NAME = "dizsan_toplanti_attachments_idb_v1";
-const ATTACHMENT_IDB_STORE = "attachments";
-const attachmentMemoryCache = new Map();
-
-function openAttachmentIdb() {
-    return new Promise((resolve) => {
-        try {
-            if (!window.indexedDB) { resolve(null); return; }
-            const req = window.indexedDB.open(ATTACHMENT_IDB_NAME, 1);
-            req.onupgradeneeded = (e) => {
-                const db = e.target.result;
-                if (!db.objectStoreNames.contains(ATTACHMENT_IDB_STORE)) {
-                    db.createObjectStore(ATTACHMENT_IDB_STORE, { keyPath: "id" });
-                }
-            };
-            req.onsuccess = (e) => resolve(e.target.result);
-            req.onerror = () => resolve(null);
-        } catch (e) {
-            resolve(null);
-        }
-    });
-}
-
-async function saveAttachmentToIndexedDB(att) {
-    if (!att || !att.id || !att.dataUrl) return;
-    attachmentMemoryCache.set(att.id, att.dataUrl);
-    try {
-        const db = await openAttachmentIdb();
-        if (!db) return;
-        const tx = db.transaction(ATTACHMENT_IDB_STORE, "readwrite");
-        tx.objectStore(ATTACHMENT_IDB_STORE).put({
-            id: att.id,
-            name: att.name || "",
-            type: att.type || "",
-            dataUrl: att.dataUrl,
-            savedAt: Date.now()
-        });
-    } catch (e) {}
-}
-
-async function loadAttachmentFromIndexedDB(attId) {
-    if (!attId) return "";
-    if (attachmentMemoryCache.has(attId)) return attachmentMemoryCache.get(attId) || "";
-    try {
-        const db = await openAttachmentIdb();
-        if (!db) return "";
-        return await new Promise((resolve) => {
-            const tx = db.transaction(ATTACHMENT_IDB_STORE, "readonly");
-            const req = tx.objectStore(ATTACHMENT_IDB_STORE).get(attId);
-            req.onsuccess = () => {
-                const res = req.result;
-                if (res && res.dataUrl) {
-                    attachmentMemoryCache.set(attId, res.dataUrl);
-                    resolve(res.dataUrl);
-                } else {
-                    resolve("");
-                }
-            };
-            req.onerror = () => resolve("");
-        });
-    } catch (e) {
-        return "";
-    }
-}
-
-async function hydrateMeetingsAttachmentsFromIndexedDB() {
-    if (!Array.isArray(appState.meetings)) return;
-    for (const m of appState.meetings) {
-        if (!Array.isArray(m.attachments)) continue;
-        for (const att of m.attachments) {
-            if (!att) continue;
-            if (att.dataUrl) {
-                saveAttachmentToIndexedDB(att);
-            } else if (att.id) {
-                const cached = await loadAttachmentFromIndexedDB(att.id);
-                if (cached) att.dataUrl = cached;
-            }
-        }
-    }
-}
-
-function getSafeAttachmentRelPath(att) {
-    if (att && att.fileUrl) return att.fileUrl;
-    const rawId = String((att && att.id) || ("ATT-" + Date.now())).trim();
-    const safeId = rawId.replace(/[^a-zA-Z0-9_-]/g, "") || "att_file";
-    const nameLower = String((att && att.name) || "").toLowerCase();
-    const typeLower = String((att && att.type) || "").toLowerCase();
-    const dataUrl = String((att && att.dataUrl) || "");
-    const ext = (typeLower.includes("pdf") || nameLower.endsWith(".pdf") || dataUrl.startsWith("data:application/pdf"))
-        ? ".pdf"
-        : (typeLower.includes("png") || nameLower.endsWith(".png"))
-            ? ".png"
-            : (typeLower.includes("jpg") || typeLower.includes("jpeg") || nameLower.endsWith(".jpg") || nameLower.endsWith(".jpeg"))
-                ? ".jpg"
-                : ".bin";
-    return `attachments/${safeId}${ext}`;
-}
-
-function sanitizeStateForCloud(stateObj, stripLargeAttachments = false) {
+function sanitizeStateForCloud(stateObj) {
     const cloned = { ...stateObj };
     if (Array.isArray(cloned.users)) {
         cloned.users = cloned.users.map(u => {
@@ -406,23 +307,6 @@ function sanitizeStateForCloud(stateObj, stripLargeAttachments = false) {
             if (u.pinUpdatedAtMs) cleanUser.pinUpdatedAtMs = Number(u.pinUpdatedAtMs);
             if (u.avatar) cleanUser.avatar = u.avatar;
             return cleanUser;
-        });
-    }
-    if (Array.isArray(cloned.meetings)) {
-        cloned.meetings = cloned.meetings.map(m => {
-            if (!m || !Array.isArray(m.attachments) || m.attachments.length === 0) return m;
-            return {
-                ...m,
-                attachments: m.attachments.map(att => {
-                    if (!att) return att;
-                    if (att.dataUrl) saveAttachmentToIndexedDB(att);
-                    const fileUrl = getSafeAttachmentRelPath(att);
-                    if (stripLargeAttachments && att.dataUrl && att.dataUrl.length > 180000) {
-                        return { ...att, fileUrl, dataUrl: "" };
-                    }
-                    return { ...att, fileUrl };
-                })
-            };
         });
     }
     return cloned;
@@ -476,6 +360,9 @@ function loadState() {
 
     saveStateLocally();
     syncWithDizGunEcosystem(false);
+    rehydrateAttachmentsFromIDB(appState).then((restored) => {
+        if (restored && currentUser) renderAll();
+    });
     syncFromServer();
 }
 
@@ -498,17 +385,146 @@ function resetToCleanState() {
     };
 }
 
+// ==========================================================================
+// 1.B BÜYÜK PDF & GÖRSEL EKLER İÇİN INDEXEDDB KALICI DEPOLAMA MOTORU
+// (Tarayıcı localStorage 5MB kotasını aşan çok sayfalı PDF'lerin kaybolmasını önler)
+// ==========================================================================
+const ATTACHMENT_IDB_NAME = "dizsan_toplanti_attachments_idb_v1";
+const ATTACHMENT_IDB_STORE = "attachments";
+
+function openAttachmentIDB() {
+    return new Promise((resolve) => {
+        if (!window.indexedDB) return resolve(null);
+        try {
+            const req = window.indexedDB.open(ATTACHMENT_IDB_NAME, 1);
+            req.onupgradeneeded = (e) => {
+                const db = e.target.result;
+                if (!db.objectStoreNames.contains(ATTACHMENT_IDB_STORE)) {
+                    db.createObjectStore(ATTACHMENT_IDB_STORE, { keyPath: "id" });
+                }
+            };
+            req.onsuccess = (e) => resolve(e.target.result);
+            req.onerror = () => resolve(null);
+        } catch (err) {
+            resolve(null);
+        }
+    });
+}
+
+async function saveAttachmentToIDB(att) {
+    if (!att || !att.id || !att.dataUrl) return;
+    try {
+        const db = await openAttachmentIDB();
+        if (!db) return;
+        await new Promise((resolve) => {
+            const tx = db.transaction(ATTACHMENT_IDB_STORE, "readwrite");
+            tx.objectStore(ATTACHMENT_IDB_STORE).put({
+                id: String(att.id),
+                name: att.name || "",
+                type: att.type || "",
+                dataUrl: att.dataUrl,
+                fileUrl: att.fileUrl || "",
+                updatedAt: Date.now()
+            });
+            tx.oncomplete = () => resolve(true);
+            tx.onerror = () => resolve(false);
+        });
+    } catch (e) {}
+}
+
+async function getAttachmentFromIDB(attId) {
+    if (!attId) return null;
+    try {
+        const db = await openAttachmentIDB();
+        if (!db) return null;
+        return await new Promise((resolve) => {
+            const tx = db.transaction(ATTACHMENT_IDB_STORE, "readonly");
+            const req = tx.objectStore(ATTACHMENT_IDB_STORE).get(String(attId));
+            req.onsuccess = () => resolve(req.result || null);
+            req.onerror = () => resolve(null);
+        });
+    } catch (e) {
+        return null;
+    }
+}
+
+async function rehydrateAttachmentsFromIDB(stateObj) {
+    if (!stateObj || !Array.isArray(stateObj.meetings)) return false;
+    let restoredAny = false;
+    try {
+        for (const m of stateObj.meetings) {
+            if (!Array.isArray(m.attachments)) continue;
+            for (const att of m.attachments) {
+                if (att && att.id && !att.dataUrl) {
+                    const cached = await getAttachmentFromIDB(att.id);
+                    if (cached && cached.dataUrl) {
+                        att.dataUrl = cached.dataUrl;
+                        restoredAny = true;
+                    }
+                } else if (att && att.id && att.dataUrl) {
+                    saveAttachmentToIDB(att);
+                }
+            }
+        }
+    } catch (e) {}
+    return restoredAny;
+}
+
+function buildCompactStateForLocalStorage(stateObj) {
+    const base = sanitizeStateForCloud(stateObj);
+    const cloned = JSON.parse(JSON.stringify(base));
+    if (Array.isArray(cloned.meetings)) {
+        cloned.meetings.forEach(m => {
+            if (Array.isArray(m.attachments)) {
+                m.attachments.forEach(att => {
+                    if (att && att.dataUrl && att.dataUrl.length > 180000) {
+                        att.hasCachedBlob = true;
+                        if (!att.fileUrl) {
+                            const safeId = String(att.id || '').replace(/[^A-Za-z0-9_-]/g, '_');
+                            const isPdf = (att.type || '').toLowerCase().includes('pdf') || (att.name || '').toLowerCase().endsWith('.pdf');
+                            att.fileUrl = `attachments/${safeId}${isPdf ? '.pdf' : '.bin'}`;
+                        }
+                        att.dataUrl = "";
+                    }
+                });
+            }
+        });
+    }
+    return cloned;
+}
+
 function saveStateLocally() {
     try {
-        const lightPayload = sanitizeStateForCloud(appState, true);
-        localStorage.setItem(STORAGE_KEY_STATE, JSON.stringify(lightPayload));
-    } catch (e) {
+        if (appState && Array.isArray(appState.meetings)) {
+            appState.meetings.forEach(m => {
+                if (Array.isArray(m.attachments)) {
+                    m.attachments.forEach(att => {
+                        if (att && att.id && att.dataUrl) {
+                            saveAttachmentToIDB(att);
+                        }
+                    });
+                }
+            });
+        }
+    } catch (e) {}
+
+    try {
+        const compactForLs = buildCompactStateForLocalStorage(appState);
+        localStorage.setItem(STORAGE_KEY_STATE, JSON.stringify(compactForLs));
+    } catch (quotaErr) {
         try {
-            const ultraLight = { ...sanitizeStateForCloud(appState, true), logs: (appState.logs || []).slice(0, 50) };
-            localStorage.setItem(STORAGE_KEY_STATE, JSON.stringify(ultraLight));
-        } catch (err) {}
+            const ultraCompact = buildCompactStateForLocalStorage(appState);
+            if (Array.isArray(ultraCompact.meetings)) {
+                ultraCompact.meetings.forEach(m => {
+                    if (Array.isArray(m.attachments)) {
+                        m.attachments.forEach(att => { if (att) att.dataUrl = ""; });
+                    }
+                });
+            }
+            localStorage.setItem(STORAGE_KEY_STATE, JSON.stringify(ultraCompact));
+        } catch (e2) {}
     }
-    hydrateMeetingsAttachmentsFromIndexedDB();
+
     syncWithDizGunEcosystem(false);
     if (typeof syncUserAndStateToServiceWorker === 'function') {
         syncUserAndStateToServiceWorker();
@@ -663,7 +679,7 @@ async function uploadAttachmentToGitHubIfNeeded(att, token) {
         else if (mime.includes('jpeg') || mime.includes('jpg') || nameLower.endsWith('.jpg') || nameLower.endsWith('.jpeg')) ext = '.jpg';
 
         const relPath = `attachments/${safeId}${ext}`;
-        const apiUrl = `https://api.github.com/repos/OmerEren19/Dizsan/contents/toplanti/${relPath}`;
+        const apiUrl = `https://api.github.com/repos/Dizsan/toplanti/contents/${relPath}`;
 
         if (att.fileUrl && (att.fileUrl === relPath || att.fileUrl.endsWith(relPath))) {
             return;
@@ -1037,11 +1053,6 @@ function handleLogin(event) {
         return;
     }
 
-    if (!getToplantiUserPerms(matchedUser).allowed) {
-        errBox.style.display = 'block';
-        errBox.innerHTML = '<i class="fa-solid fa-ban"></i> Bu uygulamayı görüntüleme yetkiniz bulunmamaktadır. Yönetici ile iletişime geçiniz.';
-        return;
-    }
     setLoginAttemptState({ count: 0, lockUntil: 0 });
     errBox.style.display = 'none';
     currentUser = matchedUser;
@@ -1079,9 +1090,6 @@ function handleLogin(event) {
 
 function applyAuthenticatedUser() {
     const overlay = document.getElementById('login-overlay');
-    if (currentUser && !getToplantiUserPerms(currentUser).allowed) {
-        currentUser = null;
-    }
     if (!currentUser) {
         overlay.classList.remove('hidden');
         loadRememberedCredentials();
@@ -1105,8 +1113,6 @@ function applyAuthenticatedUser() {
     initBackgroundAlarmWorker();
     autoEnrollZeroTouchPush();
     renderAll();
-    enforceToplantiDomPermissions();
-    if (currentUser && !isOmerEren(currentUser) && !getToplantiUserPerms(currentUser).submodules.toplanti_genel) { switchTab('meetings-tab'); }
     handleDeepLinkParams();
     checkUrlPasswordResetToken();
 }
@@ -1549,75 +1555,6 @@ function handleChangeOwnPassword(event) {
 // ==========================================================================
 // 3. SADECE YÖNETİCİ ÖMER EREN'E ÖZEL VERSİYON GÜNCELLEME YETKİSİ
 // ==========================================================================
-
-const OFFICIAL_DPRO_PERMISSIONS_TOPLANTI = {"ömer": {"apps": {"Dizsan_Ziyaret_Mobil_Karekod": true, "Dizsan_Toplanti_Mobil_Karekod": true, "Dizsan_Kredi_Mobil_Karekod": true, "Dizsan_Odeme_Takvimi": true, "Dizsan_Kredi_Karti_Takip": true, "Dizsan_VDF_Odeme": true, "Dizsan_DMet_Radar": true, "Dizsan_DiKas_Finans": true, "Dizsan_Gunluk_Kasa": true}, "submodules": {"ziyaret_genel": true, "ziyaret_rut_planla": true, "ziyaret_ekstre": true, "ziyaret_kayit": true, "ziyaret_cari": true, "ziyaret_gorev": true, "ziyaret_rapor": true, "ziyaret_raporlar": true, "toplanti_genel": true, "toplanti_olustur": true, "toplanti_aksiyon": true, "toplanti_duyuru": true, "toplanti_rapor": true, "kredi_combined": true, "kredi_bankalar": true, "kredi_odeme_onay": true, "kredi_erken_kapama": true, "kredi_yeni_ekle": true, "takvim_aylik": true, "takvim_kartlar": true, "takvim_krediler": true, "takvim_liste": true, "takvim_mobil": true, "kart_tumu": true, "kart_sirket": true, "kart_sahsi": true, "vdf_kokpit": true, "vdf_takvim": true, "vdf_tablo": true, "vdf_odemeler": true, "vdf_limitler": true, "vdf_otomasyon": true, "dmet_radar": true, "dmet_ailab": true, "dmet_hinterland": true, "dmet_sources": true, "dmet_notifications": true, "dmet_logs": true, "dikas_dashboard": true, "dikas_calendar": true, "dikas_forecast": true, "dikas_accounts": true, "dikas_payments": true, "dikas_collections": true, "dikas_instruments": true, "dikas_reports": true, "kasa_form": true, "kasa_a4": true, "kasa_archive": true, "kasa_admin": true}, "appActions": {"Dizsan_Ziyaret_Mobil_Karekod": {"view": true, "create": true, "edit": true, "delete": true, "export": true, "financial": true}, "Dizsan_Toplanti_Mobil_Karekod": {"view": true, "create": true, "edit": true, "delete": true, "export": true, "financial": true}, "Dizsan_Kredi_Mobil_Karekod": {"view": true, "create": true, "edit": true, "delete": true, "export": true, "financial": true}, "Dizsan_Odeme_Takvimi": {"view": true, "create": true, "edit": true, "delete": true, "export": true, "financial": true}, "Dizsan_Kredi_Karti_Takip": {"view": true, "create": true, "edit": true, "delete": true, "export": true, "financial": true}, "Dizsan_VDF_Odeme": {"view": true, "create": true, "edit": true, "delete": true, "export": true, "financial": true}, "Dizsan_DMet_Radar": {"view": true, "create": true, "edit": true, "delete": true, "export": true, "financial": true}, "Dizsan_DiKas_Finans": {"view": true, "create": true, "edit": true, "delete": true, "export": true, "financial": true}, "Dizsan_Gunluk_Kasa": {"view": true, "create": true, "edit": true, "delete": true, "export": true, "financial": true}}}, "hakan.aydin": {"apps": {"Dizsan_Ziyaret_Mobil_Karekod": true, "Dizsan_Toplanti_Mobil_Karekod": true, "Dizsan_Kredi_Mobil_Karekod": false, "Dizsan_Odeme_Takvimi": false, "Dizsan_Kredi_Karti_Takip": false, "Dizsan_VDF_Odeme": false, "Dizsan_DMet_Radar": false, "Dizsan_DiKas_Finans": false, "Dizsan_Gunluk_Kasa": false}, "submodules": {"ziyaret_genel": true, "ziyaret_rut_planla": true, "ziyaret_ekstre": true, "ziyaret_kayit": true, "ziyaret_cari": true, "ziyaret_gorev": true, "ziyaret_rapor": true, "ziyaret_raporlar": true, "toplanti_genel": true, "toplanti_olustur": true, "toplanti_aksiyon": true, "toplanti_duyuru": true, "toplanti_rapor": true, "kredi_combined": false, "kredi_bankalar": false, "kredi_odeme_onay": false, "kredi_erken_kapama": false, "kredi_yeni_ekle": false, "takvim_aylik": false, "takvim_kartlar": false, "takvim_krediler": false, "takvim_liste": false, "takvim_mobil": false, "kart_tumu": false, "kart_sirket": false, "kart_sahsi": false, "vdf_kokpit": false, "vdf_takvim": false, "vdf_tablo": false, "vdf_odemeler": false, "vdf_limitler": false, "vdf_otomasyon": false, "dmet_radar": false, "dmet_ailab": false, "dmet_hinterland": false, "dmet_sources": false, "dmet_notifications": false, "dmet_logs": false, "dikas_dashboard": false, "dikas_calendar": false, "dikas_forecast": false, "dikas_accounts": false, "dikas_payments": false, "dikas_collections": false, "dikas_instruments": false, "dikas_reports": false, "kasa_form": false, "kasa_a4": false, "kasa_archive": false, "kasa_admin": false}, "appActions": {"Dizsan_Ziyaret_Mobil_Karekod": {"view": true, "create": true, "edit": false, "delete": false, "export": true, "financial": false}, "Dizsan_Toplanti_Mobil_Karekod": {"view": true, "create": true, "edit": true, "delete": false, "export": true, "financial": false}, "Dizsan_Kredi_Mobil_Karekod": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Odeme_Takvimi": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Kredi_Karti_Takip": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_VDF_Odeme": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_DMet_Radar": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_DiKas_Finans": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Gunluk_Kasa": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}}}, "fatih.kiroglu": {"apps": {"Dizsan_Ziyaret_Mobil_Karekod": true, "Dizsan_Toplanti_Mobil_Karekod": true, "Dizsan_Kredi_Mobil_Karekod": false, "Dizsan_Odeme_Takvimi": false, "Dizsan_Kredi_Karti_Takip": false, "Dizsan_VDF_Odeme": false, "Dizsan_DMet_Radar": false, "Dizsan_DiKas_Finans": false, "Dizsan_Gunluk_Kasa": false}, "submodules": {"ziyaret_genel": true, "ziyaret_rut_planla": true, "ziyaret_ekstre": true, "ziyaret_kayit": true, "ziyaret_cari": true, "ziyaret_gorev": true, "ziyaret_rapor": true, "ziyaret_raporlar": true, "toplanti_genel": false, "toplanti_olustur": true, "toplanti_aksiyon": true, "toplanti_duyuru": false, "toplanti_rapor": true, "kredi_combined": false, "kredi_bankalar": false, "kredi_odeme_onay": false, "kredi_erken_kapama": false, "kredi_yeni_ekle": false, "takvim_aylik": false, "takvim_kartlar": false, "takvim_krediler": false, "takvim_liste": false, "takvim_mobil": false, "kart_tumu": false, "kart_sirket": false, "kart_sahsi": false, "vdf_kokpit": false, "vdf_takvim": false, "vdf_tablo": false, "vdf_odemeler": false, "vdf_limitler": false, "vdf_otomasyon": false, "dmet_radar": false, "dmet_ailab": false, "dmet_hinterland": false, "dmet_sources": false, "dmet_notifications": false, "dmet_logs": false, "dikas_dashboard": false, "dikas_calendar": false, "dikas_forecast": false, "dikas_accounts": false, "dikas_payments": false, "dikas_collections": false, "dikas_instruments": false, "dikas_reports": false, "kasa_form": false, "kasa_a4": false, "kasa_archive": false, "kasa_admin": false}, "appActions": {"Dizsan_Ziyaret_Mobil_Karekod": {"view": true, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Toplanti_Mobil_Karekod": {"view": true, "create": true, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Kredi_Mobil_Karekod": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Odeme_Takvimi": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Kredi_Karti_Takip": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_VDF_Odeme": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_DMet_Radar": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_DiKas_Finans": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Gunluk_Kasa": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}}}, "rafet.canbek": {"apps": {"Dizsan_Ziyaret_Mobil_Karekod": true, "Dizsan_Toplanti_Mobil_Karekod": true, "Dizsan_Kredi_Mobil_Karekod": false, "Dizsan_Odeme_Takvimi": false, "Dizsan_Kredi_Karti_Takip": false, "Dizsan_VDF_Odeme": false, "Dizsan_DMet_Radar": false, "Dizsan_DiKas_Finans": false, "Dizsan_Gunluk_Kasa": true}, "submodules": {"ziyaret_genel": true, "ziyaret_rut_planla": true, "ziyaret_ekstre": true, "ziyaret_kayit": true, "ziyaret_cari": true, "ziyaret_gorev": true, "ziyaret_rapor": true, "ziyaret_raporlar": true, "toplanti_genel": true, "toplanti_olustur": true, "toplanti_aksiyon": true, "toplanti_duyuru": false, "toplanti_rapor": true, "kredi_combined": false, "kredi_bankalar": false, "kredi_odeme_onay": false, "kredi_erken_kapama": false, "kredi_yeni_ekle": false, "takvim_aylik": false, "takvim_kartlar": false, "takvim_krediler": false, "takvim_liste": false, "takvim_mobil": false, "kart_tumu": false, "kart_sirket": false, "kart_sahsi": false, "vdf_kokpit": false, "vdf_takvim": false, "vdf_tablo": false, "vdf_odemeler": false, "vdf_limitler": false, "vdf_otomasyon": false, "dmet_radar": false, "dmet_ailab": false, "dmet_hinterland": false, "dmet_sources": false, "dmet_notifications": false, "dmet_logs": false, "dikas_dashboard": false, "dikas_calendar": false, "dikas_forecast": false, "dikas_accounts": false, "dikas_payments": false, "dikas_collections": false, "dikas_instruments": false, "dikas_reports": false, "kasa_form": true, "kasa_a4": true, "kasa_archive": true, "kasa_admin": false}, "appActions": {"Dizsan_Ziyaret_Mobil_Karekod": {"view": true, "create": true, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Toplanti_Mobil_Karekod": {"view": true, "create": true, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Kredi_Mobil_Karekod": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Odeme_Takvimi": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Kredi_Karti_Takip": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_VDF_Odeme": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_DMet_Radar": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_DiKas_Finans": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Gunluk_Kasa": {"view": true, "create": true, "edit": true, "delete": false, "export": true, "financial": true}}}, "gokhan.ozbulut": {"apps": {"Dizsan_Ziyaret_Mobil_Karekod": true, "Dizsan_Toplanti_Mobil_Karekod": true, "Dizsan_Kredi_Mobil_Karekod": false, "Dizsan_Odeme_Takvimi": false, "Dizsan_Kredi_Karti_Takip": false, "Dizsan_VDF_Odeme": false, "Dizsan_DMet_Radar": false, "Dizsan_DiKas_Finans": false, "Dizsan_Gunluk_Kasa": true}, "submodules": {"ziyaret_genel": true, "ziyaret_rut_planla": true, "ziyaret_ekstre": true, "ziyaret_kayit": true, "ziyaret_cari": true, "ziyaret_gorev": true, "ziyaret_rapor": true, "ziyaret_raporlar": true, "toplanti_genel": true, "toplanti_olustur": true, "toplanti_aksiyon": true, "toplanti_duyuru": false, "toplanti_rapor": true, "kredi_combined": false, "kredi_bankalar": false, "kredi_odeme_onay": false, "kredi_erken_kapama": false, "kredi_yeni_ekle": false, "takvim_aylik": false, "takvim_kartlar": false, "takvim_krediler": false, "takvim_liste": false, "takvim_mobil": false, "kart_tumu": false, "kart_sirket": false, "kart_sahsi": false, "vdf_kokpit": false, "vdf_takvim": false, "vdf_tablo": false, "vdf_odemeler": false, "vdf_limitler": false, "vdf_otomasyon": false, "dmet_radar": false, "dmet_ailab": false, "dmet_hinterland": false, "dmet_sources": false, "dmet_notifications": false, "dmet_logs": false, "dikas_dashboard": false, "dikas_calendar": false, "dikas_forecast": false, "dikas_accounts": false, "dikas_payments": false, "dikas_collections": false, "dikas_instruments": false, "dikas_reports": false, "kasa_form": true, "kasa_a4": true, "kasa_archive": true, "kasa_admin": false}, "appActions": {"Dizsan_Ziyaret_Mobil_Karekod": {"view": true, "create": true, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Toplanti_Mobil_Karekod": {"view": true, "create": true, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Kredi_Mobil_Karekod": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Odeme_Takvimi": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Kredi_Karti_Takip": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_VDF_Odeme": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_DMet_Radar": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_DiKas_Finans": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Gunluk_Kasa": {"view": true, "create": true, "edit": true, "delete": false, "export": true, "financial": true}}}, "ertugrul.erdem": {"apps": {"Dizsan_Ziyaret_Mobil_Karekod": true, "Dizsan_Toplanti_Mobil_Karekod": true, "Dizsan_Kredi_Mobil_Karekod": false, "Dizsan_Odeme_Takvimi": false, "Dizsan_Kredi_Karti_Takip": false, "Dizsan_VDF_Odeme": false, "Dizsan_DMet_Radar": false, "Dizsan_DiKas_Finans": false, "Dizsan_Gunluk_Kasa": false}, "submodules": {"ziyaret_genel": true, "ziyaret_rut_planla": true, "ziyaret_ekstre": true, "ziyaret_kayit": true, "ziyaret_cari": true, "ziyaret_gorev": true, "ziyaret_rapor": true, "ziyaret_raporlar": true, "toplanti_genel": true, "toplanti_olustur": true, "toplanti_aksiyon": true, "toplanti_duyuru": false, "toplanti_rapor": true, "kredi_combined": false, "kredi_bankalar": false, "kredi_odeme_onay": false, "kredi_erken_kapama": false, "kredi_yeni_ekle": false, "takvim_aylik": false, "takvim_kartlar": false, "takvim_krediler": false, "takvim_liste": false, "takvim_mobil": false, "kart_tumu": false, "kart_sirket": false, "kart_sahsi": false, "vdf_kokpit": false, "vdf_takvim": false, "vdf_tablo": false, "vdf_odemeler": false, "vdf_limitler": false, "vdf_otomasyon": false, "dmet_radar": false, "dmet_ailab": false, "dmet_hinterland": false, "dmet_sources": false, "dmet_notifications": false, "dmet_logs": false, "dikas_dashboard": false, "dikas_calendar": false, "dikas_forecast": false, "dikas_accounts": false, "dikas_payments": false, "dikas_collections": false, "dikas_instruments": false, "dikas_reports": false, "kasa_form": false, "kasa_a4": false, "kasa_archive": false, "kasa_admin": false}, "appActions": {"Dizsan_Ziyaret_Mobil_Karekod": {"view": true, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Toplanti_Mobil_Karekod": {"view": true, "create": true, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Kredi_Mobil_Karekod": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Odeme_Takvimi": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Kredi_Karti_Takip": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_VDF_Odeme": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_DMet_Radar": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_DiKas_Finans": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Gunluk_Kasa": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}}}, "necati.demirci": {"apps": {"Dizsan_Ziyaret_Mobil_Karekod": true, "Dizsan_Toplanti_Mobil_Karekod": true, "Dizsan_Kredi_Mobil_Karekod": false, "Dizsan_Odeme_Takvimi": false, "Dizsan_Kredi_Karti_Takip": false, "Dizsan_VDF_Odeme": false, "Dizsan_DMet_Radar": false, "Dizsan_DiKas_Finans": false, "Dizsan_Gunluk_Kasa": false}, "submodules": {"ziyaret_genel": true, "ziyaret_rut_planla": true, "ziyaret_ekstre": true, "ziyaret_kayit": true, "ziyaret_cari": true, "ziyaret_gorev": true, "ziyaret_rapor": true, "ziyaret_raporlar": true, "toplanti_genel": true, "toplanti_olustur": true, "toplanti_aksiyon": true, "toplanti_duyuru": false, "toplanti_rapor": true, "kredi_combined": false, "kredi_bankalar": false, "kredi_odeme_onay": false, "kredi_erken_kapama": false, "kredi_yeni_ekle": false, "takvim_aylik": false, "takvim_kartlar": false, "takvim_krediler": false, "takvim_liste": false, "takvim_mobil": false, "kart_tumu": false, "kart_sirket": false, "kart_sahsi": false, "vdf_kokpit": false, "vdf_takvim": false, "vdf_tablo": false, "vdf_odemeler": false, "vdf_limitler": false, "vdf_otomasyon": false, "dmet_radar": false, "dmet_ailab": false, "dmet_hinterland": false, "dmet_sources": false, "dmet_notifications": false, "dmet_logs": false, "dikas_dashboard": false, "dikas_calendar": false, "dikas_forecast": false, "dikas_accounts": false, "dikas_payments": false, "dikas_collections": false, "dikas_instruments": false, "dikas_reports": false, "kasa_form": false, "kasa_a4": false, "kasa_archive": false, "kasa_admin": false}, "appActions": {"Dizsan_Ziyaret_Mobil_Karekod": {"view": true, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Toplanti_Mobil_Karekod": {"view": true, "create": true, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Kredi_Mobil_Karekod": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Odeme_Takvimi": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Kredi_Karti_Takip": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_VDF_Odeme": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_DMet_Radar": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_DiKas_Finans": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Gunluk_Kasa": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}}}, "murat.karaoglu": {"apps": {"Dizsan_Ziyaret_Mobil_Karekod": true, "Dizsan_Toplanti_Mobil_Karekod": true, "Dizsan_Kredi_Mobil_Karekod": false, "Dizsan_Odeme_Takvimi": false, "Dizsan_Kredi_Karti_Takip": false, "Dizsan_VDF_Odeme": false, "Dizsan_DMet_Radar": false, "Dizsan_DiKas_Finans": false, "Dizsan_Gunluk_Kasa": false}, "submodules": {"ziyaret_genel": true, "ziyaret_rut_planla": true, "ziyaret_ekstre": true, "ziyaret_kayit": true, "ziyaret_cari": true, "ziyaret_gorev": true, "ziyaret_rapor": true, "ziyaret_raporlar": true, "toplanti_genel": true, "toplanti_olustur": true, "toplanti_aksiyon": true, "toplanti_duyuru": false, "toplanti_rapor": true, "kredi_combined": false, "kredi_bankalar": false, "kredi_odeme_onay": false, "kredi_erken_kapama": false, "kredi_yeni_ekle": false, "takvim_aylik": false, "takvim_kartlar": false, "takvim_krediler": false, "takvim_liste": false, "takvim_mobil": false, "kart_tumu": false, "kart_sirket": false, "kart_sahsi": false, "vdf_kokpit": false, "vdf_takvim": false, "vdf_tablo": false, "vdf_odemeler": false, "vdf_limitler": false, "vdf_otomasyon": false, "dmet_radar": false, "dmet_ailab": false, "dmet_hinterland": false, "dmet_sources": false, "dmet_notifications": false, "dmet_logs": false, "dikas_dashboard": false, "dikas_calendar": false, "dikas_forecast": false, "dikas_accounts": false, "dikas_payments": false, "dikas_collections": false, "dikas_instruments": false, "dikas_reports": false, "kasa_form": false, "kasa_a4": false, "kasa_archive": false, "kasa_admin": false}, "appActions": {"Dizsan_Ziyaret_Mobil_Karekod": {"view": true, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Toplanti_Mobil_Karekod": {"view": true, "create": true, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Kredi_Mobil_Karekod": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Odeme_Takvimi": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Kredi_Karti_Takip": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_VDF_Odeme": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_DMet_Radar": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_DiKas_Finans": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Gunluk_Kasa": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}}}, "murat.salman": {"apps": {"Dizsan_Ziyaret_Mobil_Karekod": true, "Dizsan_Toplanti_Mobil_Karekod": true, "Dizsan_Kredi_Mobil_Karekod": false, "Dizsan_Odeme_Takvimi": false, "Dizsan_Kredi_Karti_Takip": false, "Dizsan_VDF_Odeme": false, "Dizsan_DMet_Radar": false, "Dizsan_DiKas_Finans": false, "Dizsan_Gunluk_Kasa": false}, "submodules": {"ziyaret_genel": true, "ziyaret_rut_planla": true, "ziyaret_ekstre": true, "ziyaret_kayit": true, "ziyaret_cari": true, "ziyaret_gorev": true, "ziyaret_rapor": true, "ziyaret_raporlar": true, "toplanti_genel": true, "toplanti_olustur": true, "toplanti_aksiyon": true, "toplanti_duyuru": false, "toplanti_rapor": true, "kredi_combined": false, "kredi_bankalar": false, "kredi_odeme_onay": false, "kredi_erken_kapama": false, "kredi_yeni_ekle": false, "takvim_aylik": false, "takvim_kartlar": false, "takvim_krediler": false, "takvim_liste": false, "takvim_mobil": false, "kart_tumu": false, "kart_sirket": false, "kart_sahsi": false, "vdf_kokpit": false, "vdf_takvim": false, "vdf_tablo": false, "vdf_odemeler": false, "vdf_limitler": false, "vdf_otomasyon": false, "dmet_radar": false, "dmet_ailab": false, "dmet_hinterland": false, "dmet_sources": false, "dmet_notifications": false, "dmet_logs": false, "dikas_dashboard": false, "dikas_calendar": false, "dikas_forecast": false, "dikas_accounts": false, "dikas_payments": false, "dikas_collections": false, "dikas_instruments": false, "dikas_reports": false, "kasa_form": false, "kasa_a4": false, "kasa_archive": false, "kasa_admin": false}, "appActions": {"Dizsan_Ziyaret_Mobil_Karekod": {"view": true, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Toplanti_Mobil_Karekod": {"view": true, "create": true, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Kredi_Mobil_Karekod": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Odeme_Takvimi": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Kredi_Karti_Takip": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_VDF_Odeme": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_DMet_Radar": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_DiKas_Finans": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Gunluk_Kasa": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}}}, "yildiray.karagoz": {"apps": {"Dizsan_Ziyaret_Mobil_Karekod": true, "Dizsan_Toplanti_Mobil_Karekod": true, "Dizsan_Kredi_Mobil_Karekod": false, "Dizsan_Odeme_Takvimi": false, "Dizsan_Kredi_Karti_Takip": false, "Dizsan_VDF_Odeme": false, "Dizsan_DMet_Radar": false, "Dizsan_DiKas_Finans": false, "Dizsan_Gunluk_Kasa": false}, "submodules": {"ziyaret_genel": true, "ziyaret_rut_planla": true, "ziyaret_ekstre": true, "ziyaret_kayit": true, "ziyaret_cari": true, "ziyaret_gorev": true, "ziyaret_rapor": true, "ziyaret_raporlar": true, "toplanti_genel": true, "toplanti_olustur": true, "toplanti_aksiyon": true, "toplanti_duyuru": false, "toplanti_rapor": true, "kredi_combined": false, "kredi_bankalar": false, "kredi_odeme_onay": false, "kredi_erken_kapama": false, "kredi_yeni_ekle": false, "takvim_aylik": false, "takvim_kartlar": false, "takvim_krediler": false, "takvim_liste": false, "takvim_mobil": false, "kart_tumu": false, "kart_sirket": false, "kart_sahsi": false, "vdf_kokpit": false, "vdf_takvim": false, "vdf_tablo": false, "vdf_odemeler": false, "vdf_limitler": false, "vdf_otomasyon": false, "dmet_radar": false, "dmet_ailab": false, "dmet_hinterland": false, "dmet_sources": false, "dmet_notifications": false, "dmet_logs": false, "dikas_dashboard": false, "dikas_calendar": false, "dikas_forecast": false, "dikas_accounts": false, "dikas_payments": false, "dikas_collections": false, "dikas_instruments": false, "dikas_reports": false, "kasa_form": false, "kasa_a4": false, "kasa_archive": false, "kasa_admin": false}, "appActions": {"Dizsan_Ziyaret_Mobil_Karekod": {"view": true, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Toplanti_Mobil_Karekod": {"view": true, "create": true, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Kredi_Mobil_Karekod": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Odeme_Takvimi": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Kredi_Karti_Takip": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_VDF_Odeme": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_DMet_Radar": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_DiKas_Finans": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Gunluk_Kasa": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}}}, "mustafa.ilgen": {"apps": {"Dizsan_Ziyaret_Mobil_Karekod": true, "Dizsan_Toplanti_Mobil_Karekod": true, "Dizsan_Kredi_Mobil_Karekod": false, "Dizsan_Odeme_Takvimi": false, "Dizsan_Kredi_Karti_Takip": false, "Dizsan_VDF_Odeme": false, "Dizsan_DMet_Radar": false, "Dizsan_DiKas_Finans": false, "Dizsan_Gunluk_Kasa": false}, "submodules": {"ziyaret_genel": true, "ziyaret_rut_planla": true, "ziyaret_ekstre": true, "ziyaret_kayit": true, "ziyaret_cari": true, "ziyaret_gorev": true, "ziyaret_rapor": true, "ziyaret_raporlar": true, "toplanti_genel": true, "toplanti_olustur": true, "toplanti_aksiyon": true, "toplanti_duyuru": false, "toplanti_rapor": true, "kredi_combined": false, "kredi_bankalar": false, "kredi_odeme_onay": false, "kredi_erken_kapama": false, "kredi_yeni_ekle": false, "takvim_aylik": false, "takvim_kartlar": false, "takvim_krediler": false, "takvim_liste": false, "takvim_mobil": false, "kart_tumu": false, "kart_sirket": false, "kart_sahsi": false, "vdf_kokpit": false, "vdf_takvim": false, "vdf_tablo": false, "vdf_odemeler": false, "vdf_limitler": false, "vdf_otomasyon": false, "dmet_radar": false, "dmet_ailab": false, "dmet_hinterland": false, "dmet_sources": false, "dmet_notifications": false, "dmet_logs": false, "dikas_dashboard": false, "dikas_calendar": false, "dikas_forecast": false, "dikas_accounts": false, "dikas_payments": false, "dikas_collections": false, "dikas_instruments": false, "dikas_reports": false, "kasa_form": false, "kasa_a4": false, "kasa_archive": false, "kasa_admin": false}, "appActions": {"Dizsan_Ziyaret_Mobil_Karekod": {"view": true, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Toplanti_Mobil_Karekod": {"view": true, "create": true, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Kredi_Mobil_Karekod": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Odeme_Takvimi": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Kredi_Karti_Takip": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_VDF_Odeme": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_DMet_Radar": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_DiKas_Finans": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Gunluk_Kasa": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}}}, "mirac.ardanus": {"apps": {"Dizsan_Ziyaret_Mobil_Karekod": false, "Dizsan_Toplanti_Mobil_Karekod": false, "Dizsan_Kredi_Mobil_Karekod": false, "Dizsan_Odeme_Takvimi": false, "Dizsan_Kredi_Karti_Takip": false, "Dizsan_VDF_Odeme": false, "Dizsan_DMet_Radar": false, "Dizsan_DiKas_Finans": false, "Dizsan_Gunluk_Kasa": false}, "submodules": {"ziyaret_genel": false, "ziyaret_rut_planla": false, "ziyaret_ekstre": false, "ziyaret_kayit": false, "ziyaret_cari": false, "ziyaret_gorev": false, "ziyaret_rapor": false, "ziyaret_raporlar": false, "toplanti_genel": false, "toplanti_olustur": false, "toplanti_aksiyon": false, "toplanti_duyuru": false, "toplanti_rapor": false, "kredi_combined": false, "kredi_bankalar": false, "kredi_odeme_onay": false, "kredi_erken_kapama": false, "kredi_yeni_ekle": false, "takvim_aylik": false, "takvim_kartlar": false, "takvim_krediler": false, "takvim_liste": false, "takvim_mobil": false, "kart_tumu": false, "kart_sirket": false, "kart_sahsi": false, "vdf_kokpit": false, "vdf_takvim": false, "vdf_tablo": false, "vdf_odemeler": false, "vdf_limitler": false, "vdf_otomasyon": false, "dmet_radar": false, "dmet_ailab": false, "dmet_hinterland": false, "dmet_sources": false, "dmet_notifications": false, "dmet_logs": false, "dikas_dashboard": false, "dikas_calendar": false, "dikas_forecast": false, "dikas_accounts": false, "dikas_payments": false, "dikas_collections": false, "dikas_instruments": false, "dikas_reports": false, "kasa_form": false, "kasa_a4": false, "kasa_archive": false, "kasa_admin": false}, "appActions": {"Dizsan_Ziyaret_Mobil_Karekod": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Toplanti_Mobil_Karekod": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Kredi_Mobil_Karekod": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Odeme_Takvimi": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Kredi_Karti_Takip": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_VDF_Odeme": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_DMet_Radar": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_DiKas_Finans": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Gunluk_Kasa": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}}}, "hakan.demiral": {"apps": {"Dizsan_Ziyaret_Mobil_Karekod": false, "Dizsan_Toplanti_Mobil_Karekod": true, "Dizsan_Kredi_Mobil_Karekod": false, "Dizsan_Odeme_Takvimi": false, "Dizsan_Kredi_Karti_Takip": false, "Dizsan_VDF_Odeme": false, "Dizsan_DMet_Radar": false, "Dizsan_DiKas_Finans": false, "Dizsan_Gunluk_Kasa": false}, "submodules": {"ziyaret_genel": false, "ziyaret_rut_planla": false, "ziyaret_ekstre": false, "ziyaret_kayit": false, "ziyaret_cari": false, "ziyaret_gorev": false, "ziyaret_rapor": false, "ziyaret_raporlar": false, "toplanti_genel": true, "toplanti_olustur": true, "toplanti_aksiyon": true, "toplanti_duyuru": false, "toplanti_rapor": true, "kredi_combined": false, "kredi_bankalar": false, "kredi_odeme_onay": false, "kredi_erken_kapama": false, "kredi_yeni_ekle": false, "takvim_aylik": false, "takvim_kartlar": false, "takvim_krediler": false, "takvim_liste": false, "takvim_mobil": false, "kart_tumu": false, "kart_sirket": false, "kart_sahsi": false, "vdf_kokpit": false, "vdf_takvim": false, "vdf_tablo": false, "vdf_odemeler": false, "vdf_limitler": false, "vdf_otomasyon": false, "dmet_radar": false, "dmet_ailab": false, "dmet_hinterland": false, "dmet_sources": false, "dmet_notifications": false, "dmet_logs": false, "dikas_dashboard": false, "dikas_calendar": false, "dikas_forecast": false, "dikas_accounts": false, "dikas_payments": false, "dikas_collections": false, "dikas_instruments": false, "dikas_reports": false, "kasa_form": false, "kasa_a4": false, "kasa_archive": false, "kasa_admin": false}, "appActions": {"Dizsan_Ziyaret_Mobil_Karekod": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Toplanti_Mobil_Karekod": {"view": true, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Kredi_Mobil_Karekod": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Odeme_Takvimi": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Kredi_Karti_Takip": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_VDF_Odeme": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_DMet_Radar": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_DiKas_Finans": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Gunluk_Kasa": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}}}, "gulsen.simsek": {"apps": {"Dizsan_Ziyaret_Mobil_Karekod": false, "Dizsan_Toplanti_Mobil_Karekod": true, "Dizsan_Kredi_Mobil_Karekod": false, "Dizsan_Odeme_Takvimi": false, "Dizsan_Kredi_Karti_Takip": false, "Dizsan_VDF_Odeme": false, "Dizsan_DMet_Radar": false, "Dizsan_DiKas_Finans": false, "Dizsan_Gunluk_Kasa": false}, "submodules": {"ziyaret_genel": false, "ziyaret_rut_planla": false, "ziyaret_ekstre": false, "ziyaret_kayit": false, "ziyaret_cari": false, "ziyaret_gorev": false, "ziyaret_rapor": false, "ziyaret_raporlar": false, "toplanti_genel": true, "toplanti_olustur": true, "toplanti_aksiyon": true, "toplanti_duyuru": false, "toplanti_rapor": true, "kredi_combined": false, "kredi_bankalar": false, "kredi_odeme_onay": false, "kredi_erken_kapama": false, "kredi_yeni_ekle": false, "takvim_aylik": false, "takvim_kartlar": false, "takvim_krediler": false, "takvim_liste": false, "takvim_mobil": false, "kart_tumu": false, "kart_sirket": false, "kart_sahsi": false, "vdf_kokpit": false, "vdf_takvim": false, "vdf_tablo": false, "vdf_odemeler": false, "vdf_limitler": false, "vdf_otomasyon": false, "dmet_radar": false, "dmet_ailab": false, "dmet_hinterland": false, "dmet_sources": false, "dmet_notifications": false, "dmet_logs": false, "dikas_dashboard": false, "dikas_calendar": false, "dikas_forecast": false, "dikas_accounts": false, "dikas_payments": false, "dikas_collections": false, "dikas_instruments": false, "dikas_reports": false, "kasa_form": false, "kasa_a4": false, "kasa_archive": false, "kasa_admin": false}, "appActions": {"Dizsan_Ziyaret_Mobil_Karekod": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Toplanti_Mobil_Karekod": {"view": true, "create": true, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Kredi_Mobil_Karekod": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Odeme_Takvimi": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Kredi_Karti_Takip": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_VDF_Odeme": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_DMet_Radar": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_DiKas_Finans": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Gunluk_Kasa": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}}}, "alperen.kayaci": {"apps": {"Dizsan_Ziyaret_Mobil_Karekod": false, "Dizsan_Toplanti_Mobil_Karekod": true, "Dizsan_Kredi_Mobil_Karekod": false, "Dizsan_Odeme_Takvimi": false, "Dizsan_Kredi_Karti_Takip": false, "Dizsan_VDF_Odeme": false, "Dizsan_DMet_Radar": false, "Dizsan_DiKas_Finans": false, "Dizsan_Gunluk_Kasa": false}, "submodules": {"ziyaret_genel": false, "ziyaret_rut_planla": false, "ziyaret_ekstre": false, "ziyaret_kayit": false, "ziyaret_cari": false, "ziyaret_gorev": false, "ziyaret_rapor": false, "ziyaret_raporlar": false, "toplanti_genel": true, "toplanti_olustur": true, "toplanti_aksiyon": true, "toplanti_duyuru": false, "toplanti_rapor": true, "kredi_combined": false, "kredi_bankalar": false, "kredi_odeme_onay": false, "kredi_erken_kapama": false, "kredi_yeni_ekle": false, "takvim_aylik": false, "takvim_kartlar": false, "takvim_krediler": false, "takvim_liste": false, "takvim_mobil": false, "kart_tumu": false, "kart_sirket": false, "kart_sahsi": false, "vdf_kokpit": false, "vdf_takvim": false, "vdf_tablo": false, "vdf_odemeler": false, "vdf_limitler": false, "vdf_otomasyon": false, "dmet_radar": false, "dmet_ailab": false, "dmet_hinterland": false, "dmet_sources": false, "dmet_notifications": false, "dmet_logs": false, "dikas_dashboard": false, "dikas_calendar": false, "dikas_forecast": false, "dikas_accounts": false, "dikas_payments": false, "dikas_collections": false, "dikas_instruments": false, "dikas_reports": false, "kasa_form": false, "kasa_a4": false, "kasa_archive": false, "kasa_admin": false}, "appActions": {"Dizsan_Ziyaret_Mobil_Karekod": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Toplanti_Mobil_Karekod": {"view": true, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Kredi_Mobil_Karekod": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Odeme_Takvimi": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Kredi_Karti_Takip": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_VDF_Odeme": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_DMet_Radar": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_DiKas_Finans": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Gunluk_Kasa": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}}}, "muhammed.erol": {"apps": {"Dizsan_Ziyaret_Mobil_Karekod": false, "Dizsan_Toplanti_Mobil_Karekod": true, "Dizsan_Kredi_Mobil_Karekod": false, "Dizsan_Odeme_Takvimi": false, "Dizsan_Kredi_Karti_Takip": false, "Dizsan_VDF_Odeme": false, "Dizsan_DMet_Radar": false, "Dizsan_DiKas_Finans": false, "Dizsan_Gunluk_Kasa": false}, "submodules": {"ziyaret_genel": false, "ziyaret_rut_planla": false, "ziyaret_ekstre": false, "ziyaret_kayit": false, "ziyaret_cari": false, "ziyaret_gorev": false, "ziyaret_rapor": false, "ziyaret_raporlar": false, "toplanti_genel": true, "toplanti_olustur": true, "toplanti_aksiyon": true, "toplanti_duyuru": false, "toplanti_rapor": true, "kredi_combined": false, "kredi_bankalar": false, "kredi_odeme_onay": false, "kredi_erken_kapama": false, "kredi_yeni_ekle": false, "takvim_aylik": false, "takvim_kartlar": false, "takvim_krediler": false, "takvim_liste": false, "takvim_mobil": false, "kart_tumu": false, "kart_sirket": false, "kart_sahsi": false, "vdf_kokpit": false, "vdf_takvim": false, "vdf_tablo": false, "vdf_odemeler": false, "vdf_limitler": false, "vdf_otomasyon": false, "dmet_radar": false, "dmet_ailab": false, "dmet_hinterland": false, "dmet_sources": false, "dmet_notifications": false, "dmet_logs": false, "dikas_dashboard": false, "dikas_calendar": false, "dikas_forecast": false, "dikas_accounts": false, "dikas_payments": false, "dikas_collections": false, "dikas_instruments": false, "dikas_reports": false, "kasa_form": false, "kasa_a4": false, "kasa_archive": false, "kasa_admin": false}, "appActions": {"Dizsan_Ziyaret_Mobil_Karekod": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Toplanti_Mobil_Karekod": {"view": true, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Kredi_Mobil_Karekod": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Odeme_Takvimi": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Kredi_Karti_Takip": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_VDF_Odeme": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_DMet_Radar": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_DiKas_Finans": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Gunluk_Kasa": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}}}, "yigit.alp": {"apps": {"Dizsan_Ziyaret_Mobil_Karekod": false, "Dizsan_Toplanti_Mobil_Karekod": true, "Dizsan_Kredi_Mobil_Karekod": false, "Dizsan_Odeme_Takvimi": false, "Dizsan_Kredi_Karti_Takip": false, "Dizsan_VDF_Odeme": false, "Dizsan_DMet_Radar": false, "Dizsan_DiKas_Finans": false, "Dizsan_Gunluk_Kasa": false}, "submodules": {"ziyaret_genel": false, "ziyaret_rut_planla": false, "ziyaret_ekstre": false, "ziyaret_kayit": false, "ziyaret_cari": false, "ziyaret_gorev": false, "ziyaret_rapor": false, "ziyaret_raporlar": false, "toplanti_genel": true, "toplanti_olustur": true, "toplanti_aksiyon": true, "toplanti_duyuru": false, "toplanti_rapor": true, "kredi_combined": false, "kredi_bankalar": false, "kredi_odeme_onay": false, "kredi_erken_kapama": false, "kredi_yeni_ekle": false, "takvim_aylik": false, "takvim_kartlar": false, "takvim_krediler": false, "takvim_liste": false, "takvim_mobil": false, "kart_tumu": false, "kart_sirket": false, "kart_sahsi": false, "vdf_kokpit": false, "vdf_takvim": false, "vdf_tablo": false, "vdf_odemeler": false, "vdf_limitler": false, "vdf_otomasyon": false, "dmet_radar": false, "dmet_ailab": false, "dmet_hinterland": false, "dmet_sources": false, "dmet_notifications": false, "dmet_logs": false, "dikas_dashboard": false, "dikas_calendar": false, "dikas_forecast": false, "dikas_accounts": false, "dikas_payments": false, "dikas_collections": false, "dikas_instruments": false, "dikas_reports": false, "kasa_form": false, "kasa_a4": false, "kasa_archive": false, "kasa_admin": false}, "appActions": {"Dizsan_Ziyaret_Mobil_Karekod": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Toplanti_Mobil_Karekod": {"view": true, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Kredi_Mobil_Karekod": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Odeme_Takvimi": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Kredi_Karti_Takip": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_VDF_Odeme": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_DMet_Radar": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_DiKas_Finans": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Gunluk_Kasa": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}}}, "berat.yusuf": {"apps": {"Dizsan_Ziyaret_Mobil_Karekod": false, "Dizsan_Toplanti_Mobil_Karekod": true, "Dizsan_Kredi_Mobil_Karekod": false, "Dizsan_Odeme_Takvimi": false, "Dizsan_Kredi_Karti_Takip": false, "Dizsan_VDF_Odeme": false, "Dizsan_DMet_Radar": false, "Dizsan_DiKas_Finans": false, "Dizsan_Gunluk_Kasa": false}, "submodules": {"ziyaret_genel": false, "ziyaret_rut_planla": false, "ziyaret_ekstre": false, "ziyaret_kayit": false, "ziyaret_cari": false, "ziyaret_gorev": false, "ziyaret_rapor": false, "ziyaret_raporlar": false, "toplanti_genel": true, "toplanti_olustur": true, "toplanti_aksiyon": true, "toplanti_duyuru": false, "toplanti_rapor": true, "kredi_combined": false, "kredi_bankalar": false, "kredi_odeme_onay": false, "kredi_erken_kapama": false, "kredi_yeni_ekle": false, "takvim_aylik": false, "takvim_kartlar": false, "takvim_krediler": false, "takvim_liste": false, "takvim_mobil": false, "kart_tumu": false, "kart_sirket": false, "kart_sahsi": false, "vdf_kokpit": false, "vdf_takvim": false, "vdf_tablo": false, "vdf_odemeler": false, "vdf_limitler": false, "vdf_otomasyon": false, "dmet_radar": false, "dmet_ailab": false, "dmet_hinterland": false, "dmet_sources": false, "dmet_notifications": false, "dmet_logs": false, "dikas_dashboard": false, "dikas_calendar": false, "dikas_forecast": false, "dikas_accounts": false, "dikas_payments": false, "dikas_collections": false, "dikas_instruments": false, "dikas_reports": false, "kasa_form": false, "kasa_a4": false, "kasa_archive": false, "kasa_admin": false}, "appActions": {"Dizsan_Ziyaret_Mobil_Karekod": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Toplanti_Mobil_Karekod": {"view": true, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Kredi_Mobil_Karekod": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Odeme_Takvimi": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Kredi_Karti_Takip": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_VDF_Odeme": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_DMet_Radar": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_DiKas_Finans": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Gunluk_Kasa": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}}}, "muammer.samet": {"apps": {"Dizsan_Ziyaret_Mobil_Karekod": false, "Dizsan_Toplanti_Mobil_Karekod": true, "Dizsan_Kredi_Mobil_Karekod": false, "Dizsan_Odeme_Takvimi": false, "Dizsan_Kredi_Karti_Takip": false, "Dizsan_VDF_Odeme": false, "Dizsan_DMet_Radar": false, "Dizsan_DiKas_Finans": false, "Dizsan_Gunluk_Kasa": false}, "submodules": {"ziyaret_genel": false, "ziyaret_rut_planla": false, "ziyaret_ekstre": false, "ziyaret_kayit": false, "ziyaret_cari": false, "ziyaret_gorev": false, "ziyaret_rapor": false, "ziyaret_raporlar": false, "toplanti_genel": true, "toplanti_olustur": true, "toplanti_aksiyon": true, "toplanti_duyuru": false, "toplanti_rapor": true, "kredi_combined": false, "kredi_bankalar": false, "kredi_odeme_onay": false, "kredi_erken_kapama": false, "kredi_yeni_ekle": false, "takvim_aylik": false, "takvim_kartlar": false, "takvim_krediler": false, "takvim_liste": false, "takvim_mobil": false, "kart_tumu": false, "kart_sirket": false, "kart_sahsi": false, "vdf_kokpit": false, "vdf_takvim": false, "vdf_tablo": false, "vdf_odemeler": false, "vdf_limitler": false, "vdf_otomasyon": false, "dmet_radar": false, "dmet_ailab": false, "dmet_hinterland": false, "dmet_sources": false, "dmet_notifications": false, "dmet_logs": false, "dikas_dashboard": false, "dikas_calendar": false, "dikas_forecast": false, "dikas_accounts": false, "dikas_payments": false, "dikas_collections": false, "dikas_instruments": false, "dikas_reports": false, "kasa_form": false, "kasa_a4": false, "kasa_archive": false, "kasa_admin": false}, "appActions": {"Dizsan_Ziyaret_Mobil_Karekod": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Toplanti_Mobil_Karekod": {"view": true, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Kredi_Mobil_Karekod": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Odeme_Takvimi": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Kredi_Karti_Takip": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_VDF_Odeme": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_DMet_Radar": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_DiKas_Finans": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Gunluk_Kasa": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}}}, "aydin.alinca": {"apps": {"Dizsan_Ziyaret_Mobil_Karekod": false, "Dizsan_Toplanti_Mobil_Karekod": true, "Dizsan_Kredi_Mobil_Karekod": false, "Dizsan_Odeme_Takvimi": false, "Dizsan_Kredi_Karti_Takip": false, "Dizsan_VDF_Odeme": false, "Dizsan_DMet_Radar": false, "Dizsan_DiKas_Finans": false, "Dizsan_Gunluk_Kasa": false}, "submodules": {"ziyaret_genel": false, "ziyaret_rut_planla": false, "ziyaret_ekstre": false, "ziyaret_kayit": false, "ziyaret_cari": false, "ziyaret_gorev": false, "ziyaret_rapor": false, "ziyaret_raporlar": false, "toplanti_genel": true, "toplanti_olustur": true, "toplanti_aksiyon": true, "toplanti_duyuru": false, "toplanti_rapor": true, "kredi_combined": false, "kredi_bankalar": false, "kredi_odeme_onay": false, "kredi_erken_kapama": false, "kredi_yeni_ekle": false, "takvim_aylik": false, "takvim_kartlar": false, "takvim_krediler": false, "takvim_liste": false, "takvim_mobil": false, "kart_tumu": false, "kart_sirket": false, "kart_sahsi": false, "vdf_kokpit": false, "vdf_takvim": false, "vdf_tablo": false, "vdf_odemeler": false, "vdf_limitler": false, "vdf_otomasyon": false, "dmet_radar": false, "dmet_ailab": false, "dmet_hinterland": false, "dmet_sources": false, "dmet_notifications": false, "dmet_logs": false, "dikas_dashboard": false, "dikas_calendar": false, "dikas_forecast": false, "dikas_accounts": false, "dikas_payments": false, "dikas_collections": false, "dikas_instruments": false, "dikas_reports": false, "kasa_form": false, "kasa_a4": false, "kasa_archive": false, "kasa_admin": false}, "appActions": {"Dizsan_Ziyaret_Mobil_Karekod": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Toplanti_Mobil_Karekod": {"view": true, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Kredi_Mobil_Karekod": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Odeme_Takvimi": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Kredi_Karti_Takip": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_VDF_Odeme": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_DMet_Radar": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_DiKas_Finans": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Gunluk_Kasa": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}}}, "yahya.atmaca": {"apps": {"Dizsan_Ziyaret_Mobil_Karekod": false, "Dizsan_Toplanti_Mobil_Karekod": true, "Dizsan_Kredi_Mobil_Karekod": false, "Dizsan_Odeme_Takvimi": false, "Dizsan_Kredi_Karti_Takip": false, "Dizsan_VDF_Odeme": false, "Dizsan_DMet_Radar": false, "Dizsan_DiKas_Finans": false, "Dizsan_Gunluk_Kasa": false}, "submodules": {"ziyaret_genel": false, "ziyaret_rut_planla": false, "ziyaret_ekstre": false, "ziyaret_kayit": false, "ziyaret_cari": false, "ziyaret_gorev": false, "ziyaret_rapor": false, "ziyaret_raporlar": false, "toplanti_genel": true, "toplanti_olustur": true, "toplanti_aksiyon": true, "toplanti_duyuru": false, "toplanti_rapor": true, "kredi_combined": false, "kredi_bankalar": false, "kredi_odeme_onay": false, "kredi_erken_kapama": false, "kredi_yeni_ekle": false, "takvim_aylik": false, "takvim_kartlar": false, "takvim_krediler": false, "takvim_liste": false, "takvim_mobil": false, "kart_tumu": false, "kart_sirket": false, "kart_sahsi": false, "vdf_kokpit": false, "vdf_takvim": false, "vdf_tablo": false, "vdf_odemeler": false, "vdf_limitler": false, "vdf_otomasyon": false, "dmet_radar": false, "dmet_ailab": false, "dmet_hinterland": false, "dmet_sources": false, "dmet_notifications": false, "dmet_logs": false, "dikas_dashboard": false, "dikas_calendar": false, "dikas_forecast": false, "dikas_accounts": false, "dikas_payments": false, "dikas_collections": false, "dikas_instruments": false, "dikas_reports": false, "kasa_form": false, "kasa_a4": false, "kasa_archive": false, "kasa_admin": false}, "appActions": {"Dizsan_Ziyaret_Mobil_Karekod": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Toplanti_Mobil_Karekod": {"view": true, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Kredi_Mobil_Karekod": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Odeme_Takvimi": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Kredi_Karti_Takip": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_VDF_Odeme": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_DMet_Radar": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_DiKas_Finans": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Gunluk_Kasa": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}}}, "emir.baltaci": {"apps": {"Dizsan_Ziyaret_Mobil_Karekod": false, "Dizsan_Toplanti_Mobil_Karekod": true, "Dizsan_Kredi_Mobil_Karekod": false, "Dizsan_Odeme_Takvimi": false, "Dizsan_Kredi_Karti_Takip": false, "Dizsan_VDF_Odeme": false, "Dizsan_DMet_Radar": false, "Dizsan_DiKas_Finans": false, "Dizsan_Gunluk_Kasa": false}, "submodules": {"ziyaret_genel": false, "ziyaret_rut_planla": false, "ziyaret_ekstre": false, "ziyaret_kayit": false, "ziyaret_cari": false, "ziyaret_gorev": false, "ziyaret_rapor": false, "ziyaret_raporlar": false, "toplanti_genel": true, "toplanti_olustur": true, "toplanti_aksiyon": true, "toplanti_duyuru": false, "toplanti_rapor": true, "kredi_combined": false, "kredi_bankalar": false, "kredi_odeme_onay": false, "kredi_erken_kapama": false, "kredi_yeni_ekle": false, "takvim_aylik": false, "takvim_kartlar": false, "takvim_krediler": false, "takvim_liste": false, "takvim_mobil": false, "kart_tumu": false, "kart_sirket": false, "kart_sahsi": false, "vdf_kokpit": false, "vdf_takvim": false, "vdf_tablo": false, "vdf_odemeler": false, "vdf_limitler": false, "vdf_otomasyon": false, "dmet_radar": false, "dmet_ailab": false, "dmet_hinterland": false, "dmet_sources": false, "dmet_notifications": false, "dmet_logs": false, "dikas_dashboard": false, "dikas_calendar": false, "dikas_forecast": false, "dikas_accounts": false, "dikas_payments": false, "dikas_collections": false, "dikas_instruments": false, "dikas_reports": false, "kasa_form": false, "kasa_a4": false, "kasa_archive": false, "kasa_admin": false}, "appActions": {"Dizsan_Ziyaret_Mobil_Karekod": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Toplanti_Mobil_Karekod": {"view": true, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Kredi_Mobil_Karekod": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Odeme_Takvimi": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Kredi_Karti_Takip": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_VDF_Odeme": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_DMet_Radar": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_DiKas_Finans": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Gunluk_Kasa": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}}}, "emre.hitit": {"apps": {"Dizsan_Ziyaret_Mobil_Karekod": false, "Dizsan_Toplanti_Mobil_Karekod": true, "Dizsan_Kredi_Mobil_Karekod": false, "Dizsan_Odeme_Takvimi": false, "Dizsan_Kredi_Karti_Takip": false, "Dizsan_VDF_Odeme": false, "Dizsan_DMet_Radar": false, "Dizsan_DiKas_Finans": false, "Dizsan_Gunluk_Kasa": false}, "submodules": {"ziyaret_genel": false, "ziyaret_rut_planla": false, "ziyaret_ekstre": false, "ziyaret_kayit": false, "ziyaret_cari": false, "ziyaret_gorev": false, "ziyaret_rapor": false, "ziyaret_raporlar": false, "toplanti_genel": true, "toplanti_olustur": true, "toplanti_aksiyon": true, "toplanti_duyuru": false, "toplanti_rapor": true, "kredi_combined": false, "kredi_bankalar": false, "kredi_odeme_onay": false, "kredi_erken_kapama": false, "kredi_yeni_ekle": false, "takvim_aylik": false, "takvim_kartlar": false, "takvim_krediler": false, "takvim_liste": false, "takvim_mobil": false, "kart_tumu": false, "kart_sirket": false, "kart_sahsi": false, "vdf_kokpit": false, "vdf_takvim": false, "vdf_tablo": false, "vdf_odemeler": false, "vdf_limitler": false, "vdf_otomasyon": false, "dmet_radar": false, "dmet_ailab": false, "dmet_hinterland": false, "dmet_sources": false, "dmet_notifications": false, "dmet_logs": false, "dikas_dashboard": false, "dikas_calendar": false, "dikas_forecast": false, "dikas_accounts": false, "dikas_payments": false, "dikas_collections": false, "dikas_instruments": false, "dikas_reports": false, "kasa_form": false, "kasa_a4": false, "kasa_archive": false, "kasa_admin": false}, "appActions": {"Dizsan_Ziyaret_Mobil_Karekod": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Toplanti_Mobil_Karekod": {"view": true, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Kredi_Mobil_Karekod": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Odeme_Takvimi": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Kredi_Karti_Takip": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_VDF_Odeme": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_DMet_Radar": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_DiKas_Finans": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Gunluk_Kasa": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}}}, "enver.hitit": {"apps": {"Dizsan_Ziyaret_Mobil_Karekod": false, "Dizsan_Toplanti_Mobil_Karekod": true, "Dizsan_Kredi_Mobil_Karekod": false, "Dizsan_Odeme_Takvimi": false, "Dizsan_Kredi_Karti_Takip": false, "Dizsan_VDF_Odeme": false, "Dizsan_DMet_Radar": false, "Dizsan_DiKas_Finans": false, "Dizsan_Gunluk_Kasa": false}, "submodules": {"ziyaret_genel": false, "ziyaret_rut_planla": false, "ziyaret_ekstre": false, "ziyaret_kayit": false, "ziyaret_cari": false, "ziyaret_gorev": false, "ziyaret_rapor": false, "ziyaret_raporlar": false, "toplanti_genel": true, "toplanti_olustur": true, "toplanti_aksiyon": true, "toplanti_duyuru": false, "toplanti_rapor": true, "kredi_combined": false, "kredi_bankalar": false, "kredi_odeme_onay": false, "kredi_erken_kapama": false, "kredi_yeni_ekle": false, "takvim_aylik": false, "takvim_kartlar": false, "takvim_krediler": false, "takvim_liste": false, "takvim_mobil": false, "kart_tumu": false, "kart_sirket": false, "kart_sahsi": false, "vdf_kokpit": false, "vdf_takvim": false, "vdf_tablo": false, "vdf_odemeler": false, "vdf_limitler": false, "vdf_otomasyon": false, "dmet_radar": false, "dmet_ailab": false, "dmet_hinterland": false, "dmet_sources": false, "dmet_notifications": false, "dmet_logs": false, "dikas_dashboard": false, "dikas_calendar": false, "dikas_forecast": false, "dikas_accounts": false, "dikas_payments": false, "dikas_collections": false, "dikas_instruments": false, "dikas_reports": false, "kasa_form": false, "kasa_a4": false, "kasa_archive": false, "kasa_admin": false}, "appActions": {"Dizsan_Ziyaret_Mobil_Karekod": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Toplanti_Mobil_Karekod": {"view": true, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Kredi_Mobil_Karekod": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Odeme_Takvimi": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Kredi_Karti_Takip": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_VDF_Odeme": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_DMet_Radar": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_DiKas_Finans": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}, "Dizsan_Gunluk_Kasa": {"view": false, "create": false, "edit": false, "delete": false, "export": false, "financial": false}}}};
-
-function getToplantiUserPerms(user = currentUser) {
-    if (!user) return { allowed: false, actions: {}, submodules: {} };
-    if (isOmerEren(user)) {
-        return {
-            allowed: true,
-            actions: { view: true, create: true, edit: true, delete: true, export: true, financial: true },
-            submodules: { toplanti_genel: true, toplanti_olustur: true, toplanti_aksiyon: true, toplanti_duyuru: true, toplanti_rapor: true }
-        };
-    }
-    const uname = String(user.username || '').trim().toLowerCase();
-    let entry = OFFICIAL_DPRO_PERMISSIONS_TOPLANTI[uname] || OFFICIAL_DPRO_PERMISSIONS_TOPLANTI[user.username];
-    try {
-        const raw = localStorage.getItem('dizsan_dpro_permissions_v1');
-        if (raw) {
-            const parsed = JSON.parse(raw);
-            if (parsed && (parsed[uname] || parsed[user.username])) {
-                entry = parsed[uname] || parsed[user.username];
-            }
-        }
-    } catch (e) {}
-    if (!entry) return { allowed: false, actions: {}, submodules: {} };
-    const appAllowed = Boolean(entry.apps && entry.apps['Dizsan_Toplanti_Mobil_Karekod']);
-    const act = (entry.appActions && entry.appActions['Dizsan_Toplanti_Mobil_Karekod']) || {};
-    const subs = entry.submodules || {};
-    return {
-        allowed: appAllowed && act.view !== false,
-        actions: {
-            view: appAllowed && act.view !== false,
-            create: appAllowed && Boolean(act.create),
-            edit: appAllowed && Boolean(act.edit),
-            delete: appAllowed && Boolean(act.delete),
-            export: appAllowed && Boolean(act.export),
-            financial: appAllowed && Boolean(act.financial)
-        },
-        submodules: subs
-    };
-}
-
-function enforceToplantiDomPermissions() {
-    if (!currentUser) return;
-    const p = getToplantiUserPerms(currentUser);
-    const isAdm = isOmerEren(currentUser);
-    const subTabMap = {
-        'toplanti_genel': 'dashboard-tab',
-        'toplanti_olustur': 'meetings-tab',
-        'toplanti_aksiyon': 'actions-tab',
-        'toplanti_duyuru': 'personnel-tab',
-        'toplanti_rapor': 'reports-tab'
-    };
-    Object.keys(subTabMap).forEach(subId => {
-        const tabId = subTabMap[subId];
-        const allowedSub = isAdm || Boolean(p.submodules[subId]);
-        document.querySelectorAll(`[data-tab="${tabId}"]`).forEach(el => {
-            el.style.display = allowedSub ? '' : 'none';
-        });
-    });
-    // Create buttons
-    document.querySelectorAll('[onclick*="openMeetingModal()"], [onclick*="openAnnouncementModal"], [onclick*="openActionModal()"]').forEach(el => {
-        el.style.display = (isAdm || p.actions.create) ? '' : 'none';
-    });
-    // Export buttons
-    document.querySelectorAll('[onclick*="export"], [onclick*="Export"], [onclick*="print"], [onclick*="Print"]').forEach(el => {
-        el.style.display = (isAdm || p.actions.export) ? '' : 'none';
-    });
-}
-
 function isOmerEren(user) {
     if (!user) return false;
     const n = normalizeTR(user.name);
@@ -1717,28 +1654,56 @@ function renderVersionHistory() {
 }
 
 // ==========================================================================
-// 4. 1 GÜN ÖNCE VE AYNI GÜN (PERSONEL + YÖNETİCİ) HATIRLATICI MOTORU
+// 4. AKSİYON TAMAMLAMA TARİHİ/SAATİ, ERTESİ GÜN UYARI VE GÜN AŞIRI HATIRLATICI MOTORU
 // ==========================================================================
+function extractActionCreatedISODate(action) {
+    if (!action) return '';
+    if (action.createdDate) return normalizeToISODate(action.createdDate);
+    if (action.createdAt) {
+        const datePart = String(action.createdAt).trim().split(' ')[0];
+        return normalizeToISODate(datePart);
+    }
+    return '';
+}
+
+function getActionCompletedDisplay(action) {
+    if (!action || action.status !== "Tamamlandı") return '';
+    if (action.completedDate) {
+        return `${formatDateTR(action.completedDate)} ${action.completedTime || ''}`.trim();
+    }
+    if (action.completedAt) {
+        return String(action.completedAt).trim();
+    }
+    if (action.updatedAt) {
+        return String(action.updatedAt).trim();
+    }
+    return '';
+}
+
 /**
- * Aksiyonun termin tarihine göre takvim günü farkını hesaplar:
- * - diffDays === 1 -> Termin tarihine 1 GÜN KALDI (1 Gün Önce Hatırlatıcısı)
- * - diffDays === 0 -> Termin tarihi BUGÜN (Aynı Gün Hatırlatıcısı)
- * - diffDays < 0   -> GECİKTİ (Acil Yönetici & Personel Uyarısı)
+ * Kapanmayan / devam eden aksiyonlar için hatırlatma kuralı:
+ * 1) Tamamlandı ise kapanış tarihi ve saati gösterilir.
+ * 2) Kapanmayan (Bekliyor / Devam Ediyor) aksiyonlarda:
+ *    - Tamamlama tarihi geçtiyse ertesi gün (1. gün) acil uyarı verir ve kapanana kadar gün aşırı (1, 3, 5, 7... gün) hatırlatmaya devam eder.
+ *    - Ayrıca aksiyon oluşturulduktan sonraki ertesi gün (1. gün) hâlâ kapanmadıysa uyarı verir ve gün aşırı (3, 5, 7... gün) hatırlatmaya devam eder.
  */
 function evaluateActionReminderStatus(action) {
     if (action.status === "Tamamlandı") {
+        const compDisp = getActionCompletedDisplay(action);
         return {
             stage: "COMPLETED",
             type: "completed",
-            badgeText: "✅ Tamamlandı",
+            badgeText: compDisp ? `✅ Tamamlandı (${compDisp})` : "✅ Tamamlandı",
+            shortText: compDisp ? `✅ Tamamlandı (${compDisp})` : "✅ Tamamlandı",
             reminderTargetText: `${action.assignee} & ${action.manager || 'ÖMER EREN'}`,
+            isReminderDay: false,
             diffDays: 999
         };
     }
 
     const isoDue = normalizeToISODate(action.dueDate);
     if (!isoDue) {
-        return { stage: "NORMAL", type: "safe", badgeText: "-", diffDays: 999 };
+        return { stage: "NORMAL", type: "safe", badgeText: "-", shortText: "-", isReminderDay: false, diffDays: 999 };
     }
 
     const now = new Date();
@@ -1748,41 +1713,103 @@ function evaluateActionReminderStatus(action) {
 
     const diffDays = Math.round((dueMidnight - todayMidnight) / (1000 * 60 * 60 * 24));
     const managerName = action.manager || "ÖMER EREN";
+    const dueTimeStr = action.dueTime || "17:00";
+
+    // Aksiyonun oluşturulma tarihinden itibaren geçen gün sayısı
+    let daysSinceCreated = 0;
+    const createdIso = extractActionCreatedISODate(action);
+    if (createdIso) {
+        const [cy, cm, cd] = createdIso.split('-').map(Number);
+        const createdMidnight = new Date(cy, cm - 1, cd);
+        daysSinceCreated = Math.max(0, Math.round((todayMidnight - createdMidnight) / (1000 * 60 * 60 * 24)));
+    }
 
     if (diffDays < 0) {
-        return {
-            stage: "OVERDUE",
-            type: "overdue",
-            badgeText: `🚨 ${Math.abs(diffDays)} GÜN GECİKTİ (Personel & Yönetici Alarmı)`,
-            shortText: `🚨 ${Math.abs(diffDays)} Gün Gecikti`,
-            reminderTargetText: `🔔 ${action.assignee} + 👔 ${managerName}`,
-            diffDays
-        };
+        const overdueDays = Math.abs(diffDays);
+        if (overdueDays === 1) {
+            return {
+                stage: "OVERDUE",
+                subStage: "NEXT_DAY_ALERT",
+                type: "overdue",
+                badgeText: `🚨 ERTESİ GÜN UYARISI! (Kapanmayan Aksiyon • 1 Gün Geçti • Gün Aşırı Hatırlatma Aktif)`,
+                shortText: `🚨 ERTESİ GÜN UYARISI (1 Gün Geçti)`,
+                reminderTargetText: `🔔 ${action.assignee} + 👔 ${managerName}`,
+                isReminderDay: true,
+                diffDays
+            };
+        } else if (overdueDays % 2 === 1) {
+            return {
+                stage: "OVERDUE",
+                subStage: "BI_DAILY_ALERT",
+                type: "overdue",
+                badgeText: `🔁 GÜN AŞIRI HATIRLATMA! (${overdueDays} Gündür Kapanmadı / Devam Ediyor • Bugün Uyarı Günü)`,
+                shortText: `🔁 GÜN AŞIRI UYARI (${overdueDays} Gün Geçti)`,
+                reminderTargetText: `🔔 ${action.assignee} + 👔 ${managerName}`,
+                isReminderDay: true,
+                diffDays
+            };
+        } else {
+            return {
+                stage: "OVERDUE",
+                subStage: "BI_DAILY_WAIT",
+                type: "overdue",
+                badgeText: `🚨 ${overdueDays} GÜNDÜR KAPANMADI (Devam Ediyor • Gün Aşırı Hatırlatma Yarın Saat ${dueTimeStr})`,
+                shortText: `🚨 ${overdueDays} Gündür Açık (Gün Aşırı Takip)`,
+                reminderTargetText: `🔔 ${action.assignee} + 👔 ${managerName}`,
+                isReminderDay: false,
+                diffDays
+            };
+        }
     } else if (diffDays === 0) {
         return {
             stage: "SAME_DAY",
             type: "overdue",
-            badgeText: `⏰ BUGÜN SON GÜN! (Saat ${action.dueTime || '09:00'} - Aynı Gün Hatırlatma)`,
-            shortText: `⏰ BUGÜN SON GÜN (${action.dueTime || '09:00'})`,
+            badgeText: `⏰ BUGÜN TAMAMLAMA GÜNÜ! (Saat ${dueTimeStr} • Kapanmazsa Yarın Uyarır & Gün Aşırı Devam Eder)`,
+            shortText: `⏰ BUGÜN SON GÜN (${dueTimeStr})`,
             reminderTargetText: `🔔 ${action.assignee} + 👔 ${managerName}`,
+            isReminderDay: true,
             diffDays: 0
+        };
+    } else if (daysSinceCreated === 1) {
+        return {
+            stage: "ONE_DAY_BEFORE",
+            subStage: "NEXT_DAY_OPEN_ALERT",
+            type: "urgent",
+            badgeText: `⚠️ ERTESİ GÜN UYARISI: Devam Eden Aksiyon Kapatılmadı! (Tamamlama: ${formatDateTR(action.dueDate)} ${dueTimeStr} • Gün Aşırı Hatırlatma Aktif)`,
+            shortText: `⚠️ ERTESİ GÜN UYARISI (Devam Ediyor)`,
+            reminderTargetText: `🔔 ${action.assignee} + 👔 ${managerName}`,
+            isReminderDay: true,
+            diffDays
+        };
+    } else if (daysSinceCreated > 1 && daysSinceCreated % 2 === 1) {
+        return {
+            stage: "ONE_DAY_BEFORE",
+            subStage: "BI_DAILY_OPEN_ALERT",
+            type: "urgent",
+            badgeText: `🔁 GÜN AŞIRI HATIRLATMA (${daysSinceCreated}. Gün): Devam Eden Aksiyon Hâlâ Açık! (Hedef: ${formatDateTR(action.dueDate)} ${dueTimeStr})`,
+            shortText: `🔁 GÜN AŞIRI HATIRLATMA (${daysSinceCreated}. Gün)`,
+            reminderTargetText: `🔔 ${action.assignee} + 👔 ${managerName}`,
+            isReminderDay: true,
+            diffDays
         };
     } else if (diffDays === 1) {
         return {
             stage: "ONE_DAY_BEFORE",
             type: "urgent",
-            badgeText: `🔔 YARIN SON GÜN! (1 Gün Önce Personel & Yönetici Hatırlatması)`,
-            shortText: `🔔 1 GÜN KALDI (Yarın)`,
+            badgeText: `🔔 YARIN TAMAMLAMA GÜNÜ! (Saat ${dueTimeStr} • Kapanmazsa Ertesi Gün Uyarır & Gün Aşırı Devam Eder)`,
+            shortText: `🔔 YARIN SON GÜN (${dueTimeStr})`,
             reminderTargetText: `🔔 ${action.assignee} + 👔 ${managerName}`,
+            isReminderDay: true,
             diffDays: 1
         };
     } else {
         return {
             stage: "UPCOMING",
             type: "safe",
-            badgeText: `⏳ ${diffDays} gün kaldı (1 gün kala hatırlatılacak)`,
-            shortText: `⏳ ${diffDays} Gün Kaldı`,
+            badgeText: `⏳ ${diffDays} gün kaldı (Tamamlama: ${formatDateTR(action.dueDate)} ${dueTimeStr} • Ertesi gün & gün aşırı hatırlatıcılı)`,
+            shortText: `⏳ ${diffDays} Gün Kaldı (${dueTimeStr})`,
             reminderTargetText: `${action.assignee} + ${managerName}`,
+            isReminderDay: false,
             diffDays
         };
     }
@@ -1794,7 +1821,7 @@ function checkAndTriggerSmartReminders() {
     const activeReminders = appState.actions.filter(a => {
         if (a.status === "Tamamlandı") return false;
         const st = evaluateActionReminderStatus(a);
-        return st.stage === "ONE_DAY_BEFORE" || st.stage === "SAME_DAY" || st.stage === "OVERDUE";
+        return st.stage === "ONE_DAY_BEFORE" || st.stage === "SAME_DAY" || st.stage === "OVERDUE" || st.isReminderDay;
     });
 
     const banner = document.getElementById('smart-reminder-banner');
@@ -1819,28 +1846,47 @@ function checkAndTriggerSmartReminders() {
     const listToShow = myPersonalReminders.length > 0 ? myPersonalReminders : activeReminders;
 
     banner.classList.remove('hidden');
-    const oneDayCount = listToShow.filter(a => evaluateActionReminderStatus(a).stage === "ONE_DAY_BEFORE").length;
+    const nextDayCount = listToShow.filter(a => {
+        const st = evaluateActionReminderStatus(a);
+        return st.subStage === "NEXT_DAY_ALERT" || st.subStage === "NEXT_DAY_OPEN_ALERT";
+    }).length;
+    const biDailyCount = listToShow.filter(a => {
+        const st = evaluateActionReminderStatus(a);
+        return st.subStage === "BI_DAILY_ALERT" || st.subStage === "BI_DAILY_OPEN_ALERT";
+    }).length;
     const sameDayCount = listToShow.filter(a => evaluateActionReminderStatus(a).stage === "SAME_DAY").length;
     const overdueCount = listToShow.filter(a => evaluateActionReminderStatus(a).stage === "OVERDUE").length;
 
-    titleEl.innerHTML = `🔔 Aktif Aksiyon Hatırlatıcısı: ${sameDayCount > 0 ? `<span style="color:#fca5a5;">${sameDayCount} Bugün (Aynı Gün)</span> • ` : ''}${oneDayCount > 0 ? `<span style="color:#fde68a;">${oneDayCount} Yarın (1 Gün Önce)</span> • ` : ''}${overdueCount > 0 ? `<span style="color:#f87171;">${overdueCount} Geciken</span>` : ''}`;
+    titleEl.innerHTML = `🔔 Kapanmayan / Devam Eden Aksiyon Hatırlatıcısı: ${nextDayCount > 0 ? `<span style="color:#fca5a5;">🚨 ${nextDayCount} Ertesi Gün Uyarısı</span> • ` : ''}${biDailyCount > 0 ? `<span style="color:#fde68a;">🔁 ${biDailyCount} Gün Aşırı Hatırlatma</span> • ` : ''}${sameDayCount > 0 ? `<span style="color:#fdba74;">⏰ ${sameDayCount} Bugün Son Gün</span> • ` : ''}<span style="color:#f87171;">Toplam ${listToShow.length} Açık Takip</span>`;
 
-    descEl.innerHTML = listToShow.slice(0, 3).map(a => {
+    descEl.innerHTML = listToShow.slice(0, 4).map(a => {
         const st = evaluateActionReminderStatus(a);
-        return `<div>• <strong>[${st.shortText}]</strong> "${a.title}" &rarr; Sorumlu: <strong>${a.assignee}</strong> | Yönetici: <strong>${a.manager || 'ÖMER EREN'}</strong></div>`;
+        return `<div>• <strong>[${st.shortText}]</strong> "${a.title}" &rarr; Sorumlu: <strong>${a.assignee}</strong> | Tamamlama: <strong>${formatDateTR(a.dueDate)} ${a.dueTime || '17:00'}</strong> | Durum: <strong>${a.status}</strong></div>`;
     }).join('');
 
-    // Tarayıcı Bildirimi (Browser Notification API) izni varsa bildirim gönder
-    if ("Notification" in window && Notification.permission === "granted") {
-        const topItem = listToShow[0];
+    // Bugün aktif uyarı günü olan (Ertesi Gün Uyarısı veya Gün Aşırı Hatırlatma Günü) aksiyonlar için sesli ve masaüstü bildirimi tetikle
+    const activeTodayAlarmItems = listToShow.filter(a => evaluateActionReminderStatus(a).isReminderDay);
+    if (activeTodayAlarmItems.length > 0) {
+        const topItem = activeTodayAlarmItems[0];
         const st = evaluateActionReminderStatus(topItem);
-        const notifKey = `notified_${topItem.id}_${st.stage}_${new Date().toISOString().slice(0, 10)}`;
-        if (!sessionStorage.getItem(notifKey)) {
-            new Notification(`DİZSAN Aksiyon Hatırlatıcı (${st.shortText})`, {
-                body: `${topItem.title}\nSorumlu: ${topItem.assignee} | Yönetici: ${topItem.manager || 'ÖMER EREN'}`,
-                icon: 'dizsan_logo.jpg'
-            });
-            sessionStorage.setItem(notifKey, '1');
+        const todayIso = new Date().toISOString().slice(0, 10);
+        const soundKey = `sound_alarm_${topItem.id}_${st.subStage || st.stage}_${todayIso}`;
+        if (!sessionStorage.getItem(soundKey)) {
+            sessionStorage.setItem(soundKey, '1');
+            if (typeof playMeetingCallSound === 'function') {
+                playMeetingCallSound('REMINDER', `Dikkat! Kapanmayan devam eden aksiyon hatırlatması: ${topItem.title}. Sorumlu: ${topItem.assignee}.`);
+            }
+        }
+
+        if ("Notification" in window && Notification.permission === "granted") {
+            const notifKey = `notified_${topItem.id}_${st.subStage || st.stage}_${todayIso}`;
+            if (!sessionStorage.getItem(notifKey)) {
+                new Notification(`DİZSAN Aksiyon Uyarısı (${st.shortText})`, {
+                    body: `${topItem.title}\nSorumlu: ${topItem.assignee} | Tamamlama: ${formatDateTR(topItem.dueDate)} ${topItem.dueTime || '17:00'}`,
+                    icon: 'dizsan_logo.jpg'
+                });
+                sessionStorage.setItem(notifKey, '1');
+            }
         }
     }
 }
@@ -3666,7 +3712,6 @@ function generateUniqueActionId() {
 
 function saveMeetingCallOrAnnouncement(event) {
     event.preventDefault();
-    if (!getToplantiUserPerms(currentUser).actions.create) { alert('⛔ Yeni toplantı çağrısı oluşturma yetkiniz bulunmamaktadır (Sadece Görüntüleme Yetkisi).'); return; }
     const callType = document.getElementById('call-type-select')?.value || 'MEETING_CALL';
     const dept = document.getElementById('call-dept-input')?.value || 'Genel Yönetim';
     const title = document.getElementById('call-title-input')?.value.trim() || '';
@@ -4038,22 +4083,36 @@ function renderDashboard() {
                     `;
                 }
                 const mActions = appState.actions.filter(a => a.meetingId === m.id);
+                const attInfo = getMeetingAttendanceSummary(m);
                 const extCount = (m.externalParticipants || []).length;
-                const totalPartCount = (m.participants || []).length + extCount;
+                const totalPartCount = attInfo.invited.length + extCount;
                 const attCount = (m.attachments || []).length;
+                const agdItems = parseAgendaItemsFromMeeting(m);
+                const undiscussedCount = agdItems.filter(x => x.title && !x.discussed).length;
                 return `
-                    <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border-color); border-radius:12px; padding:0.9rem;">
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.3rem;">
+                    <div class="clickable-card" onclick="handleMeetingCardClick(event, '${m.id}')" style="background:rgba(255,255,255,0.03); border:1px solid var(--border-color); border-radius:12px; padding:0.9rem; cursor:pointer; transition:all 0.2s;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.3rem; flex-wrap:wrap; gap:0.35rem;">
                             <span class="meeting-code-badge">${m.id} • ${recType} • ${m.dept}</span>
                             <span style="font-size:0.78rem; color:var(--text-sec);"><i class="fa-regular fa-calendar"></i> ${formatDateTR(m.date)} ${m.time}</span>
                         </div>
                         <div style="font-weight:700; color:#fff; font-size:0.92rem; margin-bottom:0.35rem;">${m.title}</div>
                         ${renderRecordAuditBadge(m, true)}
-                        <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.78rem; color:var(--text-sec); margin-top:0.45rem;">
-                            <span><i class="fa-solid fa-users"></i> ${totalPartCount} Katılımcı${extCount > 0 ? ` (${extCount} Dış)` : ''} • <i class="fa-solid fa-bolt"></i> ${mActions.length} Aksiyon${attCount > 0 ? ` • <i class="fa-solid fa-paperclip"></i> ${attCount} Ek` : ''}</span>
-                            <button class="btn btn-secondary btn-sm" style="padding:3px 8px; font-size:0.74rem;" onclick="printMeetingMinutes('${m.id}')">
-                                <i class="fa-solid fa-print"></i> Tutanak Yazdır
-                            </button>
+                        <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.76rem; color:var(--text-sec); margin-top:0.45rem; flex-wrap:wrap; gap:0.4rem;">
+                            <span>
+                                <i class="fa-solid fa-envelope-open-text" style="color:#38bdf8;"></i> ${totalPartCount} Davetli
+                                • <span style="color:#34d399;"><i class="fa-solid fa-user-check"></i> ${attInfo.attended.length} Gelen</span>
+                                ${attInfo.absent.length > 0 ? ` • <span style="color:#f87171;"><i class="fa-solid fa-user-xmark"></i> ${attInfo.absent.length} Gelmeyen</span>` : ''}
+                                ${undiscussedCount > 0 ? ` • <span style="color:#fbbf24;"><i class="fa-solid fa-clock-rotate-left"></i> ${undiscussedCount} Konuşulmayan Gündem</span>` : ''}
+                            </span>
+                            <div style="display:flex; gap:0.35rem;">
+                                ${undiscussedCount > 0 ? `
+                                <button class="btn btn-sm" style="padding:3px 8px; font-size:0.72rem; background:#f59e0b; color:#0f172a; font-weight:700;" onclick="event.stopPropagation(); openFollowupMeetingModal('${m.id}')">
+                                    <i class="fa-solid fa-calendar-plus"></i> Başka Toplantıya Planla
+                                </button>` : ''}
+                                <button class="btn btn-secondary btn-sm" style="padding:3px 8px; font-size:0.74rem;" onclick="event.stopPropagation(); printMeetingMinutes('${m.id}')">
+                                    <i class="fa-solid fa-print"></i> Tutanak Yazdır
+                                </button>
+                            </div>
                         </div>
                     </div>
                 `;
@@ -4200,12 +4259,18 @@ function renderMeetings() {
         const pendingReqsForMeeting = (appState.approvalRequests || []).filter(r => r.meetingId === m.id && r.status === 'PENDING');
         const isAdminOmer = isOmerEren(currentUser);
 
+        const attInfo = getMeetingAttendanceSummary(m);
+        const agendaItems = parseAgendaItemsFromMeeting(m);
+        const discussedAgendas = agendaItems.filter(x => x.title && x.discussed);
+        const undiscussedAgendas = agendaItems.filter(x => x.title && !x.discussed);
+        const decisionItems = parseDecisionItemsFromMeeting(m).filter(d => d.text && d.text.trim());
+
         const approvalBadgeHtml = isPendingApproval
             ? `<span class="badge badge-high" title="Yönetici Ömer Eren Onayı Bekleniyor"><i class="fa-solid fa-hourglass-half"></i> ⏳ Yönetici Onayı Bekliyor</span>`
             : `<span class="badge badge-done" title="Yönetici Ömer Eren Tarafından Onaylandı"><i class="fa-solid fa-shield-check"></i> ✅ Yönetici Onaylı (Ömer Eren)</span>`;
 
         return `
-            <div class="meeting-card" style="${isPendingApproval ? 'border-color:rgba(245,158,11,0.55);' : ''}">
+            <div class="meeting-card clickable-card" onclick="handleMeetingCardClick(event, '${m.id}')" style="${isPendingApproval ? 'border-color:rgba(245,158,11,0.55);' : ''}" title="Detayları görmek, yoklama almak, gündem tiklemek ve kararları yönetmek için karta tıklayın">
                 <div>
                     <div class="meeting-card-top">
                         <div style="display:flex; gap:0.4rem; align-items:center; flex-wrap:wrap;">
@@ -4228,15 +4293,70 @@ function renderMeetings() {
                         <span><i class="fa-solid fa-location-dot"></i> ${m.location || 'Merkez'}</span>
                     </div>
 
-                    ${renderRecordAuditBadge(m, false)}
-
-                    <div class="meeting-summary-box" style="white-space:pre-line; margin-top:0.55rem;">
-                        <strong>${isTraining ? 'Eğitim Konuları & Notlar:' : 'Notlar:'}</strong>\n${m.notes || ''}
+                    <div class="card-click-hint">
+                        <i class="fa-solid fa-hand-pointer"></i> Detay, Yoklama, Gündem Tikleme &amp; Karar Ekranı İçin Karta Basın
                     </div>
 
-                    ${m.decisions ? `
-                    <div style="margin-top:0.5rem; font-size:0.79rem; color:#a7f3d0; background:rgba(16,185,129,0.08); padding:0.5rem 0.65rem; border-radius:6px; white-space:pre-line;">
-                        <strong>${isTraining ? 'Eğitim Sonucu & Değerlendirme:' : 'Kararlar:'}</strong>\n${m.decisions}
+                    ${renderRecordAuditBadge(m, false)}
+
+                    <!-- GÜNDEM MADDELERİ (KONUŞULANLAR & KONUŞULMAYANLAR) ÖZETİ -->
+                    <div class="meeting-summary-box" style="max-height:none; overflow:visible; margin-top:0.6rem;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.35rem; margin-bottom:0.35rem;">
+                            <strong style="color:#fff;"><i class="fa-solid fa-list-check" style="color:var(--dizsan-light);"></i> ${isTraining ? 'Eğitim Gündemi & Notlar:' : 'Gündem Maddeleri:'}</strong>
+                            <div style="display:flex; gap:0.3rem; font-size:0.7rem;">
+                                <span style="background:rgba(16,185,129,0.2); color:#6ee7b7; padding:1px 6px; border-radius:5px; font-weight:700;">✅ ${discussedAgendas.length} Konuşuldu</span>
+                                ${undiscussedAgendas.length > 0 ? `<span style="background:rgba(245,158,11,0.22); color:#fde68a; padding:1px 6px; border-radius:5px; font-weight:700;">⏳ ${undiscussedAgendas.length} Konuşulmadı</span>` : ''}
+                            </div>
+                        </div>
+                        <div style="display:flex; flex-direction:column; gap:0.32rem;">
+                            ${agendaItems.filter(x => x.title).map((ag, idx) => `
+                                <div style="padding:0.32rem 0.5rem; border-radius:6px; background:${ag.discussed ? 'rgba(16,185,129,0.1)' : 'rgba(245,158,11,0.08)'}; border:1px solid ${ag.discussed ? 'rgba(16,185,129,0.3)' : 'rgba(245,158,11,0.28)'};">
+                                    <div style="display:flex; align-items:center; justify-content:space-between; gap:0.4rem;">
+                                        <span style="font-weight:600; color:${ag.discussed ? '#d1fae5' : '#fef3c7'}; font-size:0.8rem;">
+                                            ${ag.discussed ? '✅' : '⬜'} ${idx + 1}. ${ag.title}
+                                        </span>
+                                        <span style="font-size:0.68rem; color:${ag.discussed ? '#34d399' : '#fbbf24'}; font-weight:700; white-space:nowrap;">
+                                            ${ag.discussed ? 'Konuşuldu' : (ag.transferredToMeetingId ? `➔ ${ag.transferredToMeetingId}` : 'Konuşulmadı')}
+                                        </span>
+                                    </div>
+                                    ${ag.discussed && ag.explanation ? `
+                                        <div style="margin-top:0.22rem; padding-top:0.22rem; border-top:1px dashed rgba(52,211,153,0.3); font-size:0.75rem; color:#a7f3d0; white-space:pre-line;">
+                                            <i class="fa-solid fa-comment-dots"></i> <strong>Açıklama:</strong> ${ag.explanation}
+                                        </div>
+                                    ` : ''}
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+
+                    <!-- KONUŞULMAYAN MADDELER VARSA BAŞKA TOPLANTI PLANLAMA KUTUSU -->
+                    ${undiscussedAgendas.length > 0 ? `
+                    <div style="margin-top:0.55rem; padding:0.55rem 0.7rem; background:rgba(245,158,11,0.12); border:1px dashed rgba(245,158,11,0.5); border-radius:8px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; gap:0.4rem; flex-wrap:wrap;">
+                            <div style="font-size:0.76rem; color:#fde68a; font-weight:700;">
+                                <i class="fa-solid fa-clock-rotate-left"></i> Konuşulmayan ${undiscussedAgendas.length} Gündem Maddesi Mevcut
+                            </div>
+                            <button type="button" class="btn btn-sm" style="padding:3px 9px; font-size:0.72rem; background:linear-gradient(135deg,#f59e0b,#d97706); color:#0f172a; font-weight:800;" onclick="event.stopPropagation(); openFollowupMeetingModal('${m.id}')">
+                                <i class="fa-solid fa-calendar-plus"></i> Başka Toplantı Planla
+                            </button>
+                        </div>
+                    </div>` : ''}
+
+                    <!-- ALINAN KARARLAR, KARAR SORUMLUSU VE TERMİN TARİHLERİ -->
+                    ${decisionItems.length > 0 ? `
+                    <div style="margin-top:0.55rem; font-size:0.79rem; color:#a7f3d0; background:rgba(16,185,129,0.08); border:1px solid rgba(16,185,129,0.25); padding:0.55rem 0.7rem; border-radius:8px;">
+                        <strong style="display:block; margin-bottom:0.35rem; color:#6ee7b7;"><i class="fa-solid fa-gavel"></i> ${isTraining ? 'Eğitim Sonucu & Değerlendirme:' : 'Alınan Kararlar, Sorumlusu & Termin:'}</strong>
+                        <div style="display:flex; flex-direction:column; gap:0.32rem;">
+                            ${decisionItems.map((dec, dIdx) => `
+                                <div style="background:rgba(15,23,42,0.65); border:1px solid rgba(52,211,153,0.25); border-radius:6px; padding:0.35rem 0.5rem;">
+                                    <div style="color:#ecfdf5; font-weight:600; font-size:0.79rem;">${dIdx + 1}. ${dec.text}</div>
+                                    <div style="display:flex; gap:0.6rem; flex-wrap:wrap; margin-top:0.2rem; font-size:0.71rem; color:#93c5fd;">
+                                        <span><i class="fa-solid fa-user-check" style="color:#38bdf8;"></i> Sorumlu: <strong style="color:#fff;">${dec.responsible || 'Belirtilmedi'}</strong></span>
+                                        <span><i class="fa-regular fa-calendar-check" style="color:#fbbf24;"></i> Termin: <strong style="color:#fde68a;">${dec.dueDate ? formatDateTR(dec.dueDate) : '-'}</strong></span>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
                     </div>` : ''}
 
                     ${attList.length > 0 ? `
@@ -4250,7 +4370,7 @@ function renderMeetings() {
                                 const isPdf = (att.type || '').toLowerCase().includes('pdf') || (att.name || '').toLowerCase().endsWith('.pdf');
                                 const imgSrc = isImg ? (att.dataUrl || att.fileUrl || '') : '';
                                 return `
-                                    <button type="button" onclick="openAttachmentPreviewModal('${m.id}', '${att.id}')" style="display:inline-flex; align-items:center; gap:0.4rem; background:rgba(15,23,42,0.75); border:1px solid ${isPdf ? 'rgba(248,113,113,0.45)' : 'rgba(52,211,153,0.35)'}; color:#e2e8f0; padding:4px 8px; border-radius:6px; font-size:0.74rem; cursor:pointer;" title="Belgeyi Aç / Önizle">
+                                    <button type="button" onclick="event.stopPropagation(); openAttachmentPreviewModal('${m.id}', '${att.id}')" style="display:inline-flex; align-items:center; gap:0.4rem; background:rgba(15,23,42,0.75); border:1px solid ${isPdf ? 'rgba(248,113,113,0.45)' : 'rgba(52,211,153,0.35)'}; color:#e2e8f0; padding:4px 8px; border-radius:6px; font-size:0.74rem; cursor:pointer;" title="Belgeyi Aç / Önizle">
                                         ${isImg && imgSrc ? `<img src="${imgSrc}" style="width:24px; height:24px; object-fit:cover; border-radius:4px;">` : `<i class="fa-solid ${att.kind === 'NOTE' ? 'fa-note-sticky' : (isPdf ? 'fa-file-pdf' : 'fa-file-lines')}" style="color:${isPdf ? '#f87171' : '#34d399'};"></i>`}
                                         <span style="max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${att.name || att.note || 'Ek Belge'}</span>
                                     </button>
@@ -4259,13 +4379,28 @@ function renderMeetings() {
                         </div>
                     </div>` : ''}
 
-                    <div class="participants-avatars" style="margin-top:0.65rem;">
-                        ${(m.participants || []).map(p => `<span class="participant-tag"><i class="fa-solid fa-user" style="font-size:0.65rem; color:var(--dizsan-light);"></i> ${p}</span>`).join('')}
-                        ${extList.map(ep => `<span class="participant-tag" style="background:rgba(245,158,11,0.14); border-color:rgba(245,158,11,0.4); color:#fde68a;" title="Dış Katılımcı | Firma: ${ep.company || '-'} | Tel: ${ep.phone || '-'}"><i class="fa-solid fa-building-user" style="font-size:0.65rem; color:#fbbf24;"></i> ${ep.name}${ep.company ? ` (${ep.company})` : ''}${ep.phone ? ` • ${ep.phone}` : ''}</span>`).join('')}
+                    <!-- DAVET EDİLEN, GELEN VE GELMEYEN KATILIMCILAR (+ NEDENLERİ) -->
+                    <div style="margin-top:0.65rem;">
+                        <div style="display:flex; gap:0.4rem; flex-wrap:wrap; margin-bottom:0.35rem; font-size:0.71rem;">
+                            <span style="background:rgba(56,189,248,0.15); color:#7dd3fc; padding:2px 7px; border-radius:5px; font-weight:700;">📨 ${attInfo.invited.length} Davetli</span>
+                            <span style="background:rgba(16,185,129,0.18); color:#6ee7b7; padding:2px 7px; border-radius:5px; font-weight:700;">✅ ${attInfo.attended.length} Gelen</span>
+                            ${attInfo.absent.length > 0 ? `<span style="background:rgba(239,68,68,0.2); color:#fca5a5; padding:2px 7px; border-radius:5px; font-weight:700;">❌ ${attInfo.absent.length} Gelmeyen</span>` : ''}
+                        </div>
+                        <div class="participants-avatars" style="margin-top:0.25rem;">
+                            ${attInfo.attended.map(p => `<span class="participant-tag" style="border-color:rgba(16,185,129,0.35);"><i class="fa-solid fa-user-check" style="font-size:0.65rem; color:#34d399;"></i> ${p}</span>`).join('')}
+                            ${extList.map(ep => `<span class="participant-tag" style="background:rgba(245,158,11,0.14); border-color:rgba(245,158,11,0.4); color:#fde68a;" title="Dış Katılımcı | Firma: ${ep.company || '-'} | Tel: ${ep.phone || '-'}"><i class="fa-solid fa-building-user" style="font-size:0.65rem; color:#fbbf24;"></i> ${ep.name}${ep.company ? ` (${ep.company})` : ''}${ep.phone ? ` • ${ep.phone}` : ''}</span>`).join('')}
+                        </div>
+                        ${attInfo.absent.length > 0 ? `
+                        <div style="margin-top:0.45rem; padding:0.45rem 0.6rem; background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.35); border-radius:8px; font-size:0.74rem;">
+                            <div style="font-weight:700; color:#fca5a5; margin-bottom:0.2rem;"><i class="fa-solid fa-user-xmark"></i> Gelmeyen Katılımcılar &amp; Nedenleri:</div>
+                            ${attInfo.absent.map(ab => `
+                                <div style="color:#fecaca; font-size:0.73rem;">• <strong>${ab.name}:</strong> <span style="color:#fde68a;">${ab.reason || 'Mazeret belirtilmedi'}</span></div>
+                            `).join('')}
+                        </div>` : ''}
                     </div>
                 </div>
 
-                <div class="meeting-card-footer">
+                <div class="meeting-card-footer" onclick="event.stopPropagation()">
                     <span class="badge ${relatedActions.length > 0 && doneCount === relatedActions.length ? 'badge-done' : 'badge-normal'}">
                         <i class="fa-solid fa-bolt"></i> ${relatedActions.length} Aksiyon (${doneCount} Tamam)
                     </span>
@@ -4274,6 +4409,9 @@ function renderMeetings() {
                         <button class="btn btn-success btn-sm" onclick="approveNewMeeting('${m.id}')" title="Yönetici Olarak Onayla">
                             <i class="fa-solid fa-check"></i> Onayla
                         </button>` : ''}
+                        <button class="btn btn-primary btn-sm" onclick="openMeetingModal('${m.id}')" title="Toplantı Detayını, Yoklamayı, Gündemi ve Kararları Aç">
+                            <i class="fa-solid fa-up-right-from-square"></i> Detay
+                        </button>
                         <button class="btn btn-secondary btn-sm" onclick="downloadMeetingAlarmICS('${m.id}')" title="Uygulama Kapalıyken Çalması İçin Telefon/PC Alarmına Kur">
                             <i class="fa-solid fa-bell" style="color:#fcd34d;"></i>
                         </button>
@@ -4351,8 +4489,13 @@ function renderActions() {
                     </span>
                 </td>
                 <td>
-                    <div style="font-weight:600;">${formatDateTR(a.dueDate)}</div>
-                    <div style="font-size:0.74rem; color:var(--text-sec);">Saat: ${a.dueTime || '09:00'}</div>
+                    <div style="font-weight:700; color:#fff;"><i class="fa-regular fa-calendar-check" style="color:#38bdf8;"></i> ${formatDateTR(a.dueDate)}</div>
+                    <div style="font-size:0.75rem; color:#fde68a; font-weight:600;"><i class="fa-regular fa-clock"></i> Saat: ${a.dueTime || '17:00'}</div>
+                    ${a.status === 'Tamamlandı' && getActionCompletedDisplay(a) ? `
+                        <div style="margin-top:4px; padding:2px 6px; border-radius:6px; background:rgba(16,185,129,0.16); border:1px solid rgba(16,185,129,0.4); font-size:0.7rem; color:#6ee7b7; font-weight:700;">
+                            ✅ Bitiş: ${getActionCompletedDisplay(a)}
+                        </div>
+                    ` : ''}
                 </td>
                 <td>
                     <span class="countdown-pill ${st.type}">${st.badgeText}</span>
@@ -4526,7 +4669,7 @@ function printExecutiveReport() {
         <div style="border: 2px solid #000; padding: 20px; font-family: Arial, sans-serif; color: #000;">
             <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 2px solid #0284c7; padding-bottom: 12px; margin-bottom: 16px;">
                 <div style="display:flex; align-items:center; gap: 15px;">
-                    <img src="dizsan_logo.jpg" style="width:70px; height:70px; object-fit:contain;">
+                    <img src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCADwAQ8DASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD3UUtIKWkAUUUUwCiiorm5hs7d555BHEgyzHpQlfYTaSu9EiWiuO8O+LJdf8VXttGoWzhgVo1I5Y5IJPtXYjoKucJU3ysmnUjUjzR2YUtJS1mWFFFFMAorjvG3jSPw/ZSw2ZWS+2/UR/X3rqbGR5dPt5JDl3iVmPqSOaqVOUYptbmcasZScYvYsUUUVJoLRRRSAKKKKYBRRRQAUUUUAApaKKQBRRRTAKKKKACiiigApaSlpAR0UUUAFFFRXNzDZ27z3EgjiQZZieKaV9hNpK70SC5uYbO3kuJ3EcSDJY15D4r8Vza5cmKEmOyQ/Kmcbv8AaNN8V+LJtcuDDEWSyQ/Kn9//AGjXMZ9a+gwOB9mvaVFqfMZlmLqv2VL4fzO0+F//ACMuoZ/59U/9CNesV5N8LTnxLqH/AF6p/wChGvWa8zH/AO8SPZyz/dohS0UVwo7w61yXi/xfHosJtLQh75x1ByIx6n3o8X+MItFha0tGV75+PUR+5968jmnkuZnlldnkY5Zj1NetgcD7T95UXunjZlmXsr0qW/XyK+qzyXFtcyyuXkcEsx6mvofTP+QVaf8AXFP5CvnW/wACxm7/AC19FaZ/yCrT/rin8hVZskpRS7GeSNuM2+5yvi3xlfaBqKWtrZwTKUDFpZCvX6CueHxQ1j/oF2X/AH+b/Ck+I3/IfT/rkv8AWuPFdOGwFCdKMpI5MVmWIp1pRjLRM7L/AIWfrP8A0C7L/v8AN/hS/wDCz9Z/6Bdl/wB/m/wrjaK1/s7D9jD+1cV/N+B2f/CztZ/6Bdl/3+b/AAo/4WbrP/QLsv8Av83+FccKX/PFH9nYfsP+1MV3Ox/4WbrX/QLsf+/zf4Uf8LM1r/oF2P8A3+b/AArkP50opf2fh+w/7UxXc6//AIWXrX/QLsf+/wA3+FH/AAsrWv8AoF2P/f5v8K5Glo/s/D9h/wBqYrudd/wsrWv+gXY/9/m/wpf+Fla3/wBAux/7/N/hXJUopf2fh+w/7TxXc7BPiZqijMmj2r47JckH/wBBNXrX4o2pIF9pF5b56tGVlA/I5/SuDHTimTTR28JllYLGoySe1Zzy6hbsaU81xHNbc9k0rxTouskCyv4nkP8Ayzb5X/75NbNfLzyS6zdrPhorWM/IV+VnPrnqK7XQ/HutaI6R3DtqNkODHIf3i/7rd/ofzrhnl00nKGqPSp5pT5lCpoz2yisrQvEOneIrL7Vp9wHA4dCMPGfQjsa1hXntNaM9SLUldBRRRUjI6KKiubqGzt3uLiQJFGMsxOAKa12E2krsS5uobO3kuLhwkSDJY14/4t8WS67cmGEmOyjPypnG7/aNJ4t8XTa7cGCElLJD8qdN/wDtGuX+tfQYHA+zXtKm581mOYOq/Z0/h/MWjNJmkr1TxrHbfCz/AJGXUP8Ar1T/ANCNetjpXkfws/5GXUf+vVP/AEI163/h2r5bHf7xI+wy3TDR/rqLXIeMPGMeiwm0tGD3zjrnIjHqfel8YeMI9Eha0s2V75xj1EY9T715FNNJcTNLM7PI5yWPU10YHA+0/eVF7py5jmCpJ06b94WWaS4meaZy7ucszdTTAfSk5PWlr6FJJWR8y7t3ZDfDFjN/u19E6Z/yCrT/AK4p/IV863//AB4Tf7pr6J0z/kFWn/XFP5CvCzf4on0eRr3JHmnxG/5Dyf8AXJf61x4rsfiN/wAh5P8Arkv9a46vTwj/AHEPQ8fGx/2ifqKKXFJThXRc5+UBTqbTsce1K4coopRSCnClcfKL9aUcUgpRSuPlF6GnCm/Wo7m6hs4GmmYKq/malysrsuMLuyHXFxFawNNO4VFGa5x3m1yYSzZjs1PyR939zTWM2tTie5BS1U5ji/ve5rRGAoAGAPSojF1Xd/CaTmqS5Y/F+QoAUBVGABgCikorqSONk1le3mk6hHqGmTGG6j6/3XH91h6GvbPCXiy08UacZIwIrqE7biAnlD/h6GvDqn03U7vQdVh1Wx/1kXyyIP8AlpGeqn+npXmY7BqqnOC95HrZdjnSkoT+Fn0Z2oqlpGqW2taVbajaPuguEDAjt6g++au187ax9QnfVEdeffFGeRLOyiDkRszFlHfGK9Brzr4qH9zYfV/6V14Bfv0cWZO2Gl/XU8zzRmmZozX1R8jYfmjNMzS0gsdv8K/+Rl1H/r1T/wBCNesSkrA5BwQpI+uK8n+FX/Iy6j/16p/6Ea9Yn/49pP8AcP8AKvmMb/vLPrcB/usfRnz1dyvLdyySOXdmJLMck1EP1p8//Hw/+9TR1r6aOiSPk5Jt3YopaSlFO4cpBf8A/HhP/umvojTP+QVaf9cU/kK+dr//AI8Zv92vonTP+QTaf9cU/kK8LNviifQ5Mvdkea/Eb/kPJ/1yX+tcdXY/Eb/kPJ/1xX+tcd6Zr0sI/wBxH0PKxi/2ifqLTqbThW9zmsFOFIKcKLj5RaWkHtThSuNRCnUgqve30NhAZpmAA5AHUn0FS2krstQbdkOvLyCxgae4bCqMgdz7Vzo8/V7gXV2CkCn91D6+5pFSfVbgXd6CIgf3UPYD1NaAIAwMY9qmEXUfM9uxU5KkuWPxDhwMClzTM0ZrpOSw/NGaZmjNMLD80mf0NNzRmkOx3Xwr1v7Dq0+gysRBcDzrYHorj7yj6g5/OvXuvevmiK9k0u/s9UiyHtJlk+q5+Yfka+lIZVnhjlQgq6hgR3Br5rMaPs6111PqcsrupRs90JXnPxVP7jT/AKv/AEr0avOPit/qdP8Aq/8ASoy/+OjTMf8AdmeY5ozTc0o5+lfUM+VsL1pwGKQfpThRcLHbfCr/AJGXUf8Ar1T/ANCNesT/APHvJ/uH+VeUfCr/AJGXUf8Ar1T/ANCNerz/APHtL/un+VfMY3/eWfVYL/dV6HzxP/r3+tNp8/8Ar3+tMHWvpE9D5ZrUUUtGKUUXHyla/wD+PGb/AHf8K+idM/5BNp/1xT+Qr531D/kHz/7tfRGmf8gq0/64p/IV4ma/FE97KFaMjzX4i/8AIfT/AK4r/WuOFdl8Rf8AkPL/ANcl/rXHDpXo4R/uI+h5mLX7+XqL1pe/FIKUV0XOflFFOHvTR0p1K47C0tGOKqahqEOnW5klOWP3EHVj6VLkktSoxcnZD76/h0+3aWZuf4VHUn0rn0jm1G4F5e5wP9VF2Ue9JFDLe3IvL45b/lnF2UVfzUwg5vmlsVOaprljuOz6UZpuaM10nLYdmjNNzRmgLDs0ZpuaM0BYdmjNNzRmgLDZlEkLoRwylT+Ne9eAbw33gbSJW+8IFRs/7PH9K8HJr2n4XMzeBLTcOjuB/wB9GvHzZaRZ7WTt80kddXm/xW/1On/V/wClekV5v8V/9Tp/1f8ApXBl/wDHR6OYfwGeXjinCkFOr6ds+WSFp1NpwpXHynbfCr/kZdR/69U/9CNesz/8e0v+6f5V5N8Kv+Rm1H/r1T/0I16xP/x7S/7h/lXzWM/3ln0+C/3Zeh88z/69/rTBT5/9e/1ptfRJ6HzjWoo6cUo6UnWnUXCxWv8A/kHz/wC7X0Rpn/IJtP8Arin8hXzxqH/IPm/3a+h9M/5BNn/1xT+Qrxc0+KJ7eVK0ZHm3xF/5Dy/9cV/rXHDkjNdj8Rf+Q8n/AFxX+tcdXo4R/uYnm4tfvpeo7qaUDPWkpRzWyZjYUc9acKQVR1PVItOhBPzytxHH/eNTKSW5UYNuyH6jqcOnQ73O5z9yMdWNYUME11cfbL75pD9yPsgpIIJZ5zeXrF5z91T0QVdpQg5vmkOc1Bcsdx2aM03NGa6TlsOzRmm5ozQOw7NGabmjNAWHZozTc0ZoCw7NGabmjNAWFdtqEnHAzXuvw5t3t/AelBxh5I/MI9NxJ/rXgssclz5dpCN01zIsKAdyxA/+vX01p9pHp+nW1pEMJBEsaj2AxXi5rPWMT2spp2Upkteb/Fb/AFWn/V/6V6RXnHxW/wBVp31f+lcWX/x0d2P1oM8vFOFIKUCvpmz5pRHUopBSjrSuVynbfCr/AJGbUf8Ar1T/ANCNesT/APHtL/uGvJ/hX/yM+o/9eqf+hGvWJ/8Aj2l/3DXzeM/3hn0eD/3dHz1cf69/rTKfP/x8P9aaB619EmfPNagOetO69aQcDmnY9aVw5StqH/IPm/3a+h9M/wCQTaf9cU/kK+eNQP8AxL5v92vofTP+QTaf9cU/kK8bMviiezlqtGR5t8Rf+Q8v/XFf61x9dh8RR/xPl/64r/WuPFehhX+6iefil+9kL1paAMnis3VdWSxQRxgSXD8Ig5x9a1c+VXZnGDkx+qatFp8WF+edvuIO596xba3keY3l22+dvXog9KS2tX803V03mXDc5/u+1XaIU+b3phUmorlgLn/61GaTNGa6Dm5Rc0ZpM0ZoCwuaM0maM0BYXNGaTNGaAsLmjNJmjNAWFzRmkzQkc9zPFa2sbS3MzbIkUdW9/bvmplNQi5McYOclFHX/AA00RtW8Wi+dc22mjfnsZT0H4DJ/Kvch0rC8H+HIfC/h63sEIab/AFk8vd5D1P8AT6Ct769a+XxFb2tRyZ9Th6PsqaiiOvOPit/qdP8Aq/8ASvR684+K3+r0/wD4H/StMB/HiZ41Xos8xHSlFIKUV9Jc+esLSj260D0pRSuVY7X4V/8AIz6j/wBeqf8AoRr1if8A49pf9w15P8K/+Rm1D/r1T/0I16xP/wAe0v8AuGvnMX/vDPfwv8BHz1PxO/1pop8/+vf60wV9AmeFyi9eTThz1pBz16Uo60XDlK2of8g+c/7NfQ+mf8gm0/64p/IV886j/wAg+b/d/wAK+htL/wCQTZ/9cU/kK8fMviievl3ws83+In/IeX/riv8AWuPHTp7V2HxE/wCQ6vvEv9a841fWBZgW9sBJdPwoHO36120JctCLZw1oOVZ2H6tq62SiGH95cvwqjnH1rKtbUo5uLhvMuH6k9qba2hiZppm8y4f7zGreeK6KdO755mFSaXuwHZ5ozTc0ZroMLDs0ZpuaM0BYdmjNNzRmgLDs0ZpuaM0BYdmjNNzRmgLDs0ZpuR+PpV3SNH1LX7sW2lWrTsDh5MERp/vMeP61FSpCmryZcKUpu0UUizbkSNGkldtscaDLMx6ACvZfh54FbQ4/7V1VVbVJVwqdfs6n+Ef7Xqau+D/h9Y+HAt5ckXep/wDPZh8sfsg7fU8102qaraaPYvd3kqxxIO56+wrwsVjJVpckNj2cLhI0Y889y20iI6qzAM/CjuafXCeC9RvfFesXviC4Ux2MJ+zWUWOn95vc9B+dd32x6cVwSjyuzO+EuZXI683+K3+q0/8A4H/SvSK84+K3+q0//gf9K6cB/HRz4xXos8xAyBTgKQdKXHYV9Hc8LlHCjpR0pwGKVx8p2nwr/wCRn1D/AK9U/wDQjXq9x/x6y/7h/lXlHws/5GfUf+vVP/QjXq8//HtL/uH+VfPYv/eGe5hv4KPnuYfv3+tNHJ9qfP8A69/rTev0r37niWDGacKToOKd0pXHYraj/wAg+b/dr6F0v/kE2f8A1xT+Qr561HjTpv8Ad/wr6F0v/kE2f/XFP5CvIzH4onqZerJnnfxJ0jXr6/EmjadJclogu8EALj6mvPLTwB4ot8ySaJdPO/LOSn+NfSdFc8MZOCSXQ3lhYTvfqfO3/CF+J/8AoBXX5p/jR/whfij/AKAV1+af419E0Vt/aVby+4y/s6kfO3/CF+KP+gFdfmn+NH/CF+KP+gFdfmn+NfRNFH9p1vL7g/s6kfO3/CF+KP8AoBXX5p/jR/whfij/AKAV1+af419E0Uf2lW8vuD+zqR87f8IV4o/6Ad1/30n+NH/CFeKP+gFdf99J/jX0VRR/aVby+4P7OpHzt/whfij/AKAV1+af40f8IV4o/wCgHc/99J/jX0TRR/aVby+4P7OpHzyngTxXIPk0Obd2Dyoo/wDQq1bL4U+Jroj7S9jZoepaQyN+AAA/WvcaQsB1I/OplmFeWg44GjHU890j4R6TakSancTahIDnafkT8h1/Gu9tLS2sbdbe1gjhiXhUjUACsTVvG3h7RgwudSiaUf8ALKI72+mB/WvPde+LV7dqYNFg+yxnjz5RufHsOg/GojTr4h9zR1KNBHo/iLxXpnhu2L3coacjKW6HLt+HYe9eKavrOr+O9ftrNCVedtkMIztjB+834DvWBd3kszvc3UzzSnJLuSxJ/n+Fey/DHwa2jWL6vqEO3UbtcKh6wx9QPqe9dU6UMJT11kzlhUnip9oo7LRNJt9C0a00y2UCK2j2A+p7n8Tk1oUUV5bbbuz0krLQjrzn4qf6vT/+B/0r0avOfir/AKvT/wDgf9K6cD/Gic+L/gs8xFOFNB9KcBivoLni2FApwpB604DnNK4+U7P4Wf8AIz6j/wBeqf8AoRr1ef8A49pP9w/yryj4Wf8AIz6j/wBeqf8AoRr1if8A49pP9w/yrwMV/HZ7OH/gnz5cf69/rTB6U+f/AF7/AFpo9a9655DWoo4FKMnrSdfSsLVtYdn+xWBDSH78g/gFRKfKOML+gusatvY2FmBJM2A56hRXYW/xU8Q29tFAsVkVjQICUboBj1rgra2S3TjLO3LMepqbip+rRnrUK+sShpTO8/4W14j/AOeNj/37b/Gl/wCFteI/+eNj/wB+2/xrgs0Zp/UaH8ofW63c73/hbXiP/njY/wDftv8AGj/hbXiP/njY/wDftv8AGuCzRml9Rofyh9bq9zvf+FteI/8AnjY/9+2/xo/4W14j/wCeNj/37b/GuCzRmj6jQ/lD63V7ne/8La8R/wDPGx/79t/jR/wtrxH/AM8bH/v23+NcFmjNH1Gh/KH1ur3O9/4W14i/542P/ftv8aP+FteI/wDnjY/9+2/xrgqKPqND+UPrdXudy3xY8THoLIf9sj/jUL/FLxXIeLi0Re+2Dn9TXG5ozTWCoL7Iniqr6nSS+PvFU5OdYkRT1Ecaj+lY15qeo6iCL3Uru4UnO2SZtv5VT/CjNaRw1KO0URKtUluxVRE+6APoKGdUUsx+UDJpCwVSx6DrXoPgL4eSaxLHq+twsmnqQ0Fu4wZj2ZvRfQVNevChHXcdGjKrLyJ/ht4FbULiDxBqsJFvG260hcYLkHiQj0z0r2YetNRFRFRVCqowABjAp1fO1azqz5pHuU6apx5YhRRRWZoR15z8VP8AV6f/AMD/AKV6NXnPxU/1en/8D/pXVgv4yOfFfwmeZAYFOA70gpfavfueRyjhzS9OKB0pQO9K47HZ/Cz/AJGfUP8Ar1T/ANCNerT/APHtL/uH+VeU/C3/AJGjUP8Ar1T/ANCNerT/APHtL/uH+VeDiv4zPXofwj5+nH+kP9aZ7Zx7ntUk+BM59/XFcvqmryXUpsrBuP8AlrL6fSvalLl06nlqF9STVdYeZ2sbA/N/y0l7L9KrWtultHheWPLMeppLe3S2i2p1PU9zUtXTp21luRUn9mOw7NGabmjNbGVh2aM03NGaAsOzRmm5ozQFh2aM03NGaAsOzRmm5ozQFh2aM03NGaAsOzRmm5ozjnNGyuFmOzQoaSRIoo2klc4SNBlnPoBWx4d8J6z4ok/0C3KW2drXcwxGv0/vH2Fe2eFPAek+FkEsam5vyMPcy4J/4D/dHtXDiMdCmuWOrOujhJT1lojk/BHwvMMkOq+IkVplIaKzzlU7gv6nvivVhwOOKKK8SpUlUleR6tOEacbIKWkqG8vLewtZLm6kWOGNcszHAH/16z1eltStErsmyAQOMngDPWlrh/Cuu3PjDxFeakimPSbL9xbL/fkPLMfoMfnXcdqqScXYE76kdec/FP8A1en/APA/6V6NXnXxT+5p/wDwP+lb4P8AjIxxK/dM8yHSnD1pFHFOxyBXvXPLsKOtOpOlOHrSuFjsPhb/AMjRqH/Xqn/oRr1e4/49Zf8AcNeU/C7/AJGjUP8Ar1T/ANCNesOokQoc4Ixx714WKf75nq0F+7R8s67qkl5ezWNkdqKSJZemPaqdvClvGFQfU+te3H4LeHDI7/a9UDOxZsTKMk9f4aP+FLeHf+f3Vf8Av+v/AMTXbTx1KOr3OWWFm9EzxbNGa9p/4Ut4d/5/dV/7/r/8TR/wpbw7/wA/uq/9/wBf/ia2/tOn5mf1Kfc8WzRmvaf+FLeHf+f3Vf8Av+v/AMTR/wAKW8O/8/uq/wDf9f8A4mj+0qXmH1Kfc8WzRmvaf+FLeHf+f3Vf+/6//E0v/ClvDv8Az+6r/wB/1/8AiaX9p0vMPqU+54rmjNe1f8KW8O/8/uq/9/1/+Jo/4Ut4d/5/dV/7/r/8TR/aVLzD6lPueK5ozXtX/ClvDv8Az+6r/wB/1/8AiaP+FLeHf+f3Vf8Av+v/AMTT/tKl5h9Sn3PFc0Zr2r/hS3h3/n91X/v+v/xNKvwX8OA83eqN7Gdf6LR/aVLzD6lPueKZHrSBwzBVyzk4CqMk175a/CjwnbMHezluCO887EflkD9K6TT/AA/o+kjFhptrb57pGAaynmi+yi44F9WeCaP4C8S64VaCwNtAf+W938g+oXG4/l+Nel+H/hNpOnFZtVf+0pxztcYiB/3e/wCNehjjtiiuKrjKtTc6oYeEBkUccMaxxIqIowqqMAD0FPoo9q5TcKKoalrWm6PCZdQvoLZR/wA9XAJ+g71534g+MNvErQ6Db+fJ0E86kIPovU/jWtOjUqO0UZzqRj8TPQda17TtAsmu9QuVijUcDqWPoB614b4q8Xap421SHT7JWSGWQJb247kn7zevHPtXOaprN/rF011qN288h7ueFHoB2Fep/CfwabWP/hItRhK3My4tY2H+rjPVserfoB713SpRwkOaWsjlVSdeVlsd94Z0OHw54etNMhwfKT5m/vMTlifqa16KK81u7udqSSsiOvOvil9zT/8Agf8ASvRa87+KP3NP/wCB/wBK6MH/ABkZYj+GzzMcCnCkxzTq9y551he9KWVFLMQoA5J6Cms6RoXdgqgck9q5bUdTl1eU29uSlqpwz9C30qHK2iGo316HT+F/H39ga7d3NtY/akeIR5L7Rwc12H/C6p8Y/sWP/wACD/8AE15PHGsUYRBhRT81DwVOWtTcr6xKOkT1X/hdc/8A0BI//Ag//E0f8Lrn/wCgJH/4EH/4mvKs0Zo+o0R/Wah6r/wuqf8A6Akf/gQf/iaP+F1T/wDQEj/8CD/8TXlWaM0fUaIfWah6r/wuqf8A6Akf/gQf/iaP+F1T/wDQEj/8CD/8TXlWaM0fUaIfWah6r/wuuf8A6Akf/gQf/iaX/hddx/0BI/8AwIP/AMTXlOaM0fUKIfWah6t/wuu4/wCgHH/4EH/4mj/hddx/0A4//Ag//E15TmjNH1GiH1moerf8LruP+gHH/wCBB/8AiaP+F13H/QDj/wDAg/8AxNeU5ozR9Roh9ZqHq3/C67j/AKAcf/gQf/iaP+F13H/QDj/8CD/8TXlOaM0fUaIfWah6t/wuu4/6Acf/AIEH/wCJo/4XZcYwNEj/APAg/wDxNeU5ozR9Roh9ZqHqTfGu9/h0WD8Zz/8AE1DJ8adYP+r0mzQepkZv6CvM80ZoWBo9hPE1DvJ/i54nkOIlsogfSIkj8zWJe+OvE+oArNrNwin+GHEf8ua57NGa1jhKUdokOtUfUc7NLKZZWeSQ9XkYsT+JpCQOvQfpSZ967PwH4An8V3C3t8rw6PG3phrgj+Ef7PqadWrChC4QpyqMs/DnwI3iK8i1fUoiNJgfciOMfaGH/so/U170oCgADGOw7VHbW8NpbR29vGscMahURRgAdqlr5+tWlVnzM9OnTUFZC0UUVkaEded/FH7lh/wP+leiV538Uf8AV2H/AAP+ldOE/jIyrL3DzRelLLJHEheRgqrySTTZJI4IjJIwVF6k1yd9fy6zKVQlLRTg+r167l0W5wxjfVj7/UJdYlMURKWank/36WNFjQKgwB2pEVY0CqMAdBS5ranT5dXuRJ32HZozTc0ZrUnlHZozTc0ZoCw7NGabmjNAWHZozTc0ZoCw7NGabmjNAWHZozTc0ZoCw7NGabmjNAWHZozTc0ZoCw7NGabmjNAWHZozTc0ZpNhyjs0Z+pPoBkn6e9XtG0TU/EN59l0q0ed8/M/RE/3m7f54r2zwd8L9O8Psl7qBF9qQ5Bcfu4j/ALK+vua5K+MhTVlqzanQlPfY4/wP8Lp9Rki1PxAhisx80doThpPQv6L7dTXtcMMUEKQwxqkaKFVFGAoHYCpKK8WrWnVd5M74U1BWQUUUVkWLRSUtICIV5z8V547e2spZWCoockn8K9J8t/SuN+IHgWXxnZW8C3bW/ksSQqBt+cep9q2oT5JpkzXMrHzje3s2sy4OUtFPC9N1PUBFCqMAdBXqS/A29UADVnGOmIU/+Kpf+FH33/QWk/78p/8AFV6dPF0Y6vc5ZUZs8tzRmvUv+FH33/QWk/78p/8AFUf8KPvv+gtJ/wB+U/8Aiq1+v0u5H1eR5bmjNepf8KPvv+gtJ/35T/4qj/hR99/0FpP+/Kf/ABVH1+l3D6vI8tzRmvUv+FH33/QWk/78p/8AFUf8KPvv+gs//flP/iqPr9LuH1eR5bmjNepf8KPvv+gs/wD35T/4qj/hR99/0Fn/AO/Kf/FUfX6XcPq8jy3NGa9S/wCFH33/AEFn/wC/Kf8AxVH/AAo++/6Cz/8AflP/AIqj6/S7h9XkeW5ozXqX/Cj77/oLP/35T/4qj/hR99/0Fn/78p/8VR9fpdw+ryPLc0Zr1P8A4Ufe/wDQXf8A78p/8VR/wo69/wCgu/8A35T/AOKo+v0u4fV5HlmaM16n/wAKOvf+gu//AH5T/wCKo/4Ude/9Bd/+/Kf/ABVH1+l3D6vI8szRmvU/+FHXv/QXf/vyn/xVKvwPvAfm1aUj2hQf+zUfX6QfV5HleaQuF6kV7NafBWxjcNey39zj+FJkjB/IZ/Wut0j4eeG9LIeLRELg/enYSEfmTWc8xivhRSwz6ngOkeG9b16QLpmmzzg/8tCNsY+rNgfln6V6d4d+DCKVn8QXXmnr9mtyQv4t1P4V61HAsSBI4wijoq4AFO2H0rhq42pU06G8aEYlSw02z0q0S0sbaK3gTokahR/+urVO2N6UbG9K5GbLTYbRTtjelGxvSgBtFO2N6UbG9KAG0tLsb0o2n0pAf//Z" style="width:70px; height:70px; object-fit:contain;">
                     <div>
                         <h1 style="margin:0; font-size:21px; color:#0284c7;">DİZSAN OTOMOTİV & SERVİS</h1>
                         <p style="margin:4px 0 0; font-size:13px; font-weight:bold;">${isAdmin ? 'GENEL TOPLANTI VE AKSİYON PERFORMANS YÖNETİCİ RAPORU' : `KİŞİSEL TOPLANTI VE AKSİYON RAPORU (${currentUser ? currentUser.name : ''})`}</p>
@@ -4903,76 +5046,6 @@ function readRegularFileToDataUrl(file) {
     });
 }
 
-let activeAttachmentBlobUrl = null;
-let activeAttachmentOpenUrl = null;
-
-function convertDataUrlToBlobUrl(dataUrl, fallbackMime = 'application/pdf') {
-    if (!dataUrl || typeof dataUrl !== 'string' || !dataUrl.startsWith('data:')) {
-        return dataUrl || '';
-    }
-    try {
-        const parts = dataUrl.split(',', 2);
-        if (parts.length < 2) return dataUrl;
-        const header = parts[0];
-        const b64 = parts[1].replace(/\s/g, '');
-        const mimeMatch = header.match(/data:([^;]+)/i);
-        const mime = (mimeMatch && mimeMatch[1]) ? mimeMatch[1] : fallbackMime;
-        const binStr = atob(b64);
-        const len = binStr.length;
-        const bytes = new Uint8Array(len);
-        for (let i = 0; i < len; i++) {
-            bytes[i] = binStr.charCodeAt(i);
-        }
-        const blob = new Blob([bytes], { type: mime });
-        return URL.createObjectURL(blob);
-    } catch (e) {
-        return dataUrl;
-    }
-}
-
-async function resolveAttachmentPlayableUrl(att) {
-    if (!att) return '';
-    let dataUrl = att.dataUrl || '';
-    if (!dataUrl && att.id) {
-        dataUrl = await loadAttachmentFromIndexedDB(att.id);
-        if (dataUrl) att.dataUrl = dataUrl;
-    }
-    const isPdf = (att.type || '').toLowerCase().includes('pdf') || (att.name || '').toLowerCase().endsWith('.pdf') || (dataUrl && dataUrl.startsWith('data:application/pdf'));
-    if (dataUrl && dataUrl.startsWith('data:')) {
-        if (activeAttachmentBlobUrl) {
-            try { URL.revokeObjectURL(activeAttachmentBlobUrl); } catch (e) {}
-            activeAttachmentBlobUrl = null;
-        }
-        activeAttachmentBlobUrl = convertDataUrlToBlobUrl(dataUrl, isPdf ? 'application/pdf' : (att.type || 'application/octet-stream'));
-        return activeAttachmentBlobUrl;
-    }
-    const relPath = att.fileUrl || getSafeAttachmentRelPath(att);
-    if (relPath) {
-        if (window.location.hostname.includes('github.io')) {
-            return `https://raw.githubusercontent.com/Dizsan/toplanti/main/${relPath}`;
-        }
-        return relPath;
-    }
-    return '';
-}
-
-function openCurrentAttachmentInNewTab() {
-    if (!activeAttachmentOpenUrl) return;
-    try {
-        const win = window.open(activeAttachmentOpenUrl, '_blank', 'noopener');
-        if (!win) {
-            const a = document.createElement('a');
-            a.href = activeAttachmentOpenUrl;
-            a.target = '_blank';
-            a.rel = 'noopener';
-            a.setAttribute('data-no-dpro-nav', '1');
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-        }
-    } catch (e) {}
-}
-
 async function handleMeetingAttachmentUpload(event) {
     const files = Array.from(event.target.files || []);
     if (files.length === 0) return;
@@ -4982,25 +5055,20 @@ async function handleMeetingAttachmentUpload(event) {
 
     for (const file of files) {
         const isImg = (file.type || '').startsWith('image/');
-        const isPdf = (file.type || '').toLowerCase().includes('pdf') || (file.name || '').toLowerCase().endsWith('.pdf');
         const dataUrl = isImg
             ? await compressImageFileToDataUrl(file)
             : await readRegularFileToDataUrl(file);
 
-        const attId = 'ATT-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
-        const newAtt = {
-            id: attId,
+        currentDraftAttachments.push({
+            id: 'ATT-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
             kind: isImg ? 'IMAGE' : 'FILE',
             name: file.name,
-            type: file.type || (isPdf ? 'application/pdf' : 'application/octet-stream'),
-            note: customNote || (isImg ? 'Toplantı / Kağıt Tutanak Fotoğrafı' : (isPdf ? 'Toplantı PDF Tutanak / Belgesi' : 'Ek Belge')),
+            type: file.type || 'application/octet-stream',
+            note: customNote || (isImg ? 'Toplantı / Kağıt Tutanak Fotoğrafı' : 'Ek Belge'),
             dataUrl,
-            fileUrl: getSafeAttachmentRelPath({ id: attId, name: file.name, type: file.type || (isPdf ? 'application/pdf' : '') }),
             addedBy: currentUser ? currentUser.name : 'ÖMER EREN',
             addedAt: formatNowTR()
-        };
-        await saveAttachmentToIndexedDB(newAtt);
-        currentDraftAttachments.push(newAtt);
+        });
     }
 
     if (noteInput) noteInput.value = '';
@@ -5048,17 +5116,18 @@ function renderDraftAttachments() {
     container.innerHTML = currentDraftAttachments.map(att => {
         const isImg = (att.type || '').startsWith('image/');
         const isPdf = (att.type || '').toLowerCase().includes('pdf') || (att.name || '').toLowerCase().endsWith('.pdf');
+        const imgSrc = isImg ? (att.dataUrl || att.fileUrl || '') : '';
         return `
             <div style="background:rgba(15,23,42,0.85); border:1px solid rgba(52,211,153,0.35); border-radius:8px; padding:0.45rem; display:flex; flex-direction:column; justify-content:space-between; gap:0.35rem; position:relative;">
                 <div style="display:flex; align-items:center; gap:0.45rem;">
-                    <div onclick="openDraftAttachmentPreview('${att.id}')" style="display:flex; align-items:center; gap:0.45rem; flex:1; min-width:0; cursor:pointer;" title="Önizlemek / Açmak İçin Tıklayın">
-                        ${isImg && att.dataUrl
-                            ? `<img src="${att.dataUrl}" style="width:42px; height:42px; object-fit:cover; border-radius:6px; border:1px solid rgba(255,255,255,0.15);">`
-                            : `<div style="width:42px; height:42px; border-radius:6px; background:rgba(16,185,129,0.15); display:flex; align-items:center; justify-content:center; color:#34d399; font-size:1.1rem;"><i class="fa-solid ${att.kind === 'NOTE' ? 'fa-note-sticky' : (isPdf ? 'fa-file-pdf' : 'fa-file-lines')}"></i></div>`
+                    <div onclick="openDraftAttachmentPreview('${att.id}')" style="display:flex; align-items:center; gap:0.45rem; flex:1; min-width:0; cursor:pointer;" title="Önizlemek / Açmak için tıklayın">
+                        ${isImg && imgSrc
+                            ? `<img src="${imgSrc}" style="width:42px; height:42px; object-fit:cover; border-radius:6px; border:1px solid rgba(255,255,255,0.15);">`
+                            : `<div style="width:42px; height:42px; border-radius:6px; background:rgba(16,185,129,0.15); display:flex; align-items:center; justify-content:center; color:${isPdf ? '#f87171' : '#34d399'}; font-size:1.1rem;"><i class="fa-solid ${att.kind === 'NOTE' ? 'fa-note-sticky' : (isPdf ? 'fa-file-pdf' : 'fa-file-lines')}"></i></div>`
                         }
                         <div style="flex:1; min-width:0;">
-                            <div style="font-size:0.75rem; font-weight:700; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${att.name}">${att.name}</div>
-                            <div style="font-size:0.68rem; color:#6ee7b7; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${att.note || ''}">${att.note || ''} (Açmak için tıklayın)</div>
+                            <div style="font-size:0.75rem; font-weight:700; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${escapeHtml(att.name || '')}">${escapeHtml(att.name || 'Ek Belge')}</div>
+                            <div style="font-size:0.68rem; color:#6ee7b7; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${escapeHtml(att.note || '')}">${escapeHtml(att.note || 'Önizlemek için tıklayın')}</div>
                         </div>
                     </div>
                     <button type="button" class="btn btn-danger btn-sm" style="padding:3px 6px; font-size:0.7rem;" onclick="removeDraftAttachment('${att.id}')" title="Eki Sil">
@@ -5070,10 +5139,69 @@ function renderDraftAttachments() {
     }).join('');
 }
 
-function openDraftAttachmentPreview(attId) {
+let activeAttachmentBlobUrl = null;
+let activePreviewAttachmentObj = null;
+
+function dataUrlToBlobUrl(dataUrl, fallbackMime = 'application/pdf') {
+    if (!dataUrl || typeof dataUrl !== 'string') return '';
+    if (!dataUrl.startsWith('data:')) return dataUrl;
+    try {
+        const commaIdx = dataUrl.indexOf(',');
+        if (commaIdx === -1) return dataUrl;
+        const header = dataUrl.slice(0, commaIdx);
+        const b64 = dataUrl.slice(commaIdx + 1).replace(/\s/g, '');
+        const mimeMatch = header.match(/data:([^;]+)/i);
+        const mime = (mimeMatch && mimeMatch[1]) ? mimeMatch[1] : fallbackMime;
+        const binStr = atob(b64);
+        const len = binStr.length;
+        const bytes = new Uint8Array(len);
+        for (let i = 0; i < len; i++) {
+            bytes[i] = binStr.charCodeAt(i);
+        }
+        const blob = new Blob([bytes], { type: mime });
+        return URL.createObjectURL(blob);
+    } catch (e) {
+        return dataUrl;
+    }
+}
+
+function resolveAttachmentSourceUrl(att) {
+    if (!att) return '';
+    let src = att.dataUrl || att.fileUrl || '';
+    if (!src) return '';
+    if (src.startsWith('data:')) {
+        const isPdf = (att.type || '').toLowerCase().includes('pdf') || (att.name || '').toLowerCase().endsWith('.pdf') || src.startsWith('data:application/pdf');
+        if (activeAttachmentBlobUrl) {
+            try { URL.revokeObjectURL(activeAttachmentBlobUrl); } catch (e) {}
+            activeAttachmentBlobUrl = null;
+        }
+        activeAttachmentBlobUrl = dataUrlToBlobUrl(src, isPdf ? 'application/pdf' : (att.type || 'application/octet-stream'));
+        return activeAttachmentBlobUrl;
+    }
+    return src;
+}
+
+function openCurrentAttachmentInNewTab() {
+    if (!activePreviewAttachmentObj) return;
+    const url = resolveAttachmentSourceUrl(activePreviewAttachmentObj);
+    if (!url || url === '#') return;
+    const win = window.open(url, '_blank', 'noopener');
+    if (!win) {
+        const a = document.createElement('a');
+        a.href = url;
+        a.target = '_blank';
+        a.rel = 'noopener';
+        a.setAttribute('data-no-dpro-nav', '1');
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => a.remove(), 300);
+    }
+}
+
+async function openDraftAttachmentPreview(attId) {
     const att = currentDraftAttachments.find(a => a.id === attId);
     if (!att) return;
-    renderAttachmentPreviewModalContent(att);
+    await renderAttachmentPreviewModalContent(att);
 }
 
 async function openAttachmentPreviewModal(meetingId, attId) {
@@ -5090,18 +5218,28 @@ async function openAttachmentPreviewModal(meetingId, attId) {
 }
 
 async function renderAttachmentPreviewModalContent(att) {
+    if (!att.dataUrl && att.id) {
+        const cached = await getAttachmentFromIDB(att.id);
+        if (cached && cached.dataUrl) {
+            att.dataUrl = cached.dataUrl;
+        }
+    }
+
+    activePreviewAttachmentObj = att;
     const modal = document.getElementById('attachment-preview-modal');
     const titleEl = document.getElementById('attachment-preview-title');
     const bodyEl = document.getElementById('attachment-preview-body');
     const dlBtn = document.getElementById('attachment-download-btn');
-    const openNewTabBtn = document.getElementById('attachment-open-newtab-btn');
+    const openTabBtn = document.getElementById('attachment-open-newtab-btn');
 
     titleEl.innerHTML = `<i class="fa-solid fa-paperclip" style="color:#34d399;"></i> ${escapeHtml(att.name || 'Toplantı / Eğitim Eki')}`;
-    const playableUrl = await resolveAttachmentPlayableUrl(att);
-    activeAttachmentOpenUrl = playableUrl || '';
 
-    const isImg = (att.type || '').startsWith('image/');
-    const isPdf = (att.type || '').toLowerCase().includes('pdf') || (att.name || '').toLowerCase().endsWith('.pdf') || (att.dataUrl || '').startsWith('data:application/pdf') || (playableUrl || '').toLowerCase().endsWith('.pdf');
+    const mimeLower = (att.type || '').toLowerCase();
+    const nameLower = (att.name || '').toLowerCase();
+    const isImg = mimeLower.startsWith('image/') || /\.(png|jpe?g|gif|webp|bmp)$/i.test(nameLower);
+    const isPdf = mimeLower.includes('pdf') || nameLower.endsWith('.pdf') || (att.dataUrl || '').startsWith('data:application/pdf') || (att.fileUrl || '').toLowerCase().endsWith('.pdf');
+
+    const playableUrl = resolveAttachmentSourceUrl(att);
 
     if (isImg && playableUrl) {
         bodyEl.innerHTML = `
@@ -5111,9 +5249,8 @@ async function renderAttachmentPreviewModalContent(att) {
         `;
         dlBtn.href = playableUrl;
         dlBtn.download = att.name || 'toplanti_eki.jpg';
-        dlBtn.setAttribute('data-no-dpro-nav', '1');
         dlBtn.style.display = 'inline-flex';
-        if (openNewTabBtn) openNewTabBtn.style.display = 'inline-flex';
+        if (openTabBtn) openTabBtn.style.display = 'inline-flex';
     } else if (att.kind === 'NOTE') {
         bodyEl.innerHTML = `
             <div style="background:rgba(255,255,255,0.04); border:1px solid var(--border-color); border-radius:12px; padding:1.25rem; text-align:left; white-space:pre-line; font-size:0.92rem; color:#fff;">
@@ -5122,34 +5259,32 @@ async function renderAttachmentPreviewModalContent(att) {
             <div style="margin-top:0.5rem; font-size:0.75rem; color:var(--text-sec);">Ekleyen: ${escapeHtml(att.addedBy || 'ÖMER EREN')} • ${escapeHtml(att.addedAt || '')}</div>
         `;
         dlBtn.style.display = 'none';
-        if (openNewTabBtn) openNewTabBtn.style.display = 'none';
+        if (openTabBtn) openTabBtn.style.display = 'none';
     } else if (isPdf && playableUrl) {
         bodyEl.innerHTML = `
-            <div style="margin-bottom:0.55rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
-                <span style="font-size:0.84rem; color:#fde68a;"><i class="fa-solid fa-file-pdf" style="color:#ef4444;"></i> ${escapeHtml(att.note || 'Toplantı PDF Tutanak / Belgesi')}</span>
-                <span style="font-size:0.75rem; color:var(--text-sec);">Ekleyen: ${escapeHtml(att.addedBy || 'ÖMER EREN')} • ${escapeHtml(att.addedAt || '')}</span>
+            ${att.note ? `<div style="margin-bottom:0.6rem; font-size:0.84rem; color:#fde68a;">${escapeHtml(att.note)}</div>` : ''}
+            <div style="width:100%; height:70vh; min-height:460px; border-radius:10px; overflow:hidden; border:1px solid rgba(56,189,248,0.35); background:#0f172a;">
+                <iframe src="${playableUrl}#toolbar=1&navpanes=1&view=FitH" style="width:100%; height:100%; border:none; background:#fff;" title="${escapeHtml(att.name || 'PDF Belgesi')}"></iframe>
             </div>
-            <iframe src="${playableUrl}#toolbar=1&navpanes=1&view=FitH" style="width:100%; height:68vh; border-radius:10px; border:1px solid var(--border-color); background:#ffffff; box-shadow:0 10px 30px rgba(0,0,0,0.5);"></iframe>
+            <div style="margin-top:0.5rem; font-size:0.75rem; color:var(--text-sec);">Ekleyen: ${escapeHtml(att.addedBy || 'ÖMER EREN')} • ${escapeHtml(att.addedAt || '')}</div>
         `;
         dlBtn.href = playableUrl;
-        dlBtn.download = att.name || 'toplanti_tutanagi.pdf';
-        dlBtn.setAttribute('data-no-dpro-nav', '1');
+        dlBtn.download = att.name || 'toplanti_belgesi.pdf';
         dlBtn.style.display = 'inline-flex';
-        if (openNewTabBtn) openNewTabBtn.style.display = 'inline-flex';
+        if (openTabBtn) openTabBtn.style.display = 'inline-flex';
     } else {
         bodyEl.innerHTML = `
             <div style="padding:1.5rem; background:rgba(255,255,255,0.03); border:1px solid var(--border-color); border-radius:12px;">
                 <i class="fa-solid fa-file-lines" style="font-size:3rem; color:#34d399; margin-bottom:0.75rem; display:block;"></i>
-                <h4 style="color:#fff; margin-bottom:0.35rem;">${escapeHtml(att.name)}</h4>
+                <h4 style="color:#fff; margin-bottom:0.35rem;">${escapeHtml(att.name || 'Ek Belge')}</h4>
                 <p style="font-size:0.84rem; color:var(--text-sec); margin-bottom:0.5rem;">${escapeHtml(att.note || '')}</p>
                 <div style="font-size:0.75rem; color:var(--text-sec);">Ekleyen: ${escapeHtml(att.addedBy || 'ÖMER EREN')} • ${escapeHtml(att.addedAt || '')}</div>
             </div>
         `;
         dlBtn.href = playableUrl || '#';
         dlBtn.download = att.name || 'ek_belge';
-        dlBtn.setAttribute('data-no-dpro-nav', '1');
         dlBtn.style.display = playableUrl ? 'inline-flex' : 'none';
-        if (openNewTabBtn) openNewTabBtn.style.display = playableUrl ? 'inline-flex' : 'none';
+        if (openTabBtn) openTabBtn.style.display = playableUrl ? 'inline-flex' : 'none';
     }
 
     modal.classList.add('open');
@@ -5157,8 +5292,883 @@ async function renderAttachmentPreviewModalContent(att) {
 
 function closeAttachmentPreviewModal() {
     document.getElementById('attachment-preview-modal').classList.remove('open');
-    const bodyEl = document.getElementById('attachment-preview-body');
-    if (bodyEl) bodyEl.innerHTML = '';
+}
+
+// ==========================================================================
+// GELİŞMİŞ YOKLAMA (DAVETLİ / GELEN / GELMEYEN & NEDENİ),
+// TİKLEMELİ GÜNDEM MADDELERİ, BAŞKA TOPLANTI PLANLAMA VE KARAR SORUMLUSU MOTORU
+// ==========================================================================
+let currentDraftAttendance = {}; // { "ÖMER EREN": { status: "ATTENDED" | "ABSENT", reason: "" } }
+let currentDraftAgendaItems = []; // [{ id, title, discussed, explanation, transferredToMeetingId }]
+let currentDraftDecisionItems = []; // [{ id, text, responsible, dueDate, status }]
+
+function escapeHtmlAttr(str) {
+    return String(str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+}
+
+function handleMeetingCardClick(event, meetingId) {
+    if (event && event.target) {
+        const interactive = event.target.closest('button, select, input, a, label');
+        if (interactive) return;
+    }
+    openMeetingModal(meetingId);
+}
+
+function printCurrentModalMeetingMinutes() {
+    const idVal = document.getElementById('meeting-id')?.value;
+    if (idVal) {
+        printMeetingMinutes(idVal);
+    }
+}
+
+function getMeetingAttendanceSummary(m) {
+    if (!m) return { invited: [], attended: [], absent: [] };
+    const invited = Array.isArray(m.invitedParticipants) && m.invitedParticipants.length > 0
+        ? [...m.invitedParticipants]
+        : (Array.isArray(m.participants) ? [...m.participants] : []);
+
+    const absentRaw = Array.isArray(m.absentParticipants) ? m.absentParticipants : [];
+    const absent = absentRaw
+        .map(ab => (typeof ab === 'string' ? { name: ab, reason: '' } : { name: ab.name || '', reason: ab.reason || '' }))
+        .filter(ab => ab.name);
+
+    const absentNamesNorm = new Set(absent.map(a => normalizeTR(a.name)));
+
+    let attended = [];
+    if (Array.isArray(m.attendedParticipants) && (m.attendedParticipants.length > 0 || absent.length > 0)) {
+        attended = m.attendedParticipants.filter(name => !absentNamesNorm.has(normalizeTR(name)));
+    } else {
+        attended = invited.filter(name => !absentNamesNorm.has(normalizeTR(name)));
+    }
+
+    return { invited, attended, absent };
+}
+
+function parseAgendaItemsFromMeeting(m) {
+    if (m && Array.isArray(m.agendaItems) && m.agendaItems.length > 0) {
+        return m.agendaItems.map((it, idx) => ({
+            id: it.id || ('agd-' + idx + '-' + Date.now()),
+            title: String(it.title || '').trim(),
+            discussed: Boolean(it.discussed),
+            explanation: String(it.explanation || '').trim(),
+            transferredToMeetingId: String(it.transferredToMeetingId || '').trim()
+        }));
+    }
+
+    const rawNotes = (m && m.notes) ? String(m.notes).trim() : '';
+    if (!rawNotes) return [];
+
+    const lines = rawNotes.split('\n').map(l => l.trim()).filter(Boolean);
+    const parsed = [];
+
+    lines.forEach((line, idx) => {
+        // Eğer önceki kayıtlardan açıklama satırıysa son maddeye ekle
+        if (/^(💬\s*Açıklama:|↳\s*Açıklama:)/i.test(line) && parsed.length > 0) {
+            const expText = line.replace(/^(💬\s*Açıklama:|↳\s*Açıklama:)\s*/i, '').trim();
+            parsed[parsed.length - 1].explanation = parsed[parsed.length - 1].explanation
+                ? (parsed[parsed.length - 1].explanation + '\n' + expText)
+                : expText;
+            return;
+        }
+        let discussed = false;
+        let cleanLine = line;
+        if (/^✅/.test(cleanLine)) {
+            discussed = true;
+            cleanLine = cleanLine.replace(/^✅\s*/, '');
+        } else if (/^⬜|^⏳/.test(cleanLine)) {
+            discussed = false;
+            cleanLine = cleanLine.replace(/^(⬜|⏳)\s*/, '');
+        }
+        cleanLine = cleanLine
+            .replace(/^\d+[\.\)\-]\s*/, '')
+            .replace(/\s*\[(Konuşuldu|Konuşulmadı[^\]]*)\]\s*$/i, '')
+            .trim();
+
+        if (cleanLine) {
+            parsed.push({
+                id: 'agd-' + idx + '-' + Math.floor(Math.random() * 10000),
+                title: cleanLine,
+                discussed,
+                explanation: '',
+                transferredToMeetingId: ''
+            });
+        }
+    });
+
+    return parsed;
+}
+
+function parseDecisionItemsFromMeeting(m) {
+    const defaultDate = (m && m.date) ? normalizeToISODate(m.date) : new Date().toISOString().split('T')[0];
+    const defaultResp = (m && m.createdBy) ? m.createdBy : 'ÖMER EREN';
+
+    if (m && Array.isArray(m.decisionItems) && m.decisionItems.length > 0) {
+        return m.decisionItems.map((d, idx) => ({
+            id: d.id || ('dec-' + idx + '-' + Date.now()),
+            text: String(d.text || '').trim(),
+            responsible: String(d.responsible || defaultResp).trim(),
+            dueDate: normalizeToISODate(d.dueDate || defaultDate),
+            status: d.status || 'Bekliyor'
+        }));
+    }
+
+    const rawDec = (m && m.decisions) ? String(m.decisions).trim() : '';
+    if (!rawDec) return [];
+
+    const lines = rawDec.split('\n').map(l => l.trim()).filter(Boolean);
+    return lines.map((line, idx) => {
+        let textPart = line.replace(/^\d+[\.\)\-]\s*/, '').trim();
+        let resp = defaultResp;
+        let due = defaultDate;
+
+        // Eğer metin içinde "(Sorumlu: X | Termin: Y)" formatı varsa ayrıştır
+        const metaMatch = textPart.match(/\(Sorumlu:\s*([^|)]+?)\s*\|\s*Termin:\s*([^)]+)\)\s*$/i);
+        if (metaMatch) {
+            resp = metaMatch[1].trim();
+            due = normalizeToISODate(metaMatch[2].trim()) || defaultDate;
+            textPart = textPart.replace(metaMatch[0], '').trim();
+        }
+
+        return {
+            id: 'dec-' + idx + '-' + Math.floor(Math.random() * 10000),
+            text: textPart,
+            responsible: resp,
+            dueDate: due,
+            status: 'Bekliyor'
+        };
+    }).filter(d => d.text);
+}
+
+function formatAgendaItemsToLegacyNotes(agendaItems) {
+    return (agendaItems || [])
+        .filter(it => it.title && it.title.trim())
+        .map((it, idx) => {
+            const statusTag = it.discussed
+                ? '[Konuşuldu]'
+                : (it.transferredToMeetingId ? `[Konuşulmadı -> ${it.transferredToMeetingId}]` : '[Konuşulmadı]');
+            let str = `${idx + 1}. ${it.title.trim()} ${statusTag}`;
+            if (it.discussed && it.explanation && it.explanation.trim()) {
+                str += `\n   ↳ Açıklama: ${it.explanation.trim()}`;
+            }
+            return str;
+        })
+        .join('\n');
+}
+
+function formatDecisionItemsToLegacyText(decisionItems) {
+    return (decisionItems || [])
+        .filter(d => d.text && d.text.trim())
+        .map((d, idx) => {
+            const resp = d.responsible || 'ÖMER EREN';
+            const due = d.dueDate ? formatDateTR(d.dueDate) : '-';
+            return `${idx + 1}. ${d.text.trim()} (Sorumlu: ${resp} | Termin: ${due})`;
+        })
+        .join('\n');
+}
+
+function onInvitedParticipantCheckboxChange() {
+    const checkedNames = Array.from(document.querySelectorAll('input[name="meeting-participant"]:checked')).map(cb => cb.value);
+    checkedNames.forEach(name => {
+        if (!currentDraftAttendance[name]) {
+            currentDraftAttendance[name] = { status: 'ATTENDED', reason: '' };
+        }
+    });
+    renderAttendanceManagementUI();
+}
+
+function setParticipantAttendanceStatus(personName, status) {
+    if (!currentDraftAttendance[personName]) {
+        currentDraftAttendance[personName] = { status: 'ATTENDED', reason: '' };
+    }
+    currentDraftAttendance[personName].status = (status === 'ABSENT') ? 'ABSENT' : 'ATTENDED';
+    renderAttendanceManagementUI();
+    if (status === 'ABSENT') {
+        setTimeout(() => {
+            const inputEl = document.querySelector(`.absent-reason-input[data-person="${CSS.escape(personName)}"]`);
+            if (inputEl) inputEl.focus();
+        }, 40);
+    }
+}
+
+function updateParticipantAbsentReason(personName, reasonVal) {
+    if (!currentDraftAttendance[personName]) {
+        currentDraftAttendance[personName] = { status: 'ABSENT', reason: '' };
+    }
+    currentDraftAttendance[personName].reason = reasonVal;
+    // Diğer özet kutusundaki eşleşen input varsa senkronize et
+    document.querySelectorAll(`.absent-reason-input[data-person="${CSS.escape(personName)}"]`).forEach(el => {
+        if (el.value !== reasonVal) el.value = reasonVal;
+    });
+}
+
+function setQuickAbsentReason(personName, presetReason) {
+    if (!currentDraftAttendance[personName]) {
+        currentDraftAttendance[personName] = { status: 'ABSENT', reason: '' };
+    }
+    currentDraftAttendance[personName].status = 'ABSENT';
+    currentDraftAttendance[personName].reason = presetReason;
+    renderAttendanceManagementUI();
+}
+
+function markAllInvitedAttendance(status) {
+    const checkedNames = Array.from(document.querySelectorAll('input[name="meeting-participant"]:checked')).map(cb => cb.value);
+    checkedNames.forEach(name => {
+        const prevReason = currentDraftAttendance[name]?.reason || '';
+        currentDraftAttendance[name] = {
+            status: status === 'ABSENT' ? 'ABSENT' : 'ATTENDED',
+            reason: status === 'ABSENT' ? prevReason : ''
+        };
+    });
+    renderAttendanceManagementUI();
+}
+
+function renderAttendanceManagementUI() {
+    const rowsContainer = document.getElementById('attendance-rows-container');
+    const countersBar = document.getElementById('attendance-counters-bar');
+    const summaryBoxes = document.getElementById('attendance-summary-boxes');
+    if (!rowsContainer || !countersBar || !summaryBoxes) return;
+
+    const invitedNames = Array.from(document.querySelectorAll('input[name="meeting-participant"]:checked')).map(cb => cb.value);
+
+    invitedNames.forEach(name => {
+        if (!currentDraftAttendance[name]) {
+            currentDraftAttendance[name] = { status: 'ATTENDED', reason: '' };
+        }
+    });
+
+    const attendedNames = invitedNames.filter(n => currentDraftAttendance[n]?.status !== 'ABSENT');
+    const absentNames = invitedNames.filter(n => currentDraftAttendance[n]?.status === 'ABSENT');
+
+    countersBar.innerHTML = `
+        <span class="badge badge-normal" style="font-size:0.78rem; padding:4px 10px;">
+            <i class="fa-solid fa-envelope-open-text"></i> Davet Edilen Katılımcılar: <strong>${invitedNames.length} Kişi</strong>
+        </span>
+        <span class="badge badge-done" style="font-size:0.78rem; padding:4px 10px;">
+            <i class="fa-solid fa-user-check"></i> Gelen Katılımcılar: <strong>${attendedNames.length} Kişi</strong>
+        </span>
+        <span class="badge ${absentNames.length > 0 ? 'badge-critical' : 'badge-pending'}" style="font-size:0.78rem; padding:4px 10px;">
+            <i class="fa-solid fa-user-xmark"></i> Gelmeyen Katılımcılar: <strong>${absentNames.length} Kişi</strong>
+        </span>
+    `;
+
+    if (invitedNames.length === 0) {
+        rowsContainer.innerHTML = `
+            <div style="grid-column:1/-1; text-align:center; padding:1rem; color:var(--text-sec); font-size:0.8rem; border:1px dashed var(--border-color); border-radius:10px;">
+                Yukarıdaki listeden davet edilen katılımcıları işaretlediğinizde Gelen / Gelmeyen yoklama listesi burada açılır.
+            </div>
+        `;
+        summaryBoxes.innerHTML = '';
+        return;
+    }
+
+    rowsContainer.innerHTML = invitedNames.map(name => {
+        const uObj = appState.users.find(u => u.name === name);
+        const deptStr = uObj ? uObj.dept : 'Personel';
+        const attState = currentDraftAttendance[name] || { status: 'ATTENDED', reason: '' };
+        const isAbsent = attState.status === 'ABSENT';
+        const safeNameAttr = escapeHtmlAttr(name);
+        const safeReasonAttr = escapeHtmlAttr(attState.reason || '');
+
+        return `
+            <div class="attendance-row ${isAbsent ? 'status-absent' : 'status-attended'}">
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:0.4rem; flex-wrap:wrap;">
+                    <div>
+                        <strong style="font-size:0.82rem; color:#fff; display:block;">${name}</strong>
+                        <span style="font-size:0.69rem; color:var(--text-sec);">${deptStr}</span>
+                    </div>
+                    <div style="display:flex; gap:0.35rem;">
+                        <button type="button" class="attendance-toggle-btn ${!isAbsent ? 'active-attended' : ''}" onclick="setParticipantAttendanceStatus('${safeNameAttr}', 'ATTENDED')">
+                            <i class="fa-solid fa-check"></i> Geldi
+                        </button>
+                        <button type="button" class="attendance-toggle-btn ${isAbsent ? 'active-absent' : ''}" onclick="setParticipantAttendanceStatus('${safeNameAttr}', 'ABSENT')">
+                            <i class="fa-solid fa-xmark"></i> Gelmedi
+                        </button>
+                    </div>
+                </div>
+                ${isAbsent ? `
+                    <div class="absent-reason-box">
+                        <label style="font-size:0.7rem; color:#fca5a5; font-weight:700; display:block; margin-bottom:4px;">
+                            <i class="fa-solid fa-comment-medical"></i> ${name} — Gelmeme Nedeni / Mazereti *
+                        </label>
+                        <input type="text" class="form-control absent-reason-input" data-person="${safeNameAttr}" style="padding:0.4rem 0.6rem; font-size:0.78rem; border-color:rgba(239,68,68,0.45);" placeholder="Gelmeme nedenini yazın (Örn: İzinli, Raporlu, Sahada...)" value="${safeReasonAttr}" oninput="updateParticipantAbsentReason('${safeNameAttr}', this.value)">
+                        <div style="display:flex; gap:0.25rem; flex-wrap:wrap; margin-top:0.35rem;">
+                            ${['İzinli', 'Raporlu', 'Müşteri Ziyaretinde', 'Şehir Dışında', 'Servis Yoğunluğu'].map(preset => `
+                                <button type="button" style="background:rgba(239,68,68,0.16); border:1px solid rgba(239,68,68,0.35); color:#fecaca; border-radius:5px; padding:1px 6px; font-size:0.66rem; cursor:pointer;" onclick="setQuickAbsentReason('${safeNameAttr}', '${preset}')">${preset}</button>
+                            `).join('')}
+                        </div>
+                    </div>
+                ` : ''}
+            </div>
+        `;
+    }).join('');
+
+    summaryBoxes.innerHTML = `
+        <div style="background:rgba(16,185,129,0.08); border:1px solid rgba(16,185,129,0.35); border-radius:10px; padding:0.65rem 0.8rem;">
+            <div style="font-size:0.78rem; font-weight:800; color:#6ee7b7; margin-bottom:0.35rem;">
+                <i class="fa-solid fa-user-check"></i> ✅ Gelen Katılımcılar (${attendedNames.length} Kişi)
+            </div>
+            <div style="display:flex; flex-wrap:wrap; gap:0.35rem;">
+                ${attendedNames.length > 0
+                    ? attendedNames.map(n => `<span class="participant-tag" style="background:rgba(16,185,129,0.18); border-color:rgba(16,185,129,0.4); color:#d1fae5;"><i class="fa-solid fa-check" style="color:#34d399;"></i> ${n}</span>`).join('')
+                    : `<span style="font-size:0.75rem; color:var(--text-sec);">Henüz gelen katılımcı seçilmedi.</span>`
+                }
+            </div>
+        </div>
+        <div style="background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.38); border-radius:10px; padding:0.65rem 0.8rem;">
+            <div style="font-size:0.78rem; font-weight:800; color:#fca5a5; margin-bottom:0.35rem;">
+                <i class="fa-solid fa-user-xmark"></i> ❌ Gelmeyen Katılımcılar ve Gelmeme Nedenleri (${absentNames.length} Kişi)
+            </div>
+            ${absentNames.length > 0 ? `
+                <div style="display:flex; flex-direction:column; gap:0.4rem;">
+                    ${absentNames.map(n => {
+                        const rVal = escapeHtmlAttr(currentDraftAttendance[n]?.reason || '');
+                        const sName = escapeHtmlAttr(n);
+                        return `
+                            <div style="display:flex; align-items:center; gap:0.45rem; flex-wrap:wrap; background:rgba(15,23,42,0.75); padding:0.35rem 0.5rem; border-radius:7px; border:1px solid rgba(239,68,68,0.35);">
+                                <strong style="font-size:0.75rem; color:#fecaca; min-width:120px;"><i class="fa-solid fa-user-slash"></i> ${n}:</strong>
+                                <input type="text" class="form-control absent-reason-input" data-person="${sName}" style="flex:1; min-width:150px; padding:0.3rem 0.55rem; font-size:0.76rem;" placeholder="Gelmeme nedenini buraya yazın..." value="${rVal}" oninput="updateParticipantAbsentReason('${sName}', this.value)">
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            ` : `<span style="font-size:0.75rem; color:var(--text-sec);">Gelmeyen katılımcı yok (Davet edilen herkes katıldı).</span>`}
+        </div>
+    `;
+}
+
+// --- GÜNDEM MADDELERİ (TİKLEMELİ + ALTTA AÇIKLAMA KUTUCUĞU + KONUŞULMAYANLAR LİSTESİ) ---
+function addAgendaItemFromQuickInput() {
+    const input = document.getElementById('quick-agenda-item-input');
+    if (!input) return;
+    const val = input.value.trim();
+    if (!val) {
+        addAgendaItemRow('', false, '', true);
+        return;
+    }
+    const cleanTitle = val.replace(/^\d+[\.\)\-]\s*/, '').trim();
+    // Eğer listede tek bir boş satır varsa onu doldur
+    if (currentDraftAgendaItems.length === 1 && !currentDraftAgendaItems[0].title.trim()) {
+        currentDraftAgendaItems[0].title = cleanTitle;
+    } else {
+        currentDraftAgendaItems.push({
+            id: 'agd-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
+            title: cleanTitle,
+            discussed: false,
+            explanation: '',
+            transferredToMeetingId: ''
+        });
+    }
+    input.value = '';
+    renderDraftAgendaItems();
+    input.focus();
+}
+
+function addAgendaItemRow(title = '', discussed = false, explanation = '', focusNew = false) {
+    const newId = 'agd-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
+    currentDraftAgendaItems.push({
+        id: newId,
+        title: String(title || '').replace(/^\d+[\.\)\-]\s*/, '').trim(),
+        discussed: Boolean(discussed),
+        explanation: String(explanation || '').trim(),
+        transferredToMeetingId: ''
+    });
+    renderDraftAgendaItems(focusNew ? newId : null);
+}
+
+function removeAgendaItemRow(itemId) {
+    currentDraftAgendaItems = currentDraftAgendaItems.filter(it => it.id !== itemId);
+    if (currentDraftAgendaItems.length === 0) {
+        addAgendaItemRow('', false, '', false);
+    } else {
+        renderDraftAgendaItems();
+    }
+}
+
+function toggleAgendaItemDiscussed(itemId, checked) {
+    const item = currentDraftAgendaItems.find(it => it.id === itemId);
+    if (!item) return;
+    item.discussed = Boolean(checked);
+    renderDraftAgendaItems();
+    if (item.discussed) {
+        setTimeout(() => {
+            const expEl = document.getElementById(`agenda-exp-${itemId}`);
+            if (expEl) expEl.focus();
+        }, 40);
+    }
+}
+
+function updateAgendaItemTitle(itemId, val) {
+    const item = currentDraftAgendaItems.find(it => it.id === itemId);
+    if (!item) return;
+    item.title = val;
+    renderUndiscussedAgendaSummary();
+}
+
+function updateAgendaItemExplanation(itemId, val) {
+    const item = currentDraftAgendaItems.find(it => it.id === itemId);
+    if (!item) return;
+    item.explanation = val;
+}
+
+function handleAgendaTitleKeydown(event, itemId) {
+    if (event.key === 'Enter') {
+        event.preventDefault();
+        addAgendaItemRow('', false, '', true);
+    }
+}
+
+function renderDraftAgendaItems(focusItemId = null) {
+    const container = document.getElementById('meeting-agenda-items-container');
+    if (!container) return;
+
+    if (currentDraftAgendaItems.length === 0) {
+        currentDraftAgendaItems.push({
+            id: 'agd-' + Date.now(),
+            title: '',
+            discussed: false,
+            explanation: '',
+            transferredToMeetingId: ''
+        });
+    }
+
+    container.innerHTML = currentDraftAgendaItems.map((it, idx) => {
+        const isDiscussed = Boolean(it.discussed);
+        const safeTitle = escapeHtmlAttr(it.title || '');
+        const safeExp = escapeHtmlAttr(it.explanation || '');
+
+        return `
+            <div class="agenda-item-card ${isDiscussed ? 'discussed' : 'undiscussed'}">
+                <div style="display:flex; align-items:center; gap:0.6rem; flex-wrap:wrap;">
+                    <label style="display:inline-flex; align-items:center; gap:0.45rem; cursor:pointer; margin:0; padding:0.35rem 0.65rem; border-radius:8px; background:${isDiscussed ? 'rgba(16,185,129,0.22)' : 'rgba(255,255,255,0.06)'}; border:1px solid ${isDiscussed ? '#10b981' : 'rgba(255,255,255,0.18)'}; color:${isDiscussed ? '#6ee7b7' : '#cbd5e1'}; font-size:0.78rem; font-weight:800; user-select:none;" title="Konuşulduysa tik atın, konuşulmadıysa boş bırakın">
+                        <input type="checkbox" style="width:18px; height:18px; accent-color:#10b981; cursor:pointer;" ${isDiscussed ? 'checked' : ''} onchange="toggleAgendaItemDiscussed('${it.id}', this.checked)">
+                        <span>${isDiscussed ? '✅ Konuşuldu' : '⬜ Konuşulmadı'}</span>
+                    </label>
+
+                    <span style="font-weight:800; color:var(--dizsan-light); font-size:0.88rem; min-width:24px;">${idx + 1}.</span>
+
+                    <input type="text" id="agenda-title-${it.id}" class="form-control" style="flex:1; min-width:200px; font-weight:600;" placeholder="${idx + 1}. Gündem maddesi başlığını yazın..." value="${safeTitle}" oninput="updateAgendaItemTitle('${it.id}', this.value)" onkeydown="handleAgendaTitleKeydown(event, '${it.id}')">
+
+                    <button type="button" class="btn btn-danger btn-sm" style="padding:0.4rem 0.6rem;" onclick="removeAgendaItemRow('${it.id}')" title="Gündem Maddesini Sil">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
+                </div>
+
+                ${isDiscussed ? `
+                    <div class="agenda-explanation-box">
+                        <label style="font-size:0.75rem; font-weight:800; color:#6ee7b7; display:block; margin-bottom:0.35rem;">
+                            <i class="fa-solid fa-comment-dots"></i> ${idx + 1}. Gündem Maddesi Açıklaması / Konuşulan Detaylar:
+                        </label>
+                        <textarea id="agenda-exp-${it.id}" class="form-control" rows="2" style="background:rgba(15,23,42,0.85); border-color:rgba(52,211,153,0.45); font-size:0.83rem;" placeholder="Bu gündem maddesinde konuşulanları, değerlendirmeleri ve açıklamaları buraya girin..." oninput="updateAgendaItemExplanation('${it.id}', this.value)">${safeExp}</textarea>
+                    </div>
+                ` : `
+                    <div style="margin-top:0.35rem; font-size:0.72rem; color:#fde68a; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.4rem;">
+                        <span><i class="fa-regular fa-clock"></i> Bu madde konuşulduysa sol üstteki kutucuğa tik koyup açıklamasını girebilirsiniz. Tik konulmazsa <strong>Konuşulmayan Maddeler</strong> listesine alınır.</span>
+                        ${it.transferredToMeetingId ? `<span class="badge badge-normal" style="font-size:0.68rem;">➔ ${it.transferredToMeetingId} Toplantısına Aktarıldı</span>` : ''}
+                    </div>
+                `}
+            </div>
+        `;
+    }).join('');
+
+    renderUndiscussedAgendaSummary();
+
+    if (focusItemId) {
+        setTimeout(() => {
+            const el = document.getElementById(`agenda-title-${focusItemId}`);
+            if (el) el.focus();
+        }, 30);
+    }
+}
+
+function renderUndiscussedAgendaSummary() {
+    const box = document.getElementById('undiscussed-agenda-summary-box');
+    const footerBtn = document.getElementById('btn-footer-plan-followup');
+    if (!box) return;
+
+    const undiscussed = currentDraftAgendaItems
+        .map((it, idx) => ({ ...it, orderNum: idx + 1 }))
+        .filter(it => it.title && it.title.trim() && !it.discussed);
+
+    if (undiscussed.length === 0) {
+        box.style.display = 'none';
+        box.innerHTML = '';
+        if (footerBtn) footerBtn.style.display = 'none';
+        return;
+    }
+
+    box.style.display = 'block';
+    if (footerBtn) footerBtn.style.display = 'inline-flex';
+
+    box.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:0.75rem;">
+            <div style="flex:1; min-width:240px;">
+                <strong style="color:#fde68a; font-size:0.86rem; display:block; margin-bottom:0.25rem;">
+                    <i class="fa-solid fa-clock-rotate-left" style="color:#fbbf24;"></i> ⏳ Toplantıda Konuşulmayan Gündem Maddeleri (${undiscussed.length} Madde)
+                </strong>
+                <div style="font-size:0.75rem; color:#fef3c7; margin-bottom:0.5rem;">
+                    Tik konulmayan (konuşulmayan) maddeler aşağıda listelenmiştir. Bu maddeleri başka bir toplantıya aktarmak için <strong>"Başka Toplantı Planlama Ekranını Aç"</strong> butonuna tıklayın:
+                </div>
+                <div style="display:flex; flex-direction:column; gap:0.3rem;">
+                    ${undiscussed.map(u => `
+                        <div style="font-size:0.8rem; color:#fff; background:rgba(15,23,42,0.75); padding:0.35rem 0.6rem; border-radius:6px; border-left:3px solid #f59e0b;">
+                            ⬜ <strong>Madde ${u.orderNum}:</strong> ${escapeHtmlAttr(u.title)}
+                            ${u.transferredToMeetingId ? `<span style="color:#38bdf8; font-size:0.72rem; margin-left:6px;">(➔ ${u.transferredToMeetingId} toplantısına planlandı)</span>` : ''}
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+            <div style="display:flex; align-items:center;">
+                <button type="button" class="btn btn-sm" style="background:linear-gradient(135deg,#f59e0b,#d97706); color:#0f172a; font-weight:800; padding:0.55rem 0.95rem;" onclick="openFollowupMeetingModalFromCurrentDraft()">
+                    <i class="fa-solid fa-calendar-plus"></i> Başka Toplantı Planlama Ekranını Aç (${undiscussed.length} Madde)
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+// --- ALINAN KARARLAR, KARAR SORUMLUSU VE TERMİN TARİHLERİ ---
+function addDecisionItemRow(text = '', responsible = '', dueDate = '', status = 'Bekliyor', focusNew = false) {
+    const defaultDate = normalizeToISODate(document.getElementById('meeting-date-input')?.value) || new Date(Date.now() + 86400000).toISOString().split('T')[0];
+    const defaultResp = responsible || (currentUser ? currentUser.name : 'ÖMER EREN');
+    const newId = 'dec-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
+
+    currentDraftDecisionItems.push({
+        id: newId,
+        text: String(text || '').replace(/^\d+[\.\)\-]\s*/, '').trim(),
+        responsible: defaultResp,
+        dueDate: normalizeToISODate(dueDate) || defaultDate,
+        status: status || 'Bekliyor'
+    });
+    renderDraftDecisionItems(focusNew ? newId : null);
+}
+
+function removeDecisionItemRow(decId) {
+    currentDraftDecisionItems = currentDraftDecisionItems.filter(d => d.id !== decId);
+    if (currentDraftDecisionItems.length === 0) {
+        addDecisionItemRow('', '', '', 'Bekliyor', false);
+    } else {
+        renderDraftDecisionItems();
+    }
+}
+
+function updateDecisionItemField(decId, field, val) {
+    const item = currentDraftDecisionItems.find(d => d.id === decId);
+    if (!item) return;
+    if (field === 'dueDate') {
+        item.dueDate = normalizeToISODate(val);
+    } else {
+        item[field] = val;
+    }
+}
+
+function handleDecisionInputKeydown(event, decId) {
+    if (event.key === 'Enter') {
+        event.preventDefault();
+        addDecisionItemRow('', '', '', 'Bekliyor', true);
+    }
+}
+
+function renderDraftDecisionItems(focusDecId = null) {
+    const container = document.getElementById('meeting-decisions-container');
+    if (!container) return;
+
+    if (currentDraftDecisionItems.length === 0) {
+        const defaultDate = normalizeToISODate(document.getElementById('meeting-date-input')?.value) || new Date(Date.now() + 86400000).toISOString().split('T')[0];
+        currentDraftDecisionItems.push({
+            id: 'dec-' + Date.now(),
+            text: '',
+            responsible: currentUser ? currentUser.name : 'ÖMER EREN',
+            dueDate: defaultDate,
+            status: 'Bekliyor'
+        });
+    }
+
+    const userOptions = [
+        `<option value="Tüm Katılımcılar / Genel">Tüm Katılımcılar / Genel</option>`,
+        ...appState.users.map(u => `<option value="${escapeHtmlAttr(u.name)}">${escapeHtmlAttr(u.name)} (${escapeHtmlAttr(u.dept)})</option>`)
+    ];
+
+    container.innerHTML = currentDraftDecisionItems.map((dec, idx) => {
+        const safeText = escapeHtmlAttr(dec.text || '');
+        const isoDue = normalizeToISODate(dec.dueDate) || new Date().toISOString().split('T')[0];
+
+        return `
+            <div class="decision-item-row">
+                <span style="font-weight:800; color:#38bdf8; font-size:0.86rem; min-width:26px;">${idx + 1}.</span>
+                <div>
+                    <input type="text" id="dec-text-${dec.id}" class="form-control" placeholder="${idx + 1}. Alınan kararı yazın..." value="${safeText}" oninput="updateDecisionItemField('${dec.id}', 'text', this.value)" onkeydown="handleDecisionInputKeydown(event, '${dec.id}')">
+                </div>
+                <div>
+                    <select class="form-control" onchange="updateDecisionItemField('${dec.id}', 'responsible', this.value)" title="Alınan Karar Sorumlusu">
+                        ${userOptions.map(opt => {
+                            const isSel = opt.includes(`value="${escapeHtmlAttr(dec.responsible)}"`);
+                            return isSel ? opt.replace('<option ', '<option selected ') : opt;
+                        }).join('')}
+                    </select>
+                </div>
+                <div>
+                    <input type="date" id="dec-date-${dec.id}" class="form-control" value="${isoDue}" onchange="updateDecisionItemField('${dec.id}', 'dueDate', this.value)" oninput="updateDecisionItemField('${dec.id}', 'dueDate', this.value)" title="Karar Termin Tarihi">
+                </div>
+                <div style="display:flex; gap:0.35rem; align-items:center;">
+                    <button type="button" class="btn btn-primary btn-sm" style="padding:0.42rem 0.6rem; font-size:0.72rem; white-space:nowrap;" onclick="convertDecisionToInlineAction('${dec.id}')" title="Bu Kararı Tamamlama Tarih ve Saatli Aksiyon Olarak Ekle">
+                        <i class="fa-solid fa-bolt"></i> Aksiyon
+                    </button>
+                    <button type="button" class="btn btn-danger btn-sm" style="padding:0.42rem 0.6rem;" onclick="removeDecisionItemRow('${dec.id}')" title="Karar Satırını Sil">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    if (window.initAutoDateInputs) {
+        window.initAutoDateInputs(container);
+    }
+    currentDraftDecisionItems.forEach(dec => {
+        const dateEl = document.getElementById(`dec-date-${dec.id}`);
+        if (dateEl && dec.dueDate) {
+            setMaskedDateInputValue(dateEl, dec.dueDate);
+        }
+    });
+
+    if (focusDecId) {
+        setTimeout(() => {
+            const el = document.getElementById(`dec-text-${focusDecId}`);
+            if (el) el.focus();
+        }, 30);
+    }
+}
+
+function convertDecisionToInlineAction(decId) {
+    const dec = currentDraftDecisionItems.find(d => d.id === decId);
+    if (!dec) return;
+    if (!dec.text || !dec.text.trim()) {
+        alert("Lütfen önce karar açıklamasını yazın!");
+        return;
+    }
+    addInlineActionRow();
+    const container = document.getElementById('inline-actions-container');
+    const lastRow = container?.lastElementChild;
+    if (!lastRow) return;
+    const titleInput = lastRow.querySelector('.inline-action-title');
+    const assigneeSelect = lastRow.querySelector('.inline-action-assignee');
+    const dueDateInput = lastRow.querySelector('.inline-action-duedate');
+    const dueTimeInput = lastRow.querySelector('.inline-action-duetime');
+    if (titleInput) titleInput.value = dec.text.trim();
+    if (assigneeSelect && dec.responsible) {
+        const matchedUser = appState.users.find(u => normalizeTR(u.name) === normalizeTR(dec.responsible));
+        if (matchedUser) assigneeSelect.value = matchedUser.name;
+    }
+    if (dueDateInput && dec.dueDate) {
+        setMaskedDateInputValue(dueDateInput, dec.dueDate);
+    }
+    if (dueTimeInput) dueTimeInput.value = '17:00';
+    lastRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+// --- KONUŞULMAYAN MADDELERİ BAŞKA TOPLANTIYA PLANLAMA EKRANI FONKSİYONLARI ---
+let pendingFollowupSourceData = null;
+
+function openFollowupMeetingModalFromCurrentDraft() {
+    const undiscussed = currentDraftAgendaItems.filter(it => it.title && it.title.trim() && !it.discussed);
+    if (undiscussed.length === 0) {
+        alert("Şu anda konuşulmayan (tik konulmamış) gündem maddesi bulunmamaktadır.");
+        return;
+    }
+
+    const idVal = document.getElementById('meeting-id')?.value || '';
+    const titleVal = document.getElementById('meeting-title-input')?.value.trim() || 'Toplantı';
+    const deptVal = document.getElementById('meeting-dept-input')?.value || 'Genel Yönetim';
+    const locVal = document.getElementById('meeting-location-input')?.value.trim() || 'Dizsan Toplantı Salonu';
+    const invited = Array.from(document.querySelectorAll('input[name="meeting-participant"]:checked')).map(cb => cb.value);
+
+    pendingFollowupSourceData = {
+        sourceMeetingId: idVal,
+        title: titleVal,
+        dept: deptVal,
+        location: locVal,
+        participants: invited.length > 0 ? invited : [currentUser ? currentUser.name : 'ÖMER EREN'],
+        undiscussedItems: undiscussed
+    };
+
+    populateAndOpenFollowupModal(pendingFollowupSourceData);
+}
+
+function openFollowupMeetingModal(sourceMeetingId) {
+    const m = appState.meetings.find(x => x.id === sourceMeetingId);
+    if (!m) return;
+    const agd = parseAgendaItemsFromMeeting(m);
+    const undiscussed = agd.filter(it => it.title && it.title.trim() && !it.discussed);
+    if (undiscussed.length === 0) {
+        alert("Bu toplantıda konuşulmayan gündem maddesi bulunmamaktadır.");
+        return;
+    }
+
+    const attInfo = getMeetingAttendanceSummary(m);
+    pendingFollowupSourceData = {
+        sourceMeetingId: m.id,
+        title: m.title,
+        dept: m.dept || 'Genel Yönetim',
+        location: m.location || 'Dizsan Toplantı Salonu',
+        participants: attInfo.invited,
+        undiscussedItems: undiscussed
+    };
+
+    populateAndOpenFollowupModal(pendingFollowupSourceData);
+}
+
+function populateAndOpenFollowupModal(data) {
+    const modal = document.getElementById('followup-meeting-modal');
+    if (!modal || !data) return;
+
+    document.getElementById('followup-source-meeting-id').value = data.sourceMeetingId || '';
+    document.getElementById('followup-title-input').value = `${data.title} (Konuşulmayan Gündemler Devam Toplantısı)`;
+    document.getElementById('followup-dept-input').value = data.dept || 'Genel Yönetim';
+    document.getElementById('followup-location-input').value = data.location || 'Dizsan Toplantı Salonu';
+
+    const nextWeekIso = new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0];
+    setMaskedDateInputValue(document.getElementById('followup-date-input'), nextWeekIso);
+    document.getElementById('followup-time-input').value = '10:00';
+
+    const itemsBox = document.getElementById('followup-undiscussed-items-list');
+    if (itemsBox) {
+        itemsBox.innerHTML = data.undiscussedItems.map((it, idx) => `
+            <label style="display:flex; align-items:center; gap:0.55rem; padding:0.45rem 0.65rem; background:rgba(15,23,42,0.85); border:1px solid rgba(245,158,11,0.35); border-radius:8px; cursor:pointer; font-size:0.82rem; color:#fff;">
+                <input type="checkbox" name="followup-agenda-check" value="${escapeHtmlAttr(it.id)}" data-title="${escapeHtmlAttr(it.title)}" checked style="width:17px; height:17px; accent-color:#f59e0b;">
+                <span><strong>${idx + 1}.</strong> ${escapeHtmlAttr(it.title)}</span>
+            </label>
+        `).join('');
+    }
+
+    const partBox = document.getElementById('followup-participants-box');
+    if (partBox) {
+        partBox.innerHTML = appState.users.map(u => {
+            const isChecked = (data.participants || []).includes(u.name);
+            return `
+                <label class="participant-check">
+                    <input type="checkbox" name="followup-participant" value="${escapeHtmlAttr(u.name)}" ${isChecked ? 'checked' : ''}>
+                    <span>${u.name} <small style="color:var(--text-sec);">(${u.dept})</small></span>
+                </label>
+            `;
+        }).join('');
+    }
+
+    modal.classList.add('open');
+}
+
+function closeFollowupMeetingModal() {
+    const modal = document.getElementById('followup-meeting-modal');
+    if (modal) modal.classList.remove('open');
+}
+
+function toggleAllFollowupParticipants(state) {
+    document.querySelectorAll('input[name="followup-participant"]').forEach(cb => {
+        cb.checked = state;
+    });
+}
+
+function saveFollowupMeetingPlan(event) {
+    event.preventDefault();
+    const sourceId = document.getElementById('followup-source-meeting-id')?.value || '';
+    const newTitle = document.getElementById('followup-title-input')?.value.trim() || 'Devam Toplantısı';
+    const newDept = document.getElementById('followup-dept-input')?.value || 'Genel Yönetim';
+    const newDate = normalizeToISODate(document.getElementById('followup-date-input')?.value);
+    const newTime = document.getElementById('followup-time-input')?.value || '10:00';
+    const newLoc = document.getElementById('followup-location-input')?.value.trim() || 'Dizsan Toplantı Salonu';
+
+    const selectedChecks = Array.from(document.querySelectorAll('input[name="followup-agenda-check"]:checked'));
+    if (selectedChecks.length === 0) {
+        alert("Lütfen yeni toplantıya aktarılacak en az 1 konuşulmayan gündem maddesi seçin!");
+        return;
+    }
+
+    const invited = Array.from(document.querySelectorAll('input[name="followup-participant"]:checked')).map(cb => cb.value);
+    if (invited.length === 0) {
+        alert("Lütfen yeni toplantı için en az 1 davetli katılımcı seçin!");
+        return;
+    }
+
+    const transferredIds = new Set(selectedChecks.map(cb => cb.value));
+    const newAgendaItems = selectedChecks.map((cb, idx) => ({
+        id: 'agd-' + Date.now() + '-' + idx,
+        title: cb.getAttribute('data-title') || '',
+        discussed: false,
+        explanation: '',
+        transferredToMeetingId: ''
+    }));
+
+    const nextNum = String(appState.meetings.length + 1).padStart(3, '0');
+    const newMeetingId = `TOP-2026-${nextNum}`;
+    const nowStr = formatNowTR();
+    const approvalStatus = isOmerEren(currentUser) ? 'Onaylandı' : 'Yönetici Onayı Bekliyor';
+
+    const followupMeeting = {
+        id: newMeetingId,
+        recordType: 'Toplantı',
+        isScheduledCall: true,
+        sourceMeetingId: sourceId || '',
+        title: newTitle,
+        dept: newDept,
+        date: newDate,
+        time: newTime,
+        location: newLoc,
+        participants: [...invited],
+        invitedParticipants: [...invited],
+        attendedParticipants: [...invited],
+        absentParticipants: [],
+        externalParticipants: [],
+        agendaItems: newAgendaItems,
+        notes: formatAgendaItemsToLegacyNotes(newAgendaItems),
+        decisionItems: [],
+        decisions: '',
+        attachments: [],
+        approvalStatus,
+        omerApprovedStamp: isOmerEren(currentUser),
+        approvedBy: isOmerEren(currentUser) ? 'ÖMER EREN' : '',
+        approvedAt: isOmerEren(currentUser) ? nowStr : '',
+        createdBy: currentUser ? currentUser.name : 'ÖMER EREN',
+        createdAt: nowStr,
+        updatedBy: '',
+        updatedAt: ''
+    };
+
+    appState.meetings.unshift(followupMeeting);
+
+    // Kaynak toplantıdaki konuşulmayan maddelere hangi toplantıya aktarıldığını işle
+    if (sourceId) {
+        const srcMeeting = appState.meetings.find(m => m.id === sourceId);
+        if (srcMeeting) {
+            const srcAgendas = parseAgendaItemsFromMeeting(srcMeeting);
+            srcAgendas.forEach(ag => {
+                if (transferredIds.has(ag.id) || selectedChecks.some(c => c.getAttribute('data-title') === ag.title)) {
+                    ag.transferredToMeetingId = newMeetingId;
+                }
+            });
+            srcMeeting.agendaItems = srcAgendas;
+            srcMeeting.notes = formatAgendaItemsToLegacyNotes(srcAgendas);
+        }
+    }
+
+    // Eğer şu an açık bir taslak varsa oradaki maddeleri de işaretle
+    currentDraftAgendaItems.forEach(ag => {
+        if (transferredIds.has(ag.id)) {
+            ag.transferredToMeetingId = newMeetingId;
+        }
+    });
+    if (document.getElementById('meeting-modal')?.classList.contains('open')) {
+        renderDraftAgendaItems();
+    }
+
+    addAuditLog("TOPLANTI", `Konuşulmayan ${newAgendaItems.length} gündem maddesi için ${newMeetingId} kodlu yeni toplantı ('${newTitle}' - ${formatDateTR(newDate)} ${newTime}) planlandı.`);
+    syncToServer();
+    closeFollowupMeetingModal();
+    renderAll();
+    playMeetingCallSound('INVITE');
+    alert(`📅 Konuşulmayan Gündem Maddeleri Yeni Toplantıya Planlandı!\n\n📌 Yeni Toplantı Kodu: ${newMeetingId}\n📌 Başlık: ${newTitle}\n📅 Tarih & Saat: ${formatDateTR(newDate)} ${newTime}\n📋 Aktarılan Gündem Sayısı: ${newAgendaItems.length} Madde`);
 }
 
 function openMeetingModal(meetingId = null) {
@@ -5167,13 +6177,15 @@ function openMeetingModal(meetingId = null) {
     const inlineContainer = document.getElementById('inline-actions-container');
     const extToggle = document.getElementById('external-participant-toggle');
     const extList = document.getElementById('external-participants-list');
+    const printBtn = document.getElementById('btn-modal-print-minutes');
 
     inlineContainer.innerHTML = '';
     if (extList) extList.innerHTML = '';
+    currentDraftAttendance = {};
 
     partBox.innerHTML = appState.users.map(u => `
         <label class="participant-check">
-            <input type="checkbox" name="meeting-participant" value="${u.name}">
+            <input type="checkbox" name="meeting-participant" value="${escapeHtmlAttr(u.name)}" onchange="onInvitedParticipantCheckboxChange()">
             <span>${u.name} <small style="color:var(--text-sec);">(${u.dept})</small></span>
         </label>
     `).join('');
@@ -5182,23 +6194,46 @@ function openMeetingModal(meetingId = null) {
         const m = appState.meetings.find(x => x.id === meetingId);
         if (!m) return;
         if (getMeetingAccessLevel(m) !== 'FULL') {
-            alert("Bu toplantının/eğitimin katılımcısı olmadığınız için içeriğini düzenleme yetkiniz bulunmamaktadır.");
+            alert("Bu toplantının/eğitimin katılımcısı olmadığınız için içeriğini görüntüleme/düzenleme yetkiniz bulunmamaktadır.");
             return;
         }
+        if (printBtn) printBtn.style.display = 'inline-flex';
         setMeetingRecordType(m.recordType || 'Toplantı');
-        document.getElementById('meeting-modal-title').innerHTML = `<i class="fa-solid fa-pen-to-square" style="color:var(--dizsan-light);"></i> ${m.recordType === 'Eğitim' ? 'Eğitim' : 'Toplantı'} Kaydını Düzenle (${m.id})`;
+        document.getElementById('meeting-modal-title').innerHTML = `<i class="fa-solid fa-clipboard-check" style="color:var(--dizsan-light);"></i> ${m.recordType === 'Eğitim' ? 'Eğitim' : 'Toplantı'} Detayı, Yoklama, Gündem & Karar Yönetimi (${m.id})`;
         document.getElementById('meeting-id').value = m.id;
         document.getElementById('meeting-title-input').value = m.title;
         document.getElementById('meeting-dept-input').value = m.dept;
         setMaskedDateInputValue(document.getElementById('meeting-date-input'), m.date);
         document.getElementById('meeting-time-input').value = m.time || '09:30';
         document.getElementById('meeting-location-input').value = m.location || '';
-        document.getElementById('meeting-notes-input').value = m.notes || '';
-        document.getElementById('meeting-decisions-input').value = m.decisions || '';
+
+        const attInfo = getMeetingAttendanceSummary(m);
+        const absentMap = {};
+        attInfo.absent.forEach(ab => {
+            absentMap[normalizeTR(ab.name)] = ab.reason || '';
+        });
+
+        attInfo.invited.forEach(invName => {
+            const isAbs = Object.prototype.hasOwnProperty.call(absentMap, normalizeTR(invName));
+            currentDraftAttendance[invName] = {
+                status: isAbs ? 'ABSENT' : 'ATTENDED',
+                reason: isAbs ? absentMap[normalizeTR(invName)] : ''
+            };
+        });
 
         document.querySelectorAll('input[name="meeting-participant"]').forEach(cb => {
-            cb.checked = (m.participants || []).includes(cb.value);
+            cb.checked = attInfo.invited.includes(cb.value);
         });
+        renderAttendanceManagementUI();
+
+        currentDraftAgendaItems = parseAgendaItemsFromMeeting(m);
+        renderDraftAgendaItems();
+
+        currentDraftDecisionItems = parseDecisionItemsFromMeeting(m);
+        renderDraftDecisionItems();
+
+        document.getElementById('meeting-notes-input').value = m.notes || '';
+        document.getElementById('meeting-decisions-input').value = m.decisions || '';
 
         const extParticipants = Array.isArray(m.externalParticipants) ? m.externalParticipants : [];
         if (extParticipants.length > 0) {
@@ -5213,9 +6248,11 @@ function openMeetingModal(meetingId = null) {
 
         currentDraftAttachments = Array.isArray(m.attachments) ? [...m.attachments] : [];
         renderDraftAttachments();
+        renderExistingMeetingActionsInModal(m.id);
         const auditBox = document.getElementById('meeting-audit-info-box');
         if (auditBox) auditBox.innerHTML = renderRecordAuditBadge(m, false);
     } else {
+        if (printBtn) printBtn.style.display = 'none';
         setMeetingRecordType('Toplantı');
         document.getElementById('meeting-modal-title').innerHTML = `<i class="fa-solid fa-handshake" style="color:var(--dizsan-light);"></i> Yeni Toplantı / Eğitim ve Tutanak Kaydı`;
         document.getElementById('meeting-id').value = '';
@@ -5230,13 +6267,28 @@ function openMeetingModal(meetingId = null) {
 
         document.querySelectorAll('input[name="meeting-participant"]').forEach(cb => {
             cb.checked = currentUser ? (cb.value === currentUser.name) : false;
+            if (cb.checked) {
+                currentDraftAttendance[cb.value] = { status: 'ATTENDED', reason: '' };
+            }
         });
+        renderAttendanceManagementUI();
+
+        currentDraftAgendaItems = [
+            { id: 'agd-' + Date.now(), title: '', discussed: false, explanation: '', transferredToMeetingId: '' }
+        ];
+        renderDraftAgendaItems();
+
+        currentDraftDecisionItems = [
+            { id: 'dec-' + Date.now(), text: '', responsible: currentUser ? currentUser.name : 'ÖMER EREN', dueDate: todayIso, status: 'Bekliyor' }
+        ];
+        renderDraftDecisionItems();
 
         if (extToggle) extToggle.checked = false;
         toggleExternalParticipantSection(false);
 
         currentDraftAttachments = [];
         renderDraftAttachments();
+        renderExistingMeetingActionsInModal(null);
         const auditBox = document.getElementById('meeting-audit-info-box');
         if (auditBox) {
             auditBox.innerHTML = renderRecordAuditBadge({
@@ -5259,25 +6311,98 @@ function toggleAllParticipants(state) {
     document.querySelectorAll('input[name="meeting-participant"]').forEach(cb => {
         cb.checked = state;
     });
+    onInvitedParticipantCheckboxChange();
+}
+
+function renderExistingMeetingActionsInModal(meetingId) {
+    const box = document.getElementById('existing-meeting-actions-box');
+    if (!box) return;
+    if (!meetingId) {
+        box.style.display = 'none';
+        box.innerHTML = '';
+        return;
+    }
+    const mActions = appState.actions.filter(a => a.meetingId === meetingId);
+    if (mActions.length === 0) {
+        box.style.display = 'none';
+        box.innerHTML = '';
+        return;
+    }
+
+    box.style.display = 'block';
+    box.innerHTML = `
+        <div style="font-size:0.78rem; font-weight:800; color:#bae6fd; margin-bottom:0.45rem;">
+            <i class="fa-solid fa-list-check"></i> Bu Toplantıya Ait Mevcut Aksiyonlar (${mActions.length} Adet)
+        </div>
+        <div style="display:flex; flex-direction:column; gap:0.45rem;">
+            ${mActions.map(a => {
+                const st = evaluateActionReminderStatus(a);
+                const compDisp = getActionCompletedDisplay(a);
+                return `
+                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; padding:0.6rem 0.75rem; border-radius:10px; background:rgba(15,23,42,0.82); border:1px solid ${a.status === 'Tamamlandı' ? 'rgba(16,185,129,0.4)' : 'rgba(245,158,11,0.4)'};">
+                        <div style="flex:1; min-width:220px;">
+                            <div style="font-weight:700; font-size:0.83rem; color:#fff;">
+                                <span style="color:var(--dizsan-light);">${a.id}:</span> ${a.title}
+                            </div>
+                            <div style="font-size:0.74rem; color:#cbd5e1; margin-top:3px; display:flex; flex-wrap:wrap; gap:0.65rem;">
+                                <span><i class="fa-solid fa-user-check" style="color:#38bdf8;"></i> Sorumlu: <strong>${a.assignee}</strong></span>
+                                <span><i class="fa-regular fa-clock" style="color:#fbbf24;"></i> Hedef Tamamlama: <strong style="color:#fde68a;">${formatDateTR(a.dueDate)} ${a.dueTime || '17:00'}</strong></span>
+                                ${compDisp ? `<span style="color:#6ee7b7; font-weight:700;">✅ Kapanış: ${compDisp}</span>` : ''}
+                            </div>
+                            <div style="margin-top:4px;">
+                                <span class="countdown-pill ${st.type}" style="font-size:0.69rem;">${st.badgeText}</span>
+                            </div>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:0.4rem;">
+                            <select class="form-control" style="padding:0.3rem 0.5rem; font-size:0.75rem; font-weight:700; width:auto;" onchange="quickChangeActionStatus('${a.id}', this.value)">
+                                <option value="Bekliyor" ${a.status === 'Bekliyor' ? 'selected' : ''}>⏳ Bekliyor</option>
+                                <option value="Devam Ediyor" ${a.status === 'Devam Ediyor' ? 'selected' : ''}>🔄 Devam Ediyor</option>
+                                <option value="Tamamlandı" ${a.status === 'Tamamlandı' ? 'selected' : ''}>✅ Tamamlandı</option>
+                            </select>
+                            <button type="button" class="btn btn-secondary btn-sm" onclick="openActionModal('${a.id}')" title="Aksiyon Tamamlama Tarih ve Saatini Düzenle">
+                                <i class="fa-solid fa-pen"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('')}
+        </div>
+    `;
 }
 
 function addInlineActionRow() {
     const container = document.getElementById('inline-actions-container');
     const row = document.createElement('div');
-    row.style.cssText = 'display:grid; grid-template-columns: 2fr 1.2fr 1fr 1fr auto; gap:0.5rem; align-items:center;';
+    row.style.cssText = 'display:grid; grid-template-columns: 2fr 1.2fr 0.85fr 1fr 0.85fr auto; gap:0.45rem; align-items:end; background:rgba(15,23,42,0.65); padding:0.55rem; border-radius:10px; border:1px solid rgba(56,189,248,0.28);';
     const tomorrowIso = new Date(Date.now() + 86400000).toISOString().split('T')[0];
 
     row.innerHTML = `
-        <input type="text" class="form-control inline-action-title" placeholder="Aksiyon / görev açıklaması..." required>
-        <select class="form-control inline-action-assignee">
-            ${appState.users.map(u => `<option value="${u.name}">${u.name} (${u.dept})</option>`).join('')}
-        </select>
-        <select class="form-control inline-action-priority">
-            <option value="Normal">Normal</option>
-            <option value="Kritik">Kritik</option>
-        </select>
-        <input type="date" class="form-control inline-action-duedate" value="${tomorrowIso}" required>
-        <button type="button" class="btn btn-danger btn-sm" onclick="this.parentElement.remove()"><i class="fa-solid fa-xmark"></i></button>
+        <div>
+            <label style="font-size:0.69rem; color:#bae6fd; display:block; margin-bottom:2px;">Aksiyon / Görev Açıklaması *</label>
+            <input type="text" class="form-control inline-action-title" placeholder="Yapılacak aksiyonu yazın..." required>
+        </div>
+        <div>
+            <label style="font-size:0.69rem; color:#bae6fd; display:block; margin-bottom:2px;">Sorumlu Personel *</label>
+            <select class="form-control inline-action-assignee">
+                ${appState.users.map(u => `<option value="${u.name}">${u.name} (${u.dept})</option>`).join('')}
+            </select>
+        </div>
+        <div>
+            <label style="font-size:0.69rem; color:#bae6fd; display:block; margin-bottom:2px;">Öncelik</label>
+            <select class="form-control inline-action-priority">
+                <option value="Normal">🔵 Normal</option>
+                <option value="Kritik">🚨 Kritik</option>
+            </select>
+        </div>
+        <div>
+            <label style="font-size:0.69rem; color:#fde68a; display:block; margin-bottom:2px;">Tamamlama Tarihi *</label>
+            <input type="date" class="form-control inline-action-duedate" value="${tomorrowIso}" required>
+        </div>
+        <div>
+            <label style="font-size:0.69rem; color:#fde68a; display:block; margin-bottom:2px;">Tamamlama Saati *</label>
+            <input type="time" class="form-control inline-action-duetime" value="17:00" required>
+        </div>
+        <button type="button" class="btn btn-danger btn-sm" style="height:38px;" onclick="this.parentElement.remove()" title="Satırı Kaldır"><i class="fa-solid fa-xmark"></i></button>
     `;
     container.appendChild(row);
     if (window.initAutoDateInputs) window.initAutoDateInputs(row);
@@ -5296,8 +6421,6 @@ function cleanNumberedText(rawText) {
 function saveMeeting(event) {
     event.preventDefault();
     const idVal = document.getElementById('meeting-id').value;
-    if (!idVal && !getToplantiUserPerms(currentUser).actions.create) { alert('⛔ Yeni toplantı kaydı oluşturma yetkiniz bulunmamaktadır (Sadece Görüntüleme Yetkisi).'); return; }
-    if (idVal && !isOmerEren(currentUser) && !getToplantiUserPerms(currentUser).actions.edit) { alert('⛔ Toplantı düzenleme yetkiniz bulunmamaktadır.'); return; }
     const recordType = document.getElementById('meeting-record-type-input')?.value || 'Toplantı';
     const title = document.getElementById('meeting-title-input').value.trim();
     const dept = document.getElementById('meeting-dept-input').value;
@@ -5305,16 +6428,29 @@ function saveMeeting(event) {
     const date = normalizeToISODate(dateRaw);
     const time = document.getElementById('meeting-time-input').value;
     const location = document.getElementById('meeting-location-input').value.trim();
-    const notes = cleanNumberedText(document.getElementById('meeting-notes-input').value);
-    const decisions = cleanNumberedText(document.getElementById('meeting-decisions-input').value);
 
-    const participants = Array.from(document.querySelectorAll('input[name="meeting-participant"]:checked')).map(cb => cb.value);
+    // Hızlı gündem kutusunda yazılıp "+ Ekle"ye basılmamış metin varsa ekle
+    const pendingQuickAgenda = document.getElementById('quick-agenda-item-input');
+    if (pendingQuickAgenda && pendingQuickAgenda.value.trim()) {
+        addAgendaItemFromQuickInput();
+    }
+
+    const invitedParticipants = Array.from(document.querySelectorAll('input[name="meeting-participant"]:checked')).map(cb => cb.value);
+    const attendedParticipants = invitedParticipants.filter(name => currentDraftAttendance[name]?.status !== 'ABSENT');
+    const absentParticipants = invitedParticipants
+        .filter(name => currentDraftAttendance[name]?.status === 'ABSENT')
+        .map(name => ({
+            name,
+            reason: (currentDraftAttendance[name]?.reason || '').trim() || 'Mazeret belirtilmedi'
+        }));
+
+    // Gizlilik ve bildirim motoru için tüm davetli katılımcılar
+    const participants = [...invitedParticipants];
 
     // Dış / Manuel Katılımcıları Topla
     const externalParticipants = [];
     const extToggle = document.getElementById('external-participant-toggle');
     if (extToggle && extToggle.checked) {
-        // Eğer kullanıcı manuel giriş kutularına yazıp "Ekle" butonuna basmadan direkt Kaydet'e bastıysa otomatik listeye ekle
         const pendingExtName = document.getElementById('ext-manual-name')?.value.trim() || '';
         if (pendingExtName) {
             addManualExternalParticipantFromInputs();
@@ -5329,15 +6465,38 @@ function saveMeeting(event) {
         });
     }
 
-    if (participants.length === 0 && externalParticipants.length === 0) {
-        alert("Lütfen en az 1 katılımcı (personel veya dış katılımcı) seçin/ekleyin!");
+    if (invitedParticipants.length === 0 && externalParticipants.length === 0) {
+        alert("Lütfen en az 1 davetli katılımcı (personel veya dış katılımcı) seçin/ekleyin!");
         return;
     }
 
-    if (!notes) {
-        alert("Lütfen Gündem Maddeleri & Notlar alanına en az 1 madde yazın!");
+    const validAgendaItems = currentDraftAgendaItems
+        .map(it => ({
+            id: it.id || ('agd-' + Date.now()),
+            title: String(it.title || '').trim(),
+            discussed: Boolean(it.discussed),
+            explanation: it.discussed ? String(it.explanation || '').trim() : '',
+            transferredToMeetingId: String(it.transferredToMeetingId || '').trim()
+        }))
+        .filter(it => it.title);
+
+    if (validAgendaItems.length === 0) {
+        alert("Lütfen Gündem Maddeleri alanına en az 1 gündem maddesi yazın!");
         return;
     }
+
+    const validDecisionItems = currentDraftDecisionItems
+        .map(d => ({
+            id: d.id || ('dec-' + Date.now()),
+            text: String(d.text || '').trim(),
+            responsible: String(d.responsible || 'ÖMER EREN').trim(),
+            dueDate: normalizeToISODate(d.dueDate || date),
+            status: d.status || 'Bekliyor'
+        }))
+        .filter(d => d.text);
+
+    const notes = formatAgendaItemsToLegacyNotes(validAgendaItems);
+    const decisions = formatDecisionItemsToLegacyText(validDecisionItems);
 
     // Eğer Ek Bilgi Notu kutusunda yazılıp "Ekle" butonuna basılmamış bir metin varsa onu da otomatik ekle
     const pendingNoteInput = document.getElementById('meeting-attachment-note-input');
@@ -5357,7 +6516,12 @@ function saveMeeting(event) {
             if (isOmerEren(currentUser)) {
                 appState.meetings[idx] = {
                     ...appState.meetings[idx],
-                    recordType, title, dept, date, time, location, participants, externalParticipants, notes, decisions, attachments,
+                    recordType, title, dept, date, time, location,
+                    participants, invitedParticipants, attendedParticipants, absentParticipants,
+                    externalParticipants,
+                    agendaItems: validAgendaItems,
+                    decisionItems: validDecisionItems,
+                    notes, decisions, attachments,
                     approvalStatus: 'Onaylandı',
                     omerApprovedStamp: true,
                     approvedBy: 'ÖMER EREN',
@@ -5365,9 +6529,8 @@ function saveMeeting(event) {
                     updatedBy: editorName,
                     updatedAt: editNow
                 };
-                addAuditLog("TOPLANTI", `${idVal} kodlu '${title}' kaydı Yönetici ÖMER EREN tarafından güncellendi.`);
+                addAuditLog("TOPLANTI", `${idVal} kodlu '${title}' kaydı Yönetici ÖMER EREN tarafından güncellendi (Davetli: ${invitedParticipants.length}, Gelen: ${attendedParticipants.length}, Gelmeyen: ${absentParticipants.length}).`);
                 playMeetingCallSound('INVITE');
-                alert(`✅ '${title}' (${idVal}) kaydı Yönetici ÖMER EREN yetkisiyle güncellendi!\n\n✏️ Değiştiren: ${editorName}\n🕒 Değiştirilme Zamanı: ${editNow}`);
             } else {
                 // Mevcut toplantı personel tarafından değiştirildiğinde Yönetici Ömer Eren onay kuyruğuna düşer
                 if (!Array.isArray(appState.approvalRequests)) appState.approvalRequests = [];
@@ -5381,14 +6544,19 @@ function saveMeeting(event) {
                     requestedAt: editNow,
                     reason: "Toplantı tutanağı güncelleme talebi",
                     proposedData: {
-                        recordType, title, dept, date, time, location, participants, externalParticipants, notes, decisions, attachments,
+                        recordType, title, dept, date, time, location,
+                        participants, invitedParticipants, attendedParticipants, absentParticipants,
+                        externalParticipants,
+                        agendaItems: validAgendaItems,
+                        decisionItems: validDecisionItems,
+                        notes, decisions, attachments,
                         updatedBy: editorName,
                         updatedAt: editNow
                     }
                 });
                 addAuditLog("TOPLANTI", `${editorName}, ${idVal} kodlu '${title}' kaydı için değiştirme (düzenleme) talebi oluşturdu (Yönetici ÖMER EREN onayı bekleniyor).`);
                 playMeetingCallSound('APPROVAL', `Dikkat! ${title} toplantısı için değiştirme onayı bekleniyor.`);
-                alert(`🛡️ Değiştirme Talebi Yönetici ÖMER EREN Onayına Düşürüldü!\n\n'${title}' (${idVal}) kaydında yaptığınız değişiklikler ekranın üst kısmındaki "🛡️ ÖMER EREN YÖNETİCİ ONAY MERKEZİ"ne düşmüştür. Ömer Eren "✅ Değişikliği Onayla & Uygula" butonuna bastığında değişiklikler otomatik olarak uygulanacaktır.`);
+                alert(`🛡️ Değiştirme Talebi Yönetici ÖMER EREN Onayına Düşürüldü!\n\n'${title}' (${idVal}) kaydında yaptığınız değişiklikler ekranın üst kısmındaki "🛡️ ÖMER EREN YÖNETİCİ ONAY MERKEZİ"ne düşmüştür.`);
             }
         }
     } else {
@@ -5398,7 +6566,12 @@ function saveMeeting(event) {
         const nowStr = formatNowTR();
         const newMeeting = {
             id: targetMeetingId,
-            recordType, title, dept, date, time, location, participants, externalParticipants, notes, decisions, attachments,
+            recordType, title, dept, date, time, location,
+            participants, invitedParticipants, attendedParticipants, absentParticipants,
+            externalParticipants,
+            agendaItems: validAgendaItems,
+            decisionItems: validDecisionItems,
+            notes, decisions, attachments,
             approvalStatus,
             omerApprovedStamp: isOmerEren(currentUser),
             approvedBy: isOmerEren(currentUser) ? 'ÖMER EREN' : '',
@@ -5409,9 +6582,8 @@ function saveMeeting(event) {
             updatedAt: ''
         };
         appState.meetings.unshift(newMeeting);
-        addAuditLog("TOPLANTI", `${targetMeetingId} kodlu yeni ${recordType.toLowerCase()} ('${title}') oluşturuldu (${approvalStatus}). Katılımcı: ${participants.length} personel${externalParticipants.length > 0 ? ` + ${externalParticipants.length} dış katılımcı` : ''}.`);
+        addAuditLog("TOPLANTI", `${targetMeetingId} kodlu yeni ${recordType.toLowerCase()} ('${title}') oluşturuldu (${approvalStatus}). Davetli: ${invitedParticipants.length}, Gelen: ${attendedParticipants.length}, Gelmeyen: ${absentParticipants.length}.`);
         playMeetingCallSound('APPROVAL', `Dikkat! ${title} başlıklı yeni ${recordType.toLowerCase()} kaydedildi.`);
-        alert(`🛡️ ${recordType} Kaydedildi!\n\n📌 Kayıt Kodu: ${targetMeetingId}\n📌 Başlık: ${title}\n👤 Oluşturan: ${newMeeting.createdBy} (${newMeeting.createdAt})\n📌 Durum: ${approvalStatus}`);
     }
 
     const inlineRows = document.querySelectorAll('#inline-actions-container > div');
@@ -5420,9 +6592,11 @@ function saveMeeting(event) {
         const aAssignee = r.querySelector('.inline-action-assignee')?.value;
         const aPrio = r.querySelector('.inline-action-priority')?.value || 'Normal';
         const aDueRaw = r.querySelector('.inline-action-duedate')?.value;
+        const aDueTimeRaw = r.querySelector('.inline-action-duetime')?.value || '17:00';
         if (aTitle) {
             const newActId = generateUniqueActionId();
             const actCreatedNow = formatNowTR();
+            const todayIso = new Date().toISOString().split('T')[0];
             appState.actions.unshift({
                 id: newActId,
                 meetingId: targetMeetingId,
@@ -5432,23 +6606,37 @@ function saveMeeting(event) {
                 manager: "ÖMER EREN",
                 priority: aPrio,
                 dueDate: normalizeToISODate(aDueRaw),
-                dueTime: "09:00",
+                dueTime: aDueTimeRaw,
                 status: "Bekliyor",
                 note: "",
+                completedDate: "",
+                completedTime: "",
+                completedAt: "",
                 remindOneDayBefore: true,
                 remindSameDay: true,
+                remindNextDay: true,
+                remindEveryOtherDay: true,
+                createdDate: todayIso,
                 createdBy: currentUser ? currentUser.name : "ÖMER EREN",
                 createdAt: actCreatedNow,
                 updatedBy: '',
                 updatedAt: ''
             });
-            addAuditLog("AKSİYON", `${newActId} kodlu aksiyon '${aAssignee}' personeline ve Yönetici ÖMER EREN'e hatırlatıcılı olarak atandı (Termin: ${formatDateTR(aDueRaw)}).`);
+            addAuditLog("AKSİYON", `${newActId} kodlu aksiyon '${aAssignee}' personeline ve Yönetici ÖMER EREN'e ertesi gün ve gün aşırı hatırlatıcılı olarak atandı (Tamamlama: ${formatDateTR(aDueRaw)} ${aDueTimeRaw}).`);
         }
     });
 
     syncToServer();
     closeMeetingModal();
     renderAll();
+
+    // Konuşulmayan (tik konulmamış ve henüz başka toplantıya aktarılmamış) gündem maddeleri varsa otomatik Başka Toplantı Planlama ekranını aç
+    const untransferredUndiscussed = validAgendaItems.filter(it => !it.discussed && !it.transferredToMeetingId);
+    if (untransferredUndiscussed.length > 0) {
+        setTimeout(() => {
+            openFollowupMeetingModal(targetMeetingId);
+        }, 120);
+    }
 }
 
 function deleteMeeting(meetingId) {
@@ -5490,9 +6678,34 @@ function deleteMeeting(meetingId) {
     alert(`🛡️ Silme Talebi Yönetici ÖMER EREN Onayına Düşürüldü!\n\n'${m.title}' (${m.id}) kaydı için silme talebi ekranın üst kısmındaki "🛡️ ÖMER EREN YÖNETİCİ ONAY MERKEZİ"ne düşmüştür. Ömer Eren "✅ Silmeyi Onayla (Kaydı Sil)" butonuna bastığında kayıt silinecektir.`);
 }
 
+function onActionModalStatusChange(statusVal) {
+    const compBox = document.getElementById('action-completed-datetime-box');
+    const compDateEl = document.getElementById('action-completed-date-input');
+    const compTimeEl = document.getElementById('action-completed-time-input');
+    if (!compBox) return;
+
+    if (statusVal === 'Tamamlandı') {
+        compBox.style.display = 'block';
+        const now = new Date();
+        const todayIso = now.toISOString().split('T')[0];
+        const pad = n => String(n).padStart(2, '0');
+        const nowHm = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+        if (compDateEl && !normalizeToISODate(compDateEl.value)) {
+            setMaskedDateInputValue(compDateEl, todayIso);
+        }
+        if (compTimeEl && !compTimeEl.value) {
+            compTimeEl.value = nowHm;
+        }
+    } else {
+        compBox.style.display = 'none';
+    }
+}
+
 function openActionModal(actionId = null) {
     populateSelectFilters();
     const modal = document.getElementById('action-modal');
+    const compDateEl = document.getElementById('action-completed-date-input');
+    const compTimeEl = document.getElementById('action-completed-time-input');
 
     if (actionId) {
         const a = appState.actions.find(x => x.id === actionId);
@@ -5505,22 +6718,35 @@ function openActionModal(actionId = null) {
         document.getElementById('action-manager-select').value = a.manager || 'ÖMER EREN';
         document.getElementById('action-priority-select').value = a.priority || 'Normal';
         setMaskedDateInputValue(document.getElementById('action-duedate-input'), a.dueDate);
-        document.getElementById('action-duetime-input').value = a.dueTime || '09:00';
+        document.getElementById('action-duetime-input').value = a.dueTime || '17:00';
         document.getElementById('action-status-select').value = a.status || 'Bekliyor';
         document.getElementById('action-note-input').value = a.note || '';
+
+        if (compDateEl) {
+            setMaskedDateInputValue(compDateEl, a.completedDate || new Date().toISOString().split('T')[0]);
+        }
+        if (compTimeEl) {
+            compTimeEl.value = a.completedTime || '17:00';
+        }
+        onActionModalStatusChange(a.status || 'Bekliyor');
+
         const auditBox = document.getElementById('action-audit-info-box');
         if (auditBox) auditBox.innerHTML = renderRecordAuditBadge(a, false);
     } else {
-        document.getElementById('action-modal-title').innerHTML = `<i class="fa-solid fa-stopwatch" style="color:#fbbf24;"></i> Yeni Aksiyon & Otomatik Hatırlatıcı Tanımla`;
+        document.getElementById('action-modal-title').innerHTML = `<i class="fa-solid fa-stopwatch" style="color:#fbbf24;"></i> Yeni Aksiyon &amp; Ertesi Gün / Gün Aşırı Hatırlatıcı Tanımla`;
         document.getElementById('action-id').value = '';
         document.getElementById('action-title-input').value = '';
         document.getElementById('action-manager-select').value = 'ÖMER EREN';
         document.getElementById('action-priority-select').value = 'Normal';
         const tomorrowIso = new Date(Date.now() + 86400000).toISOString().split('T')[0];
         setMaskedDateInputValue(document.getElementById('action-duedate-input'), tomorrowIso);
-        document.getElementById('action-duetime-input').value = '09:00';
+        document.getElementById('action-duetime-input').value = '17:00';
         document.getElementById('action-status-select').value = 'Bekliyor';
         document.getElementById('action-note-input').value = '';
+        if (compDateEl) setMaskedDateInputValue(compDateEl, new Date().toISOString().split('T')[0]);
+        if (compTimeEl) compTimeEl.value = '17:00';
+        onActionModalStatusChange('Bekliyor');
+
         const auditBox = document.getElementById('action-audit-info-box');
         if (auditBox) {
             auditBox.innerHTML = renderRecordAuditBadge({
@@ -5542,8 +6768,6 @@ function closeActionModal() {
 function saveAction(event) {
     event.preventDefault();
     const idVal = document.getElementById('action-id').value;
-    if (!idVal && !getToplantiUserPerms(currentUser).actions.create) { alert('⛔ Yeni aksiyon tanımlama yetkiniz bulunmamaktadır (Sadece Görüntüleme Yetkisi).'); return; }
-    if (idVal && !isOmerEren(currentUser) && !getToplantiUserPerms(currentUser).actions.edit) { alert('⛔ Aksiyon düzenleme yetkiniz bulunmamaktadır.'); return; }
     const meetingId = document.getElementById('action-meeting-select').value;
     const matchedMeeting = appState.meetings.find(m => m.id === meetingId);
     const meetingTitle = matchedMeeting ? matchedMeeting.title : "Genel Operasyon Görevi";
@@ -5553,9 +6777,20 @@ function saveAction(event) {
     const manager = document.getElementById('action-manager-select').value || "ÖMER EREN";
     const priority = document.getElementById('action-priority-select').value;
     const dueDate = normalizeToISODate(document.getElementById('action-duedate-input').value);
-    const dueTime = document.getElementById('action-duetime-input').value || '09:00';
+    const dueTime = document.getElementById('action-duetime-input').value || '17:00';
     const status = document.getElementById('action-status-select').value;
     const note = document.getElementById('action-note-input').value.trim();
+
+    let completedDate = '';
+    let completedTime = '';
+    let completedAt = '';
+    if (status === 'Tamamlandı') {
+        const now = new Date();
+        const pad = n => String(n).padStart(2, '0');
+        completedDate = normalizeToISODate(document.getElementById('action-completed-date-input')?.value) || now.toISOString().split('T')[0];
+        completedTime = document.getElementById('action-completed-time-input')?.value || `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+        completedAt = `${formatDateTR(completedDate)} ${completedTime}`;
+    }
 
     if (idVal) {
         const idx = appState.actions.findIndex(a => a.id === idVal);
@@ -5564,29 +6799,38 @@ function saveAction(event) {
             appState.actions[idx] = {
                 ...existing,
                 meetingId, meetingTitle, title, assignee, manager, priority, dueDate, dueTime, status, note,
+                completedDate, completedTime, completedAt,
                 remindOneDayBefore: true,
                 remindSameDay: true,
+                remindNextDay: true,
+                remindEveryOtherDay: true,
+                createdDate: existing.createdDate || extractActionCreatedISODate(existing) || new Date().toISOString().split('T')[0],
                 createdBy: existing.createdBy || "ÖMER EREN",
                 createdAt: existing.createdAt || existing.updatedAt || formatNowTR(),
                 updatedBy: currentUser ? currentUser.name : "ÖMER EREN",
                 updatedAt: formatNowTR()
             };
-            addAuditLog("AKSİYON", `${idVal} aksiyonu ${currentUser ? currentUser.name : 'ÖMER EREN'} tarafından güncellendi (Sorumlu: ${assignee}, Yönetici: ${manager}, Durum: ${status}, Termin: ${formatDateTR(dueDate)}).`);
+            addAuditLog("AKSİYON", `${idVal} aksiyonu ${currentUser ? currentUser.name : 'ÖMER EREN'} tarafından güncellendi (Sorumlu: ${assignee}, Durum: ${status}, Tamamlama Hedefi: ${formatDateTR(dueDate)} ${dueTime}${completedAt ? `, Kapanış: ${completedAt}` : ''}).`);
         }
     } else {
         const newId = generateUniqueActionId();
         const nowStr = formatNowTR();
+        const todayIso = new Date().toISOString().split('T')[0];
         appState.actions.unshift({
             id: newId,
             meetingId, meetingTitle, title, assignee, manager, priority, dueDate, dueTime, status, note,
+            completedDate, completedTime, completedAt,
             remindOneDayBefore: true,
             remindSameDay: true,
+            remindNextDay: true,
+            remindEveryOtherDay: true,
+            createdDate: todayIso,
             createdBy: currentUser ? currentUser.name : "ÖMER EREN",
             createdAt: nowStr,
             updatedBy: '',
             updatedAt: ''
         });
-        addAuditLog("AKSİYON", `${newId} aksiyonu tanımlandı: '${title}' -> Sorumlu: ${assignee} | Yönetici: ${manager} (1 gün önce ve ${formatDateTR(dueDate)} günü hatırlatılacak).`);
+        addAuditLog("AKSİYON", `${newId} aksiyonu tanımlandı: '${title}' -> Sorumlu: ${assignee} | Yönetici: ${manager} (Hedef Tamamlama: ${formatDateTR(dueDate)} ${dueTime} • Ertesi gün uyarısı ve gün aşırı hatırlatma aktif).`);
     }
 
     const targetAction = idVal ? appState.actions.find(a => a.id === idVal) : appState.actions[0];
@@ -5600,6 +6844,8 @@ function saveAction(event) {
 
     syncToServer();
     closeActionModal();
+    const openMeetId = document.getElementById('meeting-id')?.value;
+    if (openMeetId) renderExistingMeetingActionsInModal(openMeetId);
     renderAll();
 }
 
@@ -5613,13 +6859,26 @@ function quickChangeActionStatus(actionId, newStatus) {
     }
     const oldStatus = a.status;
     a.status = newStatus;
+    if (newStatus === 'Tamamlandı') {
+        const now = new Date();
+        const pad = n => String(n).padStart(2, '0');
+        a.completedDate = now.toISOString().split('T')[0];
+        a.completedTime = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+        a.completedAt = `${formatDateTR(a.completedDate)} ${a.completedTime}`;
+    } else {
+        a.completedDate = '';
+        a.completedTime = '';
+        a.completedAt = '';
+    }
     if (!a.createdAt) a.createdAt = a.updatedAt || formatNowTR();
     if (!a.createdBy) a.createdBy = 'ÖMER EREN';
     a.updatedBy = currentUser ? currentUser.name : 'ÖMER EREN';
     a.updatedAt = formatNowTR();
-    addAuditLog("AKSİYON", `${a.id} (${a.assignee}) aksiyon durumu '${oldStatus}' -> '${newStatus}' olarak ${a.updatedBy} tarafından güncellendi.`);
+    addAuditLog("AKSİYON", `${a.id} (${a.assignee}) aksiyon durumu '${oldStatus}' -> '${newStatus}'${a.completedAt ? ` (Tamamlanma: ${a.completedAt})` : ''} olarak ${a.updatedBy} tarafından güncellendi.`);
     dispatchActionProgressPush(a, oldStatus, newStatus);
     syncToServer();
+    const openMeetId = document.getElementById('meeting-id')?.value;
+    if (openMeetId) renderExistingMeetingActionsInModal(openMeetId);
     renderAll();
 }
 
@@ -5815,12 +7074,17 @@ function printMeetingMinutes(meetingId) {
     const attList = m.attachments || [];
     const printArea = document.getElementById('print-minutes-area');
     const mAudit = getRecordAuditInfo(m);
+    const attSummary = getMeetingAttendanceSummary(m);
+    const agendaList = parseAgendaItemsFromMeeting(m);
+    const discussedList = agendaList.filter(a => a.discussed);
+    const undiscussedList = agendaList.filter(a => !a.discussed);
+    const decisionList = parseDecisionItemsFromMeeting(m);
 
     printArea.innerHTML = `
         <div style="border: 2px solid #000; padding: 20px; font-family: Arial, sans-serif; color: #000;">
             <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 2px solid #0284c7; padding-bottom: 12px; margin-bottom: 16px;">
                 <div style="display:flex; align-items:center; gap: 15px;">
-                    <img src="dizsan_logo.jpg" style="width:70px; height:70px; object-fit:contain;">
+                    <img src="data:image/jpeg;base64,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" style="width:70px; height:70px; object-fit:contain;">
                     <div>
                         <h1 style="margin:0; font-size:22px; letter-spacing:1px; color:#0284c7;">DİZSAN OTOMOTİV &amp; SERVİS</h1>
                         <p style="margin:4px 0 0; font-size:13px; font-weight:bold;">
@@ -5842,11 +7106,23 @@ function printMeetingMinutes(meetingId) {
                 ${isTraining ? 'Eğitim Konusu:' : 'Toplantı Konusu:'} ${m.title}
             </h2>
 
-            <div style="margin-bottom:14px; font-size:12.5px;">
-                <strong>Katılımcı Personeller (${(m.participants || []).length} Kişi):</strong><br>
-                <div style="margin-top:4px; padding:8px; border:1px solid #cbd5e1; border-radius:4px;">
-                    ${(m.participants || []).join(', ') || '-'}
-                </div>
+            <div style="margin-bottom:14px; font-size:12px;">
+                <table style="width:100%; border-collapse:collapse; font-size:11.5px;">
+                    <tr>
+                        <td style="border:1px solid #cbd5e1; padding:7px; background:#f8fafc; width:26%;"><strong>📨 Davet Edilenler (${attSummary.invited.length} Kişi):</strong></td>
+                        <td style="border:1px solid #cbd5e1; padding:7px;">${attSummary.invited.join(', ') || '-'}</td>
+                    </tr>
+                    <tr>
+                        <td style="border:1px solid #cbd5e1; padding:7px; background:#ecfdf5;"><strong>✅ Gelen Katılımcılar (${attSummary.attended.length} Kişi):</strong></td>
+                        <td style="border:1px solid #cbd5e1; padding:7px; font-weight:bold; color:#065f46;">${attSummary.attended.join(', ') || '-'}</td>
+                    </tr>
+                    <tr>
+                        <td style="border:1px solid #cbd5e1; padding:7px; background:#fef2f2;"><strong>❌ Gelmeyen Katılımcılar ve Gelmeme Nedenleri (${attSummary.absent.length} Kişi):</strong></td>
+                        <td style="border:1px solid #cbd5e1; padding:7px; color:#991b1b;">
+                            ${attSummary.absent.length > 0 ? attSummary.absent.map(p => `<div>• <strong>${p}</strong>: ${attSummary.reasons[p] || 'Mazeret belirtilmedi'}</div>`).join('') : 'Yok (Tüm davetliler katıldı)'}
+                        </td>
+                    </tr>
+                </table>
             </div>
 
             ${extList.length > 0 ? `
@@ -5857,14 +7133,53 @@ function printMeetingMinutes(meetingId) {
                 </div>
             </div>` : ''}
 
-            <div style="margin-bottom:14px; font-size:12.5px;">
-                <strong>${isTraining ? 'Eğitim İçeriği ve Notlar:' : 'Toplantı Gündemi ve Görüşme Notları:'}</strong>
-                <div style="margin-top:4px; padding:10px; border:1px solid #cbd5e1; border-radius:4px; white-space:pre-line; line-height:1.5;">${m.notes || '-'}</div>
+            <div style="margin-bottom:14px; font-size:12px;">
+                <strong>${isTraining ? 'Eğitim Konu Başlıkları ve Açıklamaları:' : 'Gündem Maddeleri (Konuşulanlar ✅ ve Konuşulmayanlar ⏳):'}</strong>
+                <div style="margin-top:5px; padding:10px; border:1px solid #cbd5e1; border-radius:4px;">
+                    ${agendaList.length > 0 ? `
+                        <div style="margin-bottom:8px;">
+                            <div style="font-weight:bold; color:#065f46; margin-bottom:4px;">✅ Konuşulan Gündem Maddeleri (${discussedList.length} Adet):</div>
+                            ${discussedList.length > 0 ? discussedList.map((ag, idx) => `
+                                <div style="margin-bottom:6px; padding:6px 8px; background:#f0fdf4; border-left:3px solid #10b981;">
+                                    <div><strong>${idx + 1}. ${ag.title}</strong></div>
+                                    ${ag.explanation ? `<div style="margin-top:3px; color:#334155; font-size:11.5px; white-space:pre-line;">💬 Açıklama: ${ag.explanation}</div>` : ''}
+                                </div>
+                            `).join('') : '<div style="color:#64748b;">Konuşulan gündem maddesi işaretlenmedi.</div>'}
+                        </div>
+                        ${undiscussedList.length > 0 ? `
+                            <div style="margin-top:8px; padding-top:8px; border-top:1px dashed #cbd5e1;">
+                                <div style="font-weight:bold; color:#b45309; margin-bottom:4px;">⏳ Konuşulmayan / Başka Toplantıya Aktarılacak Gündem Maddeleri (${undiscussedList.length} Adet):</div>
+                                ${undiscussedList.map((ag, idx) => `<div style="padding:3px 0; color:#78350f;">☐ ${idx + 1}. ${ag.title}</div>`).join('')}
+                            </div>
+                        ` : ''}
+                    ` : `<div style="white-space:pre-line;">${m.notes || '-'}</div>`}
+                </div>
             </div>
 
-            <div style="margin-bottom:16px; font-size:12.5px;">
-                <strong>${isTraining ? 'Eğitim Sonucu ve Değerlendirme:' : 'Alınan Kararlar:'}</strong>
-                <div style="margin-top:4px; padding:10px; border:1px solid #cbd5e1; border-radius:4px; white-space:pre-line; line-height:1.5;">${m.decisions || '-'}</div>
+            <div style="margin-bottom:16px; font-size:12px;">
+                <strong>${isTraining ? 'Alınan Kararlar ve Eğitim Sonucu:' : 'Alınan Kararlar, Karar Sorumlusu ve Termin Tarihleri:'}</strong>
+                ${decisionList.length > 0 ? `
+                <table style="width:100%; border-collapse:collapse; font-size:11.5px; margin-top:5px;">
+                    <thead>
+                        <tr style="background:#ecfdf5;">
+                            <th style="border:1px solid #94a3b8; padding:6px; width:40px;">No</th>
+                            <th style="border:1px solid #94a3b8; padding:6px;">Alınan Karar Açıklaması</th>
+                            <th style="border:1px solid #94a3b8; padding:6px; width:170px;">Alınan Karar Sorumlusu</th>
+                            <th style="border:1px solid #94a3b8; padding:6px; width:115px;">Termin Tarihi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${decisionList.map((d, idx) => `
+                            <tr>
+                                <td style="border:1px solid #94a3b8; padding:6px; text-align:center; font-weight:bold;">${idx + 1}</td>
+                                <td style="border:1px solid #94a3b8; padding:6px;">${d.text}</td>
+                                <td style="border:1px solid #94a3b8; padding:6px; font-weight:bold;">${d.responsible || '-'}</td>
+                                <td style="border:1px solid #94a3b8; padding:6px; text-align:center;">${d.dueDate ? formatDateTR(d.dueDate) : '-'}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+                ` : `<div style="margin-top:4px; padding:10px; border:1px solid #cbd5e1; border-radius:4px; white-space:pre-line; line-height:1.5;">${m.decisions || '-'}</div>`}
             </div>
 
             ${attList.length > 0 ? `
@@ -5916,9 +7231,9 @@ function printMeetingMinutes(meetingId) {
                 </tbody>
             </table>
 
-            <h3 style="font-size:13px; margin:0 0 8px;">Katılımcı İmza Sirküsü</h3>
+            <h3 style="font-size:13px; margin:0 0 8px;">Katılımcı İmza Sirküsü (Gelen Katılımcılar)</h3>
             <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:10px; font-size:11px;">
-                ${(m.participants || []).map(p => `
+                ${attSummary.attended.map(p => `
                     <div style="border:1px solid #94a3b8; padding:8px; height:58px; display:flex; flex-direction:column; justify-content:space-between;">
                         <strong>${p}</strong>
                         <span style="color:#64748b;">İmza: ........................</span>
@@ -6422,10 +7737,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 12000);
 
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('sw.js?v=1.8.5').then(reg => {
+        navigator.serviceWorker.register('sw.js?v=4.9.2').then(reg => {
             try { reg.update(); } catch (e) {}
             syncUserAndStateToServiceWorker();
         }).catch(() => {});
     }
 });
-
