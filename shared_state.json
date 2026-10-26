@@ -1,6 +1,6 @@
 {
   "version": "v4.9.2",
-  "updatedAt": "2026-10-26T19:50:30.622Z",
+  "updatedAt": "2026-10-26T19:50:32.462Z",
   "users": [
     {
       "order": 0,
@@ -1341,7 +1341,7 @@
       "resolvedBy": "ÖMER EREN"
     }
   ],
-  "stateRevision": 184,
+  "stateRevision": 185,
   "pushSubscriptions": [
     {
       "id": "SUB-1793029403205-553",
