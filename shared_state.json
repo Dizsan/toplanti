@@ -1,6 +1,6 @@
 {
   "version": "v1.8.5",
-  "updatedAt": "2026-10-26T14:07:18.863Z",
+  "updatedAt": "2026-10-26T14:07:27.056Z",
   "users": [
     {
       "order": 0,
@@ -1111,8 +1111,21 @@
       "resolvedBy": "ÖMER EREN"
     }
   ],
-  "stateRevision": 66,
+  "stateRevision": 67,
   "pushSubscriptions": [
+    {
+      "id": "SUB-1793023647055-259",
+      "username": "mustafa.ilgen",
+      "userFullName": "MUSTAFA İLGEN",
+      "endpoint": "https://fcm.googleapis.com/fcm/send/frYp5y-21Y4:APA91bHhBjtOTPmmpB7HSIdyeMlbJ7Av0CkGeX8eIPE2JklFZgWp9AzyR5w9Sl00xgWWbnM3JQbyDQYnDuV33WbDOAAVf4_0HBT5oTZg5g8OSFwBrZk5xB1VxDAZ2KKZCvzW6UMu3gvR",
+      "p256dh": "BLVI9EHtn9WYx7ZLQMYa_MCbj6SLC9qPlDc4EgiRWCPVnnDp9NY83OuAZfgELu-QmCjItc8kKijz3khwfYKFBTU",
+      "auth": "DFgBWQMzvZt5dIZJM_iihw",
+      "browser": "Samsung Internet",
+      "platform": "Android",
+      "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/30.0 Chrome/143.0.0.0 Mobile Safari/537.36",
+      "isActive": true,
+      "updatedAt": "26.10.2026 17:07:27"
+    },
     {
       "id": "SUB-1793023084580-8",
       "username": "murat.karaoglu",
