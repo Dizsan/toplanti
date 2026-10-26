@@ -1,6 +1,6 @@
 {
   "version": "v1.8.5",
-  "updatedAt": "2026-10-26T13:58:04.581Z",
+  "updatedAt": "2026-10-26T14:07:18.863Z",
   "users": [
     {
       "order": 0,
@@ -258,6 +258,14 @@
   ],
   "actions": [],
   "logs": [
+    {
+      "id": "LOG-1793023638863",
+      "timestamp": "26.10.2026 17:07:18",
+      "user": "MUSTAFA İLGEN",
+      "category": "GİRİŞ / ÇIKIŞ",
+      "detail": "MUSTAFA İLGEN (Fren tekn.) sisteme giriş yaptı.",
+      "platform": "Android / Mobil"
+    },
     {
       "id": "LOG-1793023077964",
       "timestamp": "26.10.2026 16:57:57",
@@ -1103,7 +1111,7 @@
       "resolvedBy": "ÖMER EREN"
     }
   ],
-  "stateRevision": 65,
+  "stateRevision": 66,
   "pushSubscriptions": [
     {
       "id": "SUB-1793023084580-8",
