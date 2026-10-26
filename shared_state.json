@@ -1,6 +1,6 @@
 {
   "version": "v1.8.5",
-  "updatedAt": "2026-10-26T17:56:09.857Z",
+  "updatedAt": "2026-10-26T17:56:39.814Z",
   "users": [
     {
       "order": 0,
@@ -260,7 +260,6 @@
         "FATİH KIROĞLU",
         "RAFET CANBEK",
         "GÖKHAN ÖZBULUT",
-        "ERTUĞRUL ERDEM",
         "NECATİ DEMİRCİ",
         "MURAT KARAOĞLU",
         "MURAT SALMAN",
@@ -274,11 +273,11 @@
       "approvalStatus": "Onaylandı",
       "omerApprovedStamp": true,
       "approvedBy": "ÖMER EREN",
-      "approvedAt": "26.10.2026 20:54:05",
+      "approvedAt": "26.10.2026 20:56:38",
       "createdBy": "ÖMER EREN",
       "createdAt": "26.10.2026 16:40:09",
       "updatedBy": "ÖMER EREN",
-      "updatedAt": "26.10.2026 20:54:05"
+      "updatedAt": "26.10.2026 20:56:38"
     }
   ],
   "actions": [
@@ -303,6 +302,14 @@
     }
   ],
   "logs": [
+    {
+      "id": "LOG-1793037398142",
+      "timestamp": "26.10.2026 20:56:38",
+      "user": "ÖMER EREN",
+      "category": "TOPLANTI",
+      "detail": "TOP-2026-001 kodlu 'Genel Değerlendirme ve Bilgilendirme Toplantısı' kaydı Yönetici ÖMER EREN tarafından güncellendi.",
+      "platform": "macOS / Masaüstü"
+    },
     {
       "id": "LOG-1793037367416",
       "timestamp": "26.10.2026 20:56:07",
@@ -1188,7 +1195,7 @@
       "resolvedBy": "ÖMER EREN"
     }
   ],
-  "stateRevision": 79,
+  "stateRevision": 81,
   "pushSubscriptions": [
     {
       "id": "SUB-1793037103760-881",
