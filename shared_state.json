@@ -1,6 +1,6 @@
 {
   "version": "v1.8.5",
-  "updatedAt": "2026-10-26T13:51:07.713Z",
+  "updatedAt": "2026-10-26T13:57:57.965Z",
   "users": [
     {
       "order": 0,
@@ -258,6 +258,14 @@
   ],
   "actions": [],
   "logs": [
+    {
+      "id": "LOG-1793023077964",
+      "timestamp": "26.10.2026 16:57:57",
+      "user": "MURAT KARAOĞLU",
+      "category": "GİRİŞ / ÇIKIŞ",
+      "detail": "MURAT KARAOĞLU (Formen) sisteme giriş yaptı.",
+      "platform": "Android / Mobil"
+    },
     {
       "id": "LOG-1793022059528",
       "timestamp": "26.10.2026 16:40:59",
@@ -1095,7 +1103,7 @@
       "resolvedBy": "ÖMER EREN"
     }
   ],
-  "stateRevision": 63,
+  "stateRevision": 64,
   "pushSubscriptions": [
     {
       "id": "SUB-1793022275064-601",
