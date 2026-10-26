@@ -1,6 +1,7 @@
 {
-  "version": "v4.9.2",
-  "updatedAt": "2026-10-26T22:00:00.000Z",
+  "version": "v1.8.5",
+  "stateRevision": 150,
+  "updatedAt": "2026-10-26T21:49:00.000Z",
   "users": [
     {
       "order": 0,
@@ -255,8 +256,8 @@
       "approvedAt": "26.10.2026 20:56:05",
       "createdBy": "ÖMER EREN",
       "createdAt": "26.10.2026 20:56:05",
-      "updatedBy": "ÖMER EREN",
-      "updatedAt": "26.10.2026 21:00:00"
+      "updatedBy": "",
+      "updatedAt": ""
     },
     {
       "id": "TOP-2026-001",
@@ -314,6 +315,38 @@
     }
   ],
   "logs": [
+    {
+      "id": "LOG-1793037398142",
+      "timestamp": "26.10.2026 20:56:38",
+      "user": "ÖMER EREN",
+      "category": "TOPLANTI",
+      "detail": "TOP-2026-001 kodlu 'Genel Değerlendirme ve Bilgilendirme Toplantısı' kaydı Yönetici ÖMER EREN tarafından güncellendi.",
+      "platform": "macOS / Masaüstü"
+    },
+    {
+      "id": "LOG-1793037367416",
+      "timestamp": "26.10.2026 20:56:07",
+      "user": "ÖMER EREN",
+      "category": "AKSİYON",
+      "detail": "AKS-101 kodlu aksiyon 'ÖMER EREN' personeline ve Yönetici ÖMER EREN'e hatırlatıcılı olarak atandı (Termin: 27.10.2026).",
+      "platform": "macOS / Masaüstü"
+    },
+    {
+      "id": "LOG-1793037365415",
+      "timestamp": "26.10.2026 20:56:05",
+      "user": "ÖMER EREN",
+      "category": "TOPLANTI",
+      "detail": "TOP-2026-002 kodlu yeni toplantı ('Finans ve Ödeme Toplantısı Planlama') oluşturuldu (Onaylandı). Katılımcı: 2 personel.",
+      "platform": "macOS / Masaüstü"
+    },
+    {
+      "id": "LOG-1793037245726",
+      "timestamp": "26.10.2026 20:54:05",
+      "user": "ÖMER EREN",
+      "category": "TOPLANTI",
+      "detail": "TOP-2026-001 kodlu 'Genel Değerlendirme ve Bilgilendirme Toplantısı' kaydı Yönetici ÖMER EREN tarafından güncellendi.",
+      "platform": "macOS / Masaüstü"
+    },
     {
       "id": "LOG-1793026603378",
       "timestamp": "26.10.2026 17:56:43",
@@ -1175,8 +1208,21 @@
       "resolvedBy": "ÖMER EREN"
     }
   ],
-  "stateRevision": 160,
+  "stateRevision": 82,
   "pushSubscriptions": [
+    {
+      "id": "SUB-1793037103760-881",
+      "username": "ömer",
+      "userFullName": "ÖMER EREN",
+      "endpoint": "https://web.push.apple.com/QNRltEWIvUXQMsf_mPqRCSzCwU8ZKkZ5Wp-GJOucW1Qc8yEqaRZ50_o2BGjfwlY_jGO8phuZlAikcDBOvrF-tHSBMIZQvHvnYDlMlIXmEACQBxUfZCSiM2kk-5VsYrl6oo1ZY6JiPp_XxMg3h-pnCF7kzXw2a1OMVEkgyIhYQdo",
+      "p256dh": "BJfnftFlkeLGiRd5BO7VjsdMaQCXVh8aS-vqfgrr86q2TKI6C3sbDZV00g49gNH-1t7TnkQUxa-NvGA1gwrO0bA",
+      "auth": "LYt98U6AMImQazQOMJV7qw",
+      "browser": "Apple Web App (Ana Ekran)",
+      "platform": "macOS",
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/27.0.1 Safari/605.1.15",
+      "isActive": true,
+      "updatedAt": "26.10.2026 20:51:43"
+    },
     {
       "id": "SUB-1793029403205-553",
       "username": "necati.demirci",
@@ -1882,14 +1928,14 @@
       "fail_count": 0
     }
   ],
-  "appVersion": "4.9.2",
+  "appVersion": "1.8.4",
   "latestVersion": {
-    "version": "4.9.1",
-    "releaseNotes": "Aksiyon tamamlama tarihi ve saati, kapanmayan devam eden aksiyonlar için ertesi gün uyarı ve gün aşırı hatırlatma motoru eklendi",
-    "releasedAt": "2026-10-26 21:38:08"
+    "version": "1.8.4",
+    "releaseNotes": "24 personel için tam giriş ve şifre/veri mahremiyet izolasyonu, zorunlu e-posta bağlantılı şifre sıfırlama, silinen kayıt (tombstone) senkronizasyonu, mükerrer buton temizliği ve evrensel Geri/Yenile navigasyonu aktif edildi.",
+    "releasedAt": "2026-10-26 00:10:00"
   },
-  "versionUpdatedAt": "2026-10-26 21:38:08",
-  "versionReleaseNotes": "Aksiyon tamamlama tarihi ve saati, kapanmayan devam eden aksiyonlar için ertesi gün uyarı ve gün aşırı hatırlatma motoru eklendi",
+  "versionUpdatedAt": "2026-10-26 00:10:00",
+  "versionReleaseNotes": "24 personel için tam giriş ve şifre/veri mahremiyet izolasyonu, zorunlu e-posta bağlantılı şifre sıfırlama, silinen kayıt (tombstone) senkronizasyonu, mükerrer buton temizliği ve evrensel Geri/Yenile navigasyonu aktif edildi.",
   "deletedIds": [],
   "usedResetTokens": []
 }
