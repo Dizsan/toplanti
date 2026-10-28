@@ -10,7 +10,7 @@
  * ==========================================================================
  */
 
-const INITIAL_APP_VERSION = "v4.9.6";
+const INITIAL_APP_VERSION = "v4.9.7";
 const CURRENT_APP_VERSION = "4.9.5";
 const VAPID_PUBLIC_KEY = "BJIJfCBiDwya3clZOWS08EDxfuN18xtfJGTX0n_apWBTEW7-kO_FGKNy5VDRvUsMgc46IP5oxLlIHqgrDo-JTkE";
 const STORAGE_KEY_STATE = "dizsan_toplanti_shared_state_v2";
@@ -143,6 +143,12 @@ const OFFICIAL_PERSONNEL_RAW = [
 const OFFICIAL_PERSONNEL_LIST = OFFICIAL_PERSONNEL_RAW.map(u => ({ ...u, email: resolveUserEmail(u) }));
 
 const INITIAL_CHANGELOG = [
+    {
+        version: "v4.9.7",
+        date: "28.10.2026 23:05",
+        author: "Sistem Güncellemesi (ÖMER EREN)",
+        notes: "Aynı gündem maddesine (konuya) birden fazla numaralı aksiyon alanı ekleme butonları (+ Yeni Aksiyon, + Gündem Maddesine Yeni Aksiyon Alanı Ekle ve Enter kısayolu) eklendi; Öncelik, Termin Tarihi ve Saat alanları alt satıra alınarak Aksiyon / Görev Açıklaması satırının %100 tam genişlikte görünmesi sağlandı."
+    },
     {
         version: "v4.9.6",
         date: "28.10.2026",
@@ -5989,6 +5995,13 @@ function handleAgendaTitleKeydown(event, itemId) {
     }
 }
 
+function handleInlineActionTitleKeydown(event, itemId) {
+    if (event.key === 'Enter') {
+        event.preventDefault();
+        addAgendaDraftActionRow(itemId);
+    }
+}
+
 function renderDraftAgendaItems(focusItemId = null) {
     const container = document.getElementById('meeting-agenda-items-container');
     if (!container) return;
@@ -6063,7 +6076,7 @@ function renderDraftAgendaItems(focusItemId = null) {
             `;
         }).join('');
 
-        const draftActionsHtml = itemDraftActions.map(da => {
+        const draftActionsHtml = itemDraftActions.map((da, actIdx) => {
             if (!Array.isArray(inlineRowAssigneesMap[da.rowId])) {
                 inlineRowAssigneesMap[da.rowId] = Array.isArray(da.assignees) && da.assignees.length > 0
                     ? [...da.assignees]
@@ -6071,16 +6084,20 @@ function renderDraftAgendaItems(focusItemId = null) {
             }
             const defaultCtrl = da.controller || 'ÖMER EREN';
             const ctrlOptionsHtml = appState.users.map(u => `<option value="${escapeHtmlAttr(u.name)}" ${normalizeTR(u.name) === normalizeTR(defaultCtrl) ? 'selected' : ''}>${u.name} (${u.dept})</option>`).join('');
+            const actionOrderNum = itemSavedActions.length + actIdx + 1;
 
             return `
                 <div class="inline-action-row" id="inline-action-row-${da.rowId}" data-row-id="${da.rowId}" data-agenda-id="${it.id}">
                     <div class="inline-action-top-grid">
-                        <div>
-                            <label style="font-size:0.72rem; font-weight:700; color:#bae6fd; display:block; margin-bottom:3px;">
-                                <i class="fa-solid fa-bolt" style="color:#38bdf8;"></i> ${idx + 1}. Madde Aksiyonu / Görev Açıklaması *
+                        <div style="width:100%;">
+                            <label style="font-size:0.74rem; font-weight:700; color:#bae6fd; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.4rem; margin-bottom:4px;">
+                                <span><i class="fa-solid fa-bolt" style="color:#38bdf8;"></i> ${idx + 1}. Madde — ${actionOrderNum}. Aksiyon / Görev Açıklaması *</span>
+                                <span style="font-size:0.68rem; color:#7dd3fc; font-weight:600;">Tam satır görünüm • Enter veya "+ Yeni Aksiyon" ile aynı konuya yeni aksiyon ekleyin</span>
                             </label>
-                            <input type="text" id="iar-title-${da.rowId}" class="form-control inline-action-title" value="${escapeHtmlAttr(da.title || '')}" placeholder="${idx + 1}. madde için yapılacak aksiyonu veya kararı yazın..." oninput="updateAgendaDraftActionField('${it.id}', '${da.rowId}', 'title', this.value)">
+                            <input type="text" id="iar-title-${da.rowId}" class="form-control inline-action-title" style="width:100% !important; font-size:0.86rem !important; font-weight:600; padding:0.55rem 0.75rem !important;" value="${escapeHtmlAttr(da.title || '')}" placeholder="${idx + 1}. madde için ${actionOrderNum}. yapılacak aksiyonu veya görev açıklamasını tam satır olarak yazın..." oninput="updateAgendaDraftActionField('${it.id}', '${da.rowId}', 'title', this.value)" onkeydown="handleInlineActionTitleKeydown(event, '${it.id}')">
                         </div>
+                    </div>
+                    <div class="inline-action-meta-grid">
                         <div>
                             <label style="font-size:0.72rem; font-weight:700; color:#bae6fd; display:block; margin-bottom:3px;">Öncelik</label>
                             <select id="iar-prio-${da.rowId}" class="form-control inline-action-priority" onchange="updateAgendaDraftActionField('${it.id}', '${da.rowId}', 'priority', this.value)">
@@ -6096,7 +6113,10 @@ function renderDraftAgendaItems(focusItemId = null) {
                             <label style="font-size:0.72rem; font-weight:700; color:#fde68a; display:block; margin-bottom:3px;">Saat *</label>
                             <input type="time" id="iar-time-${da.rowId}" class="form-control inline-action-duetime" value="${da.dueTime || '17:00'}" onchange="updateAgendaDraftActionField('${it.id}', '${da.rowId}', 'dueTime', this.value)">
                         </div>
-                        <div style="display:flex; align-items:flex-end; padding-bottom:1px;">
+                        <div style="display:flex; align-items:flex-end; gap:0.35rem; padding-bottom:1px; flex-wrap:wrap;">
+                            <button type="button" class="btn btn-primary btn-sm" style="height:36px; padding:0 0.7rem; font-size:0.73rem;" onclick="addAgendaDraftActionRow('${it.id}')" title="Aynı Konuya Yeni Aksiyon Alanı Ekle">
+                                <i class="fa-solid fa-plus"></i> Yeni Aksiyon
+                            </button>
                             <button type="button" class="btn btn-danger btn-sm" style="height:36px; padding:0 0.65rem;" onclick="removeAgendaDraftActionRow('${it.id}', '${da.rowId}')" title="Bu Aksiyon Satırını Kaldır">
                                 <i class="fa-solid fa-trash-can"></i>
                             </button>
@@ -6174,7 +6194,7 @@ function renderDraftAgendaItems(focusItemId = null) {
                         </label>
                         ${hasAction ? `
                             <button type="button" class="btn btn-primary btn-sm" style="padding:0.3rem 0.65rem; font-size:0.72rem;" onclick="addAgendaDraftActionRow('${it.id}')">
-                                <i class="fa-solid fa-plus"></i> Bu Maddeye Aksiyon Ekle
+                                <i class="fa-solid fa-plus"></i> Aynı Konuya Aksiyon Ekle
                             </button>
                         ` : `<span style="font-size:0.71rem; color:#64748b;">Aksiyon varsa tik koyun; bu maddenin altında açılır</span>`}
                     </div>
@@ -6183,6 +6203,9 @@ function renderDraftAgendaItems(focusItemId = null) {
                         <div style="margin-top:0.5rem; padding:0.6rem; border-radius:10px; background:rgba(8,13,26,0.72); border:1px solid rgba(56,189,248,0.35); display:flex; flex-direction:column; gap:0.5rem;">
                             ${savedActionsHtml}
                             ${draftActionsHtml}
+                            <button type="button" class="btn btn-secondary btn-sm" style="width:100%; justify-content:center; border:1px dashed rgba(56,189,248,0.55); background:rgba(2,132,199,0.12); color:#7dd3fc; font-weight:700; padding:0.45rem 0.75rem; font-size:0.76rem;" onclick="addAgendaDraftActionRow('${it.id}')">
+                                <i class="fa-solid fa-plus-circle"></i> + ${idx + 1}. Gündem Maddesine (Aynı Konuya) Yeni Aksiyon Alanı Ekle
+                            </button>
                         </div>
                     ` : ''}
                 </div>
@@ -6369,24 +6392,15 @@ function convertDecisionToInlineAction(decId) {
         alert("Lütfen önce karar açıklamasını yazın!");
         return;
     }
-    addInlineActionRow();
-    const container = document.getElementById('inline-actions-container');
-    const lastRow = container?.lastElementChild;
-    if (!lastRow) return;
-    const titleInput = lastRow.querySelector('.inline-action-title');
-    const assigneeSelect = lastRow.querySelector('.inline-action-assignee');
-    const dueDateInput = lastRow.querySelector('.inline-action-duedate');
-    const dueTimeInput = lastRow.querySelector('.inline-action-duetime');
-    if (titleInput) titleInput.value = dec.text.trim();
-    if (assigneeSelect && dec.responsible) {
-        const matchedUser = appState.users.find(u => normalizeTR(u.name) === normalizeTR(dec.responsible));
-        if (matchedUser) assigneeSelect.value = matchedUser.name;
-    }
-    if (dueDateInput && dec.dueDate) {
-        setMaskedDateInputValue(dueDateInput, dec.dueDate);
-    }
-    if (dueTimeInput) dueTimeInput.value = '17:00';
-    lastRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    const matchedUser = dec.responsible
+        ? appState.users.find(u => normalizeTR(u.name) === normalizeTR(dec.responsible))
+        : null;
+    addInlineActionRow({
+        title: dec.text.trim(),
+        assignees: matchedUser ? [matchedUser.name] : (currentUser ? [currentUser.name] : ['ÖMER EREN']),
+        dueDate: dec.dueDate,
+        dueTime: '17:00'
+    });
 }
 
 // --- KONUŞULMAYAN MADDELERİ BAŞKA TOPLANTIYA PLANLAMA EKRANI FONKSİYONLARI ---
@@ -6948,10 +6962,19 @@ function saveMeeting(event) {
     });
 
     const validAgendaItems = validAgendaSource.map(it => {
+        const cleanItTitle = String(it.title || '').trim();
+        appState.actions.forEach(a => {
+            if (a.meetingId === targetMeetingId) {
+                a.meetingTitle = title;
+                if (a.agendaItemId === it.id) {
+                    a.agendaItemTitle = cleanItTitle;
+                }
+            }
+        });
         const hasSavedAct = appState.actions.some(a => a.meetingId === targetMeetingId && a.agendaItemId === it.id);
         return {
             id: it.id || ('agd-' + Date.now()),
-            title: String(it.title || '').trim(),
+            title: cleanItTitle,
             discussed: (it.discussed === true || it.discussed === false) ? it.discussed : null,
             explanation: it.discussed === true ? String(it.explanation || '').trim() : '',
             hasAction: Boolean(hasSavedAct),
@@ -8343,7 +8366,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 12000);
 
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('sw.js?v=4.9.6').then(reg => {
+        navigator.serviceWorker.register('sw.js?v=4.9.7').then(reg => {
             try { reg.update(); } catch (e) {}
             syncUserAndStateToServiceWorker();
         }).catch(() => {});

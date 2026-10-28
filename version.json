@@ -1,9 +1,7 @@
 {
-  "appId": "toplanti",
-  "appName": "Dizsan Toplantı & Aksiyon",
-  "version": "4.9.6",
-  "build": 496,
-  "releasedAt": "28.10.2026",
-  "releaseNotes": "Toplantı bildirim sesi kısa dit-dit sinyaline dönüştürüldü ve sesli metin okuma kapatıldı.",
-  "author": "Ömer Eren & DİZSAN"
+  "app": "Dizsan Toplantı, Eğitim & Aksiyon Yönetim Sistemi",
+  "version": "4.9.7",
+  "build": 497,
+  "releasedAt": "2026-10-28T23:05:00+03:00",
+  "notes": "v4.9.7: Aynı konuya birden fazla aksiyon alanı ekleme ve aksiyon açıklama satırının tam genişlikte görünmesi için Öncelik/Termin/Saat alanlarının alt satıra alınması."
 }

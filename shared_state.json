@@ -1,5 +1,5 @@
 {
-  "version": "v4.9.6",
+  "version": "v4.9.7",
   "updatedAt": "2026-10-28T19:40:56.923Z",
   "users": [
     {
@@ -1250,6 +1250,12 @@
   ],
   "changelog": [
     {
+      "version": "v4.9.7",
+      "date": "28.10.2026 23:05",
+      "author": "Sistem Güncellemesi (ÖMER EREN)",
+      "notes": "Aynı gündem maddesine birden fazla aksiyon alanı ekleme ve Öncelik/Termin/Saat alanlarının alt satıra alınarak aksiyon satırının tam görünmesi sağlandı."
+    },
+    {
       "version": "v4.9.5",
       "date": "28.10.2026",
       "author": "ÖMER EREN",
@@ -2099,7 +2105,7 @@
       "fail_count": 0
     }
   ],
-  "appVersion": "4.9.6",
+  "appVersion": "4.9.7",
   "latestVersion": {
     "version": "4.9.6",
     "releaseNotes": "Toplantı bildirim sesi kısa dit-dit sinyaline dönüştürüldü ve sesli metin okuma kapatıldı.",
