@@ -1,9 +1,9 @@
 {
   "appId": "toplanti",
   "appName": "Dizsan Toplantı & Aksiyon",
-  "version": "4.9.4",
-  "build": 494,
+  "version": "4.9.5",
+  "build": 495,
   "releasedAt": "28.10.2026",
-  "releaseNotes": "Her gündem maddesinin altına 'Aksiyon Var' tiki eklendi; aksiyonu olan maddelerin hem kayıtlı aksiyonları hem de yeni aksiyon giriş formları doğrudan ilgili gündem maddesinin altında bütünleşik olarak gösterilecek şekilde düzenlendi.",
+  "releaseNotes": "Yeni gündem maddesi eklendiğinde Konuşuldu ve Konuşulmadı tiklerinin her ikisinin de işaretsiz gelmesi sağlandı ve madde altı aksiyon tiki entegre edildi.",
   "author": "Ömer Eren & DİZSAN"
 }

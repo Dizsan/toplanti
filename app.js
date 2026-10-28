@@ -10,8 +10,8 @@
  * ==========================================================================
  */
 
-const INITIAL_APP_VERSION = "v4.9.4";
-const CURRENT_APP_VERSION = "4.9.4";
+const INITIAL_APP_VERSION = "v4.9.5";
+const CURRENT_APP_VERSION = "4.9.5";
 const VAPID_PUBLIC_KEY = "BJIJfCBiDwya3clZOWS08EDxfuN18xtfJGTX0n_apWBTEW7-kO_FGKNy5VDRvUsMgc46IP5oxLlIHqgrDo-JTkE";
 const STORAGE_KEY_STATE = "dizsan_toplanti_shared_state_v2";
 const STORAGE_KEY_SESSION = "dizsan_toplanti_active_user";
@@ -144,10 +144,10 @@ const OFFICIAL_PERSONNEL_LIST = OFFICIAL_PERSONNEL_RAW.map(u => ({ ...u, email: 
 
 const INITIAL_CHANGELOG = [
     {
-        version: "v4.9.4",
+        version: "v4.9.5",
         date: "28.10.2026",
         author: "ÖMER EREN",
-        notes: "Her gündem maddesinin altına 'Aksiyon Var' tiki eklendi; aksiyonu olan maddelerin hem kayıtlı aksiyonları hem de yeni aksiyon giriş formları doğrudan ilgili gündem maddesinin altında bütünleşik olarak gösterilecek şekilde düzenlendi."
+        notes: "Yeni gündem maddesi eklendiğinde Konuşuldu ve Konuşulmadı tiklerinin her ikisinin de işaretsiz gelmesi sağlandı; Her gündem maddesinin altına 'Aksiyon Var' tiki eklendi; aksiyonu olan maddelerin hem kayıtlı aksiyonları hem de yeni aksiyon giriş formları doğrudan ilgili gündem maddesinin altında bütünleşik olarak gösterilecek şekilde düzenlendi."
     },
     {
         version: "v4.9.3",
@@ -4151,7 +4151,7 @@ function renderDashboard() {
                 const totalPartCount = attInfo.invited.length + extCount;
                 const attCount = (m.attachments || []).length;
                 const agdItems = parseAgendaItemsFromMeeting(m);
-                const undiscussedCount = agdItems.filter(x => x.title && !x.discussed).length;
+                const undiscussedCount = agdItems.filter(x => x.title && x.discussed === false).length;
                 return `
                     <div class="clickable-card" onclick="handleMeetingCardClick(event, '${m.id}')" style="background:rgba(255,255,255,0.03); border:1px solid var(--border-color); border-radius:12px; padding:0.9rem; cursor:pointer; transition:all 0.2s;">
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.3rem; flex-wrap:wrap; gap:0.35rem;">
@@ -4328,8 +4328,8 @@ function renderMeetings() {
 
         const attInfo = getMeetingAttendanceSummary(m);
         const agendaItems = parseAgendaItemsFromMeeting(m);
-        const discussedAgendas = agendaItems.filter(x => x.title && x.discussed);
-        const undiscussedAgendas = agendaItems.filter(x => x.title && !x.discussed);
+        const discussedAgendas = agendaItems.filter(x => x.title && x.discussed === true);
+        const undiscussedAgendas = agendaItems.filter(x => x.title && x.discussed === false);
         const decisionItems = parseDecisionItemsFromMeeting(m).filter(d => d.text && d.text.trim());
 
         const approvalBadgeHtml = isPendingApproval
@@ -4379,20 +4379,22 @@ function renderMeetings() {
                         <div style="display:flex; flex-direction:column; gap:0.38rem;">
                             ${agendaItems.filter(x => x.title).map((ag, idx) => {
                                 const agActions = relatedActions.filter(act => act.agendaItemId === ag.id);
+                                const isAgDisc = ag.discussed === true;
+                                const isAgUndisc = ag.discussed === false;
                                 return `
-                                <div style="padding:0.38rem 0.55rem; border-radius:7px; background:${ag.discussed ? 'rgba(16,185,129,0.1)' : 'rgba(245,158,11,0.08)'}; border:1px solid ${ag.discussed ? 'rgba(16,185,129,0.3)' : 'rgba(245,158,11,0.28)'};">
+                                <div style="padding:0.38rem 0.55rem; border-radius:7px; background:${isAgDisc ? 'rgba(16,185,129,0.1)' : (isAgUndisc ? 'rgba(245,158,11,0.08)' : 'rgba(56,189,248,0.06)')}; border:1px solid ${isAgDisc ? 'rgba(16,185,129,0.3)' : (isAgUndisc ? 'rgba(245,158,11,0.28)' : 'rgba(148,163,184,0.24)')};">
                                     <div style="display:flex; align-items:center; justify-content:space-between; gap:0.4rem; flex-wrap:wrap;">
-                                        <span style="font-weight:600; color:${ag.discussed ? '#d1fae5' : '#fef3c7'}; font-size:0.8rem;">
-                                            ${ag.discussed ? '✅' : '⬜'} ${idx + 1}. ${ag.title}
+                                        <span style="font-weight:600; color:${isAgDisc ? '#d1fae5' : (isAgUndisc ? '#fef3c7' : '#e2e8f0')}; font-size:0.8rem;">
+                                            ${isAgDisc ? '✅' : (isAgUndisc ? '⬜' : '🔹')} ${idx + 1}. ${ag.title}
                                         </span>
                                         <div style="display:flex; align-items:center; gap:0.35rem;">
                                             ${agActions.length > 0 ? `<span style="background:rgba(2,132,199,0.25); border:1px solid rgba(56,189,248,0.45); color:#7dd3fc; padding:1px 6px; border-radius:5px; font-size:0.66rem; font-weight:800;"><i class="fa-solid fa-square-check"></i> ⚡ ${agActions.length} Aksiyon</span>` : ''}
-                                            <span style="font-size:0.68rem; color:${ag.discussed ? '#34d399' : '#fbbf24'}; font-weight:700; white-space:nowrap;">
-                                                ${ag.discussed ? 'Konuşuldu' : (ag.transferredToMeetingId ? `➔ ${ag.transferredToMeetingId}` : 'Konuşulmadı')}
+                                            <span style="font-size:0.68rem; color:${isAgDisc ? '#34d399' : (isAgUndisc ? '#fbbf24' : '#94a3b8')}; font-weight:700; white-space:nowrap;">
+                                                ${isAgDisc ? 'Konuşuldu' : (ag.transferredToMeetingId ? `➔ ${ag.transferredToMeetingId}` : (isAgUndisc ? 'Konuşulmadı' : 'Seçilmedi'))}
                                             </span>
                                         </div>
                                     </div>
-                                    ${ag.discussed && ag.explanation ? `
+                                    ${isAgDisc && ag.explanation ? `
                                         <div style="margin-top:0.22rem; padding-top:0.22rem; border-top:1px dashed rgba(52,211,153,0.3); font-size:0.75rem; color:#a7f3d0; white-space:pre-line;">
                                             <i class="fa-solid fa-comment-dots"></i> <strong>Açıklama:</strong> ${ag.explanation}
                                         </div>
@@ -5520,7 +5522,7 @@ function parseAgendaItemsFromMeeting(m) {
         result = m.agendaItems.map((it, idx) => ({
             id: it.id || ('agd-' + idx + '-' + Date.now()),
             title: String(it.title || '').trim(),
-            discussed: Boolean(it.discussed),
+            discussed: (it.discussed === true || it.discussed === false) ? it.discussed : null,
             explanation: String(it.explanation || '').trim(),
             hasAction: Boolean(it.hasAction),
             draftActions: Array.isArray(it.draftActions) ? it.draftActions : [],
@@ -5545,12 +5547,12 @@ function parseAgendaItemsFromMeeting(m) {
                 : expText;
             return;
         }
-        let discussed = false;
+        let discussed = null;
         let cleanLine = line;
-        if (/^✅/.test(cleanLine)) {
+        if (/^✅/.test(cleanLine) || /\[Konuşuldu\]/i.test(cleanLine)) {
             discussed = true;
             cleanLine = cleanLine.replace(/^✅\s*/, '');
-        } else if (/^⬜|^⏳/.test(cleanLine)) {
+        } else if (/^⬜|^⏳/.test(cleanLine) || /\[Konuşulmadı/i.test(cleanLine)) {
             discussed = false;
             cleanLine = cleanLine.replace(/^(⬜|⏳)\s*/, '');
         }
@@ -5621,11 +5623,13 @@ function formatAgendaItemsToLegacyNotes(agendaItems) {
     return (agendaItems || [])
         .filter(it => it.title && it.title.trim())
         .map((it, idx) => {
-            const statusTag = it.discussed
-                ? '[Konuşuldu]'
-                : (it.transferredToMeetingId ? `[Konuşulmadı -> ${it.transferredToMeetingId}]` : '[Konuşulmadı]');
-            let str = `${idx + 1}. ${it.title.trim()} ${statusTag}`;
-            if (it.discussed && it.explanation && it.explanation.trim()) {
+            const statusTag = it.discussed === true
+                ? ' [Konuşuldu]'
+                : (it.discussed === false
+                    ? (it.transferredToMeetingId ? ` [Konuşulmadı -> ${it.transferredToMeetingId}]` : ' [Konuşulmadı]')
+                    : '');
+            let str = `${idx + 1}. ${it.title.trim()}${statusTag}`;
+            if (it.discussed === true && it.explanation && it.explanation.trim()) {
                 str += `\n   ↳ Açıklama: ${it.explanation.trim()}`;
             }
             return str;
@@ -5933,12 +5937,12 @@ function addAgendaItemFromQuickInput() {
     syncDraftAgendaStateFromDOM();
     const input = document.getElementById('quick-agenda-item-input');
     if (!input) {
-        addAgendaItemRow('', false, '', true);
+        addAgendaItemRow('', null, '', true);
         return;
     }
     const val = input.value.trim();
     if (!val) {
-        addAgendaItemRow('', false, '', true);
+        addAgendaItemRow('', null, '', true);
         return;
     }
     const cleanTitle = val.replace(/^\d+[\.\)\-]\s*/, '').trim();
@@ -5948,7 +5952,7 @@ function addAgendaItemFromQuickInput() {
         currentDraftAgendaItems.push({
             id: 'agd-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
             title: cleanTitle,
-            discussed: false,
+            discussed: null,
             explanation: '',
             hasAction: false,
             draftActions: [],
@@ -5959,13 +5963,13 @@ function addAgendaItemFromQuickInput() {
     renderDraftAgendaItems();
 }
 
-function addAgendaItemRow(title = '', discussed = false, explanation = '', focusNew = false) {
+function addAgendaItemRow(title = '', discussed = null, explanation = '', focusNew = false) {
     syncDraftAgendaStateFromDOM();
     const newId = 'agd-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
     currentDraftAgendaItems.push({
         id: newId,
         title: String(title || '').replace(/^\d+[\.\)\-]\s*/, '').trim(),
-        discussed: Boolean(discussed),
+        discussed: (discussed === true || discussed === false) ? discussed : null,
         explanation: String(explanation || '').trim(),
         hasAction: false,
         draftActions: [],
@@ -5982,19 +5986,19 @@ function removeAgendaItemRow(itemId) {
     }
     currentDraftAgendaItems = currentDraftAgendaItems.filter(it => it.id !== itemId);
     if (currentDraftAgendaItems.length === 0) {
-        addAgendaItemRow('', false, '', false);
+        addAgendaItemRow('', null, '', false);
     } else {
         renderDraftAgendaItems();
     }
 }
 
-function toggleAgendaItemDiscussed(itemId, checked) {
+function toggleAgendaItemDiscussed(itemId, nextState) {
     syncDraftAgendaStateFromDOM();
     const item = currentDraftAgendaItems.find(it => it.id === itemId);
     if (!item) return;
-    item.discussed = Boolean(checked);
+    item.discussed = (nextState === true || nextState === false) ? nextState : null;
     renderDraftAgendaItems();
-    if (item.discussed) {
+    if (item.discussed === true) {
         setTimeout(() => {
             const expEl = document.getElementById(`agenda-exp-${itemId}`);
             if (expEl) expEl.focus();
@@ -6018,7 +6022,7 @@ function updateAgendaItemExplanation(itemId, val) {
 function handleAgendaTitleKeydown(event, itemId) {
     if (event.key === 'Enter') {
         event.preventDefault();
-        addAgendaItemRow('', false, '', true);
+        addAgendaItemRow('', null, '', true);
     }
 }
 
@@ -6030,7 +6034,7 @@ function renderDraftAgendaItems(focusItemId = null) {
         currentDraftAgendaItems.push({
             id: 'agd-' + Date.now(),
             title: '',
-            discussed: false,
+            discussed: null,
             explanation: '',
             hasAction: false,
             draftActions: [],
@@ -6051,7 +6055,8 @@ function renderDraftAgendaItems(focusItemId = null) {
     const userOptionsHtml = appState.users.map(u => `<option value="${escapeHtmlAttr(u.name)}">${u.name} (${u.dept})</option>`).join('');
 
     container.innerHTML = currentDraftAgendaItems.map((it, idx) => {
-        const isDiscussed = Boolean(it.discussed);
+        const isDiscussed = (it.discussed === true);
+        const isUndiscussed = (it.discussed === false);
         const safeTitle = escapeHtmlAttr(it.title || '');
         const safeExp = escapeHtmlAttr(it.explanation || '');
 
@@ -6164,7 +6169,7 @@ function renderDraftAgendaItems(focusItemId = null) {
         }).join('');
 
         return `
-            <div class="agenda-item-card ${isDiscussed ? 'discussed' : 'undiscussed'}">
+            <div class="agenda-item-card ${isDiscussed ? 'discussed' : (isUndiscussed ? 'undiscussed' : '')}">
                 <div style="display:flex; align-items:center; gap:0.45rem; flex-wrap:wrap;">
                     <span style="font-weight:800; color:#38bdf8; font-size:0.86rem; min-width:22px;">${idx + 1}.</span>
 
@@ -6172,12 +6177,12 @@ function renderDraftAgendaItems(focusItemId = null) {
 
                     <div style="display:inline-flex; align-items:center; gap:0.35rem; background:rgba(15,23,42,0.65); padding:0.2rem; border-radius:10px; border:1px solid rgba(148,163,184,0.2); flex-shrink:0;">
                         <label style="display:inline-flex; align-items:center; gap:0.4rem; cursor:pointer; margin:0; padding:0.34rem 0.6rem; border-radius:7px; background:${isDiscussed ? 'rgba(2,132,199,0.28)' : 'rgba(255,255,255,0.03)'}; border:1.5px solid ${isDiscussed ? '#38bdf8' : 'rgba(148,163,184,0.22)'}; color:${isDiscussed ? '#ffffff' : '#94a3b8'}; font-size:0.75rem; font-weight:700; user-select:none; white-space:nowrap; transition:all 0.15s;" title="Görüşüldüyse işaretleyin">
-                            <input type="checkbox" class="blue-tick-checkbox" ${isDiscussed ? 'checked' : ''} onchange="toggleAgendaItemDiscussed('${it.id}', this.checked)">
+                            <input type="checkbox" class="blue-tick-checkbox" ${isDiscussed ? 'checked' : ''} onchange="toggleAgendaItemDiscussed('${it.id}', this.checked ? true : null)">
                             <span>Konuşuldu</span>
                         </label>
 
-                        <label style="display:inline-flex; align-items:center; gap:0.4rem; cursor:pointer; margin:0; padding:0.34rem 0.6rem; border-radius:7px; background:${!isDiscussed ? 'rgba(245,158,11,0.22)' : 'rgba(255,255,255,0.03)'}; border:1.5px solid ${!isDiscussed ? '#f59e0b' : 'rgba(148,163,184,0.22)'}; color:${!isDiscussed ? '#fef3c7' : '#94a3b8'}; font-size:0.75rem; font-weight:700; user-select:none; white-space:nowrap; transition:all 0.15s;" title="Görüşülmediyse işaretleyin">
-                            <input type="checkbox" class="amber-tick-checkbox" ${!isDiscussed ? 'checked' : ''} onchange="toggleAgendaItemDiscussed('${it.id}', !this.checked)">
+                        <label style="display:inline-flex; align-items:center; gap:0.4rem; cursor:pointer; margin:0; padding:0.34rem 0.6rem; border-radius:7px; background:${isUndiscussed ? 'rgba(245,158,11,0.22)' : 'rgba(255,255,255,0.03)'}; border:1.5px solid ${isUndiscussed ? '#f59e0b' : 'rgba(148,163,184,0.22)'}; color:${isUndiscussed ? '#fef3c7' : '#94a3b8'}; font-size:0.75rem; font-weight:700; user-select:none; white-space:nowrap; transition:all 0.15s;" title="Görüşülmediyse işaretleyin">
+                            <input type="checkbox" class="amber-tick-checkbox" ${isUndiscussed ? 'checked' : ''} onchange="toggleAgendaItemDiscussed('${it.id}', this.checked ? false : null)">
                             <span>Konuşulmadı</span>
                         </label>
                     </div>
@@ -6255,7 +6260,7 @@ function renderUndiscussedAgendaSummary() {
 
     const undiscussed = currentDraftAgendaItems
         .map((it, idx) => ({ ...it, orderNum: idx + 1 }))
-        .filter(it => it.title && it.title.trim() && !it.discussed);
+        .filter(it => it.title && it.title.trim() && it.discussed === false);
 
     if (undiscussed.length === 0) {
         box.style.display = 'none';
@@ -6425,9 +6430,9 @@ function convertDecisionToInlineAction(decId) {
 let pendingFollowupSourceData = null;
 
 function openFollowupMeetingModalFromCurrentDraft() {
-    const undiscussed = currentDraftAgendaItems.filter(it => it.title && it.title.trim() && !it.discussed);
+    const undiscussed = currentDraftAgendaItems.filter(it => it.title && it.title.trim() && it.discussed !== true);
     if (undiscussed.length === 0) {
-        alert("Şu anda konuşulmayan (tik konulmamış) gündem maddesi bulunmamaktadır.");
+        alert("Şu anda konuşulmayan gündem maddesi bulunmamaktadır.");
         return;
     }
 
@@ -6548,7 +6553,7 @@ function saveFollowupMeetingPlan(event) {
     const newAgendaItems = selectedChecks.map((cb, idx) => ({
         id: 'agd-' + Date.now() + '-' + idx,
         title: cb.getAttribute('data-title') || '',
-        discussed: false,
+        discussed: null,
         explanation: '',
         transferredToMeetingId: ''
     }));
@@ -6727,7 +6732,7 @@ function openMeetingModal(meetingId = null) {
         renderAttendanceManagementUI();
 
         currentDraftAgendaItems = [
-            { id: 'agd-' + Date.now(), title: '', discussed: false, explanation: '', hasAction: false, draftActions: [], transferredToMeetingId: '' }
+            { id: 'agd-' + Date.now(), title: '', discussed: null, explanation: '', hasAction: false, draftActions: [], transferredToMeetingId: '' }
         ];
         renderDraftAgendaItems();
 
@@ -6842,7 +6847,7 @@ function removeInlineActionRow(rowId) {
 
 function addInlineActionRow(prefill = null) {
     if (currentDraftAgendaItems.length === 0) {
-        addAgendaItemRow('', false, '', false);
+        addAgendaItemRow('', null, '', false);
     }
     const targetItem = currentDraftAgendaItems[currentDraftAgendaItems.length - 1];
     if (targetItem) {
@@ -6984,8 +6989,8 @@ function saveMeeting(event) {
         return {
             id: it.id || ('agd-' + Date.now()),
             title: String(it.title || '').trim(),
-            discussed: Boolean(it.discussed),
-            explanation: it.discussed ? String(it.explanation || '').trim() : '',
+            discussed: (it.discussed === true || it.discussed === false) ? it.discussed : null,
+            explanation: it.discussed === true ? String(it.explanation || '').trim() : '',
             hasAction: Boolean(hasSavedAct),
             transferredToMeetingId: String(it.transferredToMeetingId || '').trim()
         };
@@ -7093,8 +7098,8 @@ function saveMeeting(event) {
     closeMeetingModal();
     renderAll();
 
-    // Konuşulmayan (tik konulmamış ve henüz başka toplantıya aktarılmamış) gündem maddeleri varsa otomatik Başka Toplantı Planlama ekranını aç
-    const untransferredUndiscussed = validAgendaItems.filter(it => !it.discussed && !it.transferredToMeetingId);
+    // Konuşulmayan (Konuşulmadı tiki işaretlenmiş ve henüz başka toplantıya aktarılmamış) gündem maddeleri varsa otomatik Başka Toplantı Planlama ekranını aç
+    const untransferredUndiscussed = validAgendaItems.filter(it => it.discussed === false && !it.transferredToMeetingId);
     if (untransferredUndiscussed.length > 0) {
         setTimeout(() => {
             openFollowupMeetingModal(targetMeetingId);
@@ -7691,8 +7696,8 @@ function printMeetingMinutes(meetingId) {
     const mAudit = getRecordAuditInfo(m);
     const attSummary = getMeetingAttendanceSummary(m);
     const agendaList = parseAgendaItemsFromMeeting(m);
-    const discussedList = agendaList.filter(a => a.discussed);
-    const undiscussedList = agendaList.filter(a => !a.discussed);
+    const discussedList = agendaList.filter(a => a.discussed === true);
+    const undiscussedList = agendaList.filter(a => a.discussed !== true);
     const decisionList = parseDecisionItemsFromMeeting(m);
 
     printArea.innerHTML = `
@@ -8375,7 +8380,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 12000);
 
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('sw.js?v=4.9.4').then(reg => {
+        navigator.serviceWorker.register('sw.js?v=4.9.5').then(reg => {
             try { reg.update(); } catch (e) {}
             syncUserAndStateToServiceWorker();
         }).catch(() => {});

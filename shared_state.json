@@ -1,5 +1,5 @@
 {
-  "version": "v4.9.4",
+  "version": "v4.9.5",
   "updatedAt": "2026-10-28T19:20:43.608Z",
   "users": [
     {
@@ -2122,17 +2122,17 @@
       "fail_count": 0
     }
   ],
-  "appVersion": "4.9.4",
+  "appVersion": "4.9.5",
   "latestVersion": {
-    "version": "4.9.4",
-    "releaseNotes": "Her gündem maddesinin altına 'Aksiyon Var' tiki eklendi; aksiyonu olan maddelerin hem kayıtlı aksiyonları hem de yeni aksiyon giriş formları doğrudan ilgili gündem maddesinin altında bütünleşik olarak gösterilecek şekilde düzenlendi.",
+    "version": "4.9.5",
+    "releaseNotes": "Yeni gündem maddesi eklendiğinde Konuşuldu ve Konuşulmadı tiklerinin her ikisinin de işaretsiz gelmesi sağlandı ve madde altı aksiyon tiki entegre edildi.",
     "releasedAt": "28.10.2026"
   },
   "versionUpdatedAt": "28.10.2026",
-  "versionReleaseNotes": "Her gündem maddesinin altına 'Aksiyon Var' tiki eklendi; aksiyonu olan maddelerin hem kayıtlı aksiyonları hem de yeni aksiyon giriş formları doğrudan ilgili gündem maddesinin altında bütünleşik olarak gösterilecek şekilde düzenlendi.",
+  "versionReleaseNotes": "Yeni gündem maddesi eklendiğinde Konuşuldu ve Konuşulmadı tiklerinin her ikisinin de işaretsiz gelmesi sağlandı ve madde altı aksiyon tiki entegre edildi.",
   "deletedIds": [
     "TOP-2026-003"
   ],
   "usedResetTokens": [],
-  "updatedAtMs": 1793213100000
+  "updatedAtMs": 1793215600000
 }
