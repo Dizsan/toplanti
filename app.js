@@ -10,7 +10,7 @@
  * ==========================================================================
  */
 
-const INITIAL_APP_VERSION = "v4.9.5";
+const INITIAL_APP_VERSION = "v4.9.6";
 const CURRENT_APP_VERSION = "4.9.5";
 const VAPID_PUBLIC_KEY = "BJIJfCBiDwya3clZOWS08EDxfuN18xtfJGTX0n_apWBTEW7-kO_FGKNy5VDRvUsMgc46IP5oxLlIHqgrDo-JTkE";
 const STORAGE_KEY_STATE = "dizsan_toplanti_shared_state_v2";
@@ -144,10 +144,10 @@ const OFFICIAL_PERSONNEL_LIST = OFFICIAL_PERSONNEL_RAW.map(u => ({ ...u, email: 
 
 const INITIAL_CHANGELOG = [
     {
-        version: "v4.9.5",
+        version: "v4.9.6",
         date: "28.10.2026",
         author: "ÖMER EREN",
-        notes: "Yeni gündem maddesi eklendiğinde Konuşuldu ve Konuşulmadı tiklerinin her ikisinin de işaretsiz gelmesi sağlandı; Her gündem maddesinin altına 'Aksiyon Var' tiki eklendi; aksiyonu olan maddelerin hem kayıtlı aksiyonları hem de yeni aksiyon giriş formları doğrudan ilgili gündem maddesinin altında bütünleşik olarak gösterilecek şekilde düzenlendi."
+        notes: "Toplantı bildirim sesi kısa 'dit-dit' sinyaline dönüştürüldü ve sesli metin okuma (TTS) kapatıldı; Yeni gündem maddesi eklendiğinde Konuşuldu ve Konuşulmadı tiklerinin her ikisinin de işaretsiz gelmesi sağlandı; Her gündem maddesinin altına 'Aksiyon Var' tiki eklendi; aksiyonu olan maddelerin hem kayıtlı aksiyonları hem de yeni aksiyon giriş formları doğrudan ilgili gündem maddesinin altında bütünleşik olarak gösterilecek şekilde düzenlendi."
     },
     {
         version: "v4.9.3",
@@ -2015,12 +2015,10 @@ function updateMeetingTimerDisplay() {
     if (disp) disp.textContent = `${hrs}:${mins}:${secs}`;
 }
 
-// Gerçek 16-bit PCM WAV Ses Üretici (Telefon tuş kilitliyken ve PC arka plandayken HTML5 <audio> üzerinden yüksek sesle çalar)
+// Kısa "Dit-Dit" Bildirim Sesi Üretici (16-bit PCM WAV - 0.30 saniye kısa çift bip, metin okuma kapalı)
 function generateAlarmWavDataUri(alertType = 'INVITE') {
     const sampleRate = 22050;
-    let durationSec = 2.4;
-    if (alertType === 'RED_5M') durationSec = 4.2;
-    else if (alertType === 'YELLOW_1H' || alertType === 'APPROVAL') durationSec = 3.2;
+    const durationSec = 0.30; // Çok kısa ve net "dit-dit" sesi
 
     const numSamples = Math.floor(sampleRate * durationSec);
     const buffer = new ArrayBuffer(44 + numSamples * 2);
@@ -2044,35 +2042,25 @@ function generateAlarmWavDataUri(alertType = 'INVITE') {
     writeStr(36, 'data');
     view.setUint32(40, numSamples * 2, true);
 
+    const freq1 = alertType === 'RED_5M' ? 1174.66 : 987.77;
+    const freq2 = alertType === 'RED_5M' ? 1480.00 : 1318.51;
+
     for (let i = 0; i < numSamples; i++) {
         const t = i / sampleRate;
-        let freq = 880;
-        let amp = 0.85;
+        let sample = 0;
 
-        if (alertType === 'RED_5M') {
-            // Yüksek sesli acil çift tonlu siren
-            const step = Math.floor(t * 5) % 2;
-            freq = step === 0 ? 1046.5 : 1480.0;
-            amp = (t % 0.2 < 0.17) ? 0.95 : 0.15;
-        } else if (alertType === 'YELLOW_1H') {
-            // 1 Saat kala dikkat çekici 3 kademeli uyarı sinyali
-            const step = Math.floor(t * 3.5) % 3;
-            freq = step === 0 ? 784 : (step === 1 ? 988 : 1175);
-            amp = (t % 0.28 < 0.23) ? 0.90 : 0.1;
-        } else if (alertType === 'APPROVAL') {
-            // Yönetici Onay Bildirim Sesi (Ömer Eren Onay Çanı)
-            const step = Math.floor(t * 4) % 3;
-            freq = step === 0 ? 659.25 : (step === 1 ? 880 : 1318.5);
-            amp = (t % 0.25 < 0.21) ? 0.92 : 0.12;
-        } else {
-            const step = Math.floor(t * 4) % 2;
-            freq = step === 0 ? 880 : 1174.66;
-            amp = (t % 0.25 < 0.20) ? 0.85 : 0.1;
+        // 1. "Dit" (0.00s - 0.085s) ve 2. "Dit" (0.145s - 0.240s)
+        if (t >= 0.00 && t <= 0.085) {
+            const localT = t / 0.085;
+            const env = Math.sin(Math.PI * localT);
+            sample = Math.sin(2 * Math.PI * freq1 * t) * 0.65 * env;
+        } else if (t >= 0.145 && t <= 0.240) {
+            const localT = (t - 0.145) / 0.095;
+            const env = Math.sin(Math.PI * localT);
+            sample = Math.sin(2 * Math.PI * freq2 * t) * 0.70 * env;
         }
 
-        // Zengin harmonikli dalga (telefon ve PC hoparlöründe çok net duyulur)
-        const wave = Math.sin(2 * Math.PI * freq * t) * 0.7 + Math.sin(4 * Math.PI * freq * t) * 0.3;
-        const sample = Math.max(-1, Math.min(1, wave * amp));
+        sample = Math.max(-1, Math.min(1, sample));
         view.setInt16(44 + i * 2, sample * 32767, true);
     }
 
@@ -2117,19 +2105,24 @@ function generateSilentWavDataUri() {
     return 'data:audio/wav;base64,' + btoa(binary);
 }
 
-function playMeetingCallSound(alertType = 'INVITE', spokenText = '') {
+function playMeetingCallSound(alertType = 'INVITE', _spokenText = '') {
     if ("Notification" in window && Notification.permission === "default") {
         Notification.requestPermission();
     }
 
-    // 1. Mobil Cihaz Titreşimi (Tuş kilitliyken titretir)
+    // Metin okuma (speechSynthesis) tamamen kapatıldı; açık bir okuma varsa sustur
+    if ('speechSynthesis' in window) {
+        try { window.speechSynthesis.cancel(); } catch (e) {}
+    }
+
+    // 1. Kısa Mobil Titreşim (Dit-Dit ritminde)
     if ('vibrate' in navigator) {
         try {
-            navigator.vibrate(alertType === 'RED_5M' ? [700, 150, 700, 150, 900] : [450, 150, 450]);
+            navigator.vibrate([90, 60, 100]);
         } catch (e) {}
     }
 
-    // 2. HTML5 <audio> WAV Çalar (Tuş kilitliyken ve PC arka plandayken çalan ana medya kanalı)
+    // 2. Kısa "Dit-Dit" HTML5 <audio> WAV Çalar
     try {
         const wavUri = generateAlarmWavDataUri(alertType);
         if (!window.dizsanMasterAlarmAudio) {
@@ -2137,30 +2130,31 @@ function playMeetingCallSound(alertType = 'INVITE', spokenText = '') {
             window.dizsanMasterAlarmAudio.preload = 'auto';
         }
         window.dizsanMasterAlarmAudio.src = wavUri;
-        window.dizsanMasterAlarmAudio.volume = 1.0;
+        window.dizsanMasterAlarmAudio.volume = 0.75;
         window.dizsanMasterAlarmAudio.currentTime = 0;
         const playPromise = window.dizsanMasterAlarmAudio.play();
         if (playPromise && playPromise.catch) {
             playPromise.catch(() => {
                 try {
                     const fallbackAudio = new Audio(wavUri);
-                    fallbackAudio.volume = 1.0;
+                    fallbackAudio.volume = 0.75;
                     fallbackAudio.play().catch(() => {});
                 } catch (e2) {}
             });
         }
     } catch (e) {}
 
-    // 3. Web Audio API (Ekstra yüksek frekanslı PC/Hoparlör desteği)
+    // 3. Web Audio API Kısa "Dit-Dit" Çift Bip (0.085s + 0.095s)
     try {
         const ctx = keepAliveAudioCtx || new (window.AudioContext || window.webkitAudioContext)();
         if (ctx.state === 'suspended') ctx.resume();
-        const playTone = (freq, startTime, duration, wave = 'triangle', vol = 0.65) => {
+        const playBeep = (freq, startTime, duration, vol = 0.35) => {
             const osc = ctx.createOscillator();
             const gain = ctx.createGain();
-            osc.type = wave;
+            osc.type = 'sine';
             osc.frequency.setValueAtTime(freq, startTime);
-            gain.gain.setValueAtTime(vol, startTime);
+            gain.gain.setValueAtTime(0.001, startTime);
+            gain.gain.linearRampToValueAtTime(vol, startTime + 0.01);
             gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
             osc.connect(gain);
             gain.connect(ctx.destination);
@@ -2168,46 +2162,15 @@ function playMeetingCallSound(alertType = 'INVITE', spokenText = '') {
             osc.stop(startTime + duration);
         };
         const now = ctx.currentTime;
-        if (alertType === 'RED_5M') {
-            playTone(1046.5, now,        0.22, 'sawtooth', 0.75);
-            playTone(1480.0, now + 0.24, 0.22, 'sawtooth', 0.75);
-            playTone(1046.5, now + 0.48, 0.22, 'sawtooth', 0.75);
-            playTone(1567.98, now + 0.72, 0.45, 'sawtooth', 0.85);
-        } else if (alertType === 'YELLOW_1H' || alertType === 'APPROVAL') {
-            playTone(783.99, now,        0.24, 'triangle', 0.65);
-            playTone(987.77, now + 0.26, 0.24, 'triangle', 0.65);
-            playTone(1318.5, now + 0.52, 0.40, 'triangle', 0.75);
-        } else {
-            playTone(880, now,        0.20, 'triangle', 0.60);
-            playTone(1174.66, now + 0.24, 0.35, 'triangle', 0.65);
-        }
+        const f1 = alertType === 'RED_5M' ? 1174.66 : 987.77;
+        const f2 = alertType === 'RED_5M' ? 1480.00 : 1318.51;
+        playBeep(f1, now,         0.085, 0.35);
+        playBeep(f2, now + 0.145, 0.095, 0.40);
     } catch (e) {}
-
-    // 4. Türkçe Sesli Anons (PC ve Telefon Hoparlöründen Sesli Okuma)
-    if ('speechSynthesis' in window) {
-        try {
-            let msgText = spokenText;
-            if (!msgText) {
-                if (alertType === 'RED_5M') msgText = 'Dikkat! Kırmızı acil uyarı! Toplantının başlamasına beş dakika kaldı.';
-                else if (alertType === 'YELLOW_1H') msgText = 'Dikkat! Sarı uyarı! Toplantı saatine bir saatten az kaldı.';
-                else if (alertType === 'APPROVAL') msgText = 'Dikkat! Ömer Eren yönetici onayınızı bekleyen toplantı işlemi var.';
-            }
-            if (msgText) {
-                window.speechSynthesis.cancel();
-                const utter = new SpeechSynthesisUtterance(msgText);
-                utter.lang = 'tr-TR';
-                utter.rate = 1.0;
-                utter.volume = 1.0;
-                setTimeout(() => {
-                    try { window.speechSynthesis.speak(utter); } catch (e) {}
-                }, 900);
-            }
-        } catch (e) {}
-    }
 }
 
 function testAlarmSound() {
-    playMeetingCallSound('YELLOW_1H', 'Dizsan toplantı ve bildirim ses testi başarılı.');
+    playMeetingCallSound('YELLOW_1H');
 }
 
 function getMeetingMinutesRemaining(m) {
@@ -8380,7 +8343,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 12000);
 
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('sw.js?v=4.9.5').then(reg => {
+        navigator.serviceWorker.register('sw.js?v=4.9.6').then(reg => {
             try { reg.update(); } catch (e) {}
             syncUserAndStateToServiceWorker();
         }).catch(() => {});

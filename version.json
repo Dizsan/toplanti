@@ -1,9 +1,9 @@
 {
   "appId": "toplanti",
   "appName": "Dizsan Toplantı & Aksiyon",
-  "version": "4.9.5",
-  "build": 495,
+  "version": "4.9.6",
+  "build": 496,
   "releasedAt": "28.10.2026",
-  "releaseNotes": "Yeni gündem maddesi eklendiğinde Konuşuldu ve Konuşulmadı tiklerinin her ikisinin de işaretsiz gelmesi sağlandı ve madde altı aksiyon tiki entegre edildi.",
+  "releaseNotes": "Toplantı bildirim sesi kısa dit-dit sinyaline dönüştürüldü ve sesli metin okuma kapatıldı.",
   "author": "Ömer Eren & DİZSAN"
 }

@@ -1,5 +1,5 @@
 {
-  "version": "v4.9.5",
+  "version": "v4.9.6",
   "updatedAt": "2026-10-28T19:40:56.923Z",
   "users": [
     {
@@ -2099,18 +2099,18 @@
       "fail_count": 0
     }
   ],
-  "appVersion": "4.9.5",
+  "appVersion": "4.9.6",
   "latestVersion": {
-    "version": "4.9.5",
-    "releaseNotes": "Yeni gündem maddesi eklendiğinde Konuşuldu ve Konuşulmadı tiklerinin her ikisinin de işaretsiz gelmesi sağlandı ve madde altı aksiyon tiki entegre edildi.",
+    "version": "4.9.6",
+    "releaseNotes": "Toplantı bildirim sesi kısa dit-dit sinyaline dönüştürüldü ve sesli metin okuma kapatıldı.",
     "releasedAt": "28.10.2026"
   },
   "versionUpdatedAt": "28.10.2026",
-  "versionReleaseNotes": "Yeni gündem maddesi eklendiğinde Konuşuldu ve Konuşulmadı tiklerinin her ikisinin de işaretsiz gelmesi sağlandı ve madde altı aksiyon tiki entegre edildi.",
+  "versionReleaseNotes": "Toplantı bildirim sesi kısa dit-dit sinyaline dönüştürüldü ve sesli metin okuma kapatıldı.",
   "deletedIds": [
     "AKS-103",
     "TOP-2026-003"
   ],
   "usedResetTokens": [],
-  "updatedAtMs": 1793215600000
+  "updatedAtMs": 1793216600000
 }
