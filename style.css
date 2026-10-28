@@ -1270,7 +1270,8 @@ select.form-control option {
 }
 
 .participant-check input[type="checkbox"],
-.blue-tick-checkbox {
+.blue-tick-checkbox,
+.amber-tick-checkbox {
     appearance: none;
     -webkit-appearance: none;
     width: 18px;
@@ -1287,7 +1288,8 @@ select.form-control option {
 }
 
 .participant-check input[type="checkbox"]::before,
-.blue-tick-checkbox::before {
+.blue-tick-checkbox::before,
+.amber-tick-checkbox::before {
     content: "";
     width: 10px;
     height: 5.5px;
@@ -1305,8 +1307,15 @@ select.form-control option {
     box-shadow: 0 0 8px rgba(56, 189, 248, 0.55);
 }
 
+.amber-tick-checkbox:checked {
+    background: linear-gradient(135deg, #d97706, #f59e0b);
+    border-color: #fbbf24;
+    box-shadow: 0 0 8px rgba(245, 158, 11, 0.55);
+}
+
 .participant-check input[type="checkbox"]:checked::before,
-.blue-tick-checkbox:checked::before {
+.blue-tick-checkbox:checked::before,
+.amber-tick-checkbox:checked::before {
     transform: rotate(-45deg) scale(1);
 }
 
@@ -1483,15 +1492,78 @@ select.form-control option {
 }
 
 .inline-action-row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+    background: rgba(15, 23, 42, 0.78);
+    padding: 0.65rem 0.75rem;
+    border-radius: 10px;
+    border: 1px solid rgba(56, 189, 248, 0.32);
+    box-sizing: border-box;
+}
+
+.inline-action-top-grid {
     display: grid;
-    grid-template-columns: minmax(0, 1.75fr) minmax(0, 1.15fr) 92px 140px 88px 34px;
+    grid-template-columns: minmax(0, 1fr) 105px 140px 92px 36px;
     gap: 0.45rem;
     align-items: end;
-    background: rgba(15, 23, 42, 0.75);
-    padding: 0.55rem 0.65rem;
-    border-radius: 10px;
-    border: 1px solid rgba(56, 189, 248, 0.28);
-    box-sizing: border-box;
+}
+
+.inline-action-bottom-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr);
+    gap: 0.6rem;
+    align-items: start;
+    padding-top: 0.48rem;
+    border-top: 1px dashed rgba(56, 189, 248, 0.22);
+}
+
+.inline-action-top-grid > div,
+.inline-action-bottom-grid > div {
+    min-width: 0;
+}
+
+.multi-assignee-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-bottom: 0.35rem;
+}
+
+.multi-assignee-chips:empty {
+    display: none;
+    margin-bottom: 0;
+}
+
+.assignee-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.22rem 0.55rem;
+    border-radius: 7px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    background: rgba(2, 132, 199, 0.28);
+    border: 1px solid rgba(56, 189, 248, 0.55);
+    color: #fff;
+    white-space: nowrap;
+}
+
+.assignee-chip button {
+    background: none;
+    border: none;
+    color: #fca5a5;
+    cursor: pointer;
+    font-size: 0.92rem;
+    line-height: 1;
+    padding: 0 2px;
+    font-weight: 800;
+    display: inline-flex;
+    align-items: center;
+}
+
+.assignee-chip button:hover {
+    color: #ef4444;
 }
 
 @media (max-width: 768px) {
@@ -1499,7 +1571,8 @@ select.form-control option {
         display: none;
     }
     .decision-item-row,
-    .inline-action-row {
+    .inline-action-top-grid,
+    .inline-action-bottom-grid {
         grid-template-columns: 1fr;
         gap: 0.45rem;
     }

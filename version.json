@@ -1,9 +1,9 @@
 {
   "appId": "toplanti",
   "appName": "Dizsan Toplantı & Aksiyon",
-  "version": "4.9.4",
-  "build": 494,
-  "releasedAt": "2026-10-26 22:51:22",
-  "releaseNotes": "Toplantı/Eğitim formu profesyonel hizalama, mavi tikli katılımcı yoklaması ve düzenlemede bildirim/ses kapatma güncellemesi (v4.9.4)",
+  "version": "4.9.3",
+  "build": 493,
+  "releasedAt": "28.10.2026",
+  "releaseNotes": "Gündem maddeleri Konuşuldu/Konuşulmadı yan yana tik seçimi, Toplantı Aksiyonlarında birden fazla sorumlu personel ve Kontrol Edecek Kişi alanı eklendi, tekrar eden karar alanı sadeleştirildi.",
   "author": "Ömer Eren & DİZSAN"
 }

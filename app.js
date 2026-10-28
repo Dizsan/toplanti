@@ -10,8 +10,8 @@
  * ==========================================================================
  */
 
-const INITIAL_APP_VERSION = "v4.9.2";
-const CURRENT_APP_VERSION = "4.9.2";
+const INITIAL_APP_VERSION = "v4.9.3";
+const CURRENT_APP_VERSION = "4.9.3";
 const VAPID_PUBLIC_KEY = "BJIJfCBiDwya3clZOWS08EDxfuN18xtfJGTX0n_apWBTEW7-kO_FGKNy5VDRvUsMgc46IP5oxLlIHqgrDo-JTkE";
 const STORAGE_KEY_STATE = "dizsan_toplanti_shared_state_v2";
 const STORAGE_KEY_SESSION = "dizsan_toplanti_active_user";
@@ -143,6 +143,12 @@ const OFFICIAL_PERSONNEL_RAW = [
 const OFFICIAL_PERSONNEL_LIST = OFFICIAL_PERSONNEL_RAW.map(u => ({ ...u, email: resolveUserEmail(u) }));
 
 const INITIAL_CHANGELOG = [
+    {
+        version: "v4.9.3",
+        date: "28.10.2026",
+        author: "ÖMER EREN",
+        notes: "Gündem maddeleri Konuşuldu/Konuşulmadı yan yana tik seçimi, Toplantı Aksiyonlarında birden fazla sorumlu personel ve Kontrol Edecek Kişi alanı eklendi, tekrar eden karar alanı sadeleştirildi."
+    },
     {
         version: "v1.8.5",
         date: "25.10.2026",
@@ -1680,6 +1686,36 @@ function getActionCompletedDisplay(action) {
     return '';
 }
 
+function getActionAssigneesList(a) {
+    if (!a) return [];
+    if (Array.isArray(a.assignees) && a.assignees.length > 0) {
+        return a.assignees.map(x => String(x || '').trim()).filter(Boolean);
+    }
+    if (a.assignee) {
+        return String(a.assignee).split(',').map(x => x.trim()).filter(Boolean);
+    }
+    return [];
+}
+
+function isUserActionAssignee(a, userName) {
+    if (!a || !userName) return false;
+    const targetNorm = normalizeTR(userName);
+    return getActionAssigneesList(a).some(name => normalizeTR(name) === targetNorm);
+}
+
+function getActionControllerName(a) {
+    if (!a) return 'ÖMER EREN';
+    return String(a.controller || a.manager || 'ÖMER EREN').trim() || 'ÖMER EREN';
+}
+
+function formatActionAssigneesBadges(a) {
+    const list = getActionAssigneesList(a);
+    if (list.length === 0) {
+        return `<span class="participant-tag" style="font-weight:600;"><i class="fa-solid fa-user-check" style="color:var(--dizsan-light);"></i> -</span>`;
+    }
+    return `<div style="display:flex; flex-wrap:wrap; gap:0.28rem;">${list.map(name => `<span class="participant-tag" style="font-weight:600;"><i class="fa-solid fa-user-check" style="color:var(--dizsan-light);"></i> ${escapeHtml(name)}</span>`).join('')}</div>`;
+}
+
 /**
  * Kapanmayan / devam eden aksiyonlar için hatırlatma kuralı:
  * 1) Tamamlandı ise kapanış tarihi ve saati gösterilir.
@@ -1688,6 +1724,7 @@ function getActionCompletedDisplay(action) {
  *    - Ayrıca aksiyon oluşturulduktan sonraki ertesi gün (1. gün) hâlâ kapanmadıysa uyarı verir ve gün aşırı (3, 5, 7... gün) hatırlatmaya devam eder.
  */
 function evaluateActionReminderStatus(action) {
+    const controllerName = getActionControllerName(action);
     if (action.status === "Tamamlandı") {
         const compDisp = getActionCompletedDisplay(action);
         return {
@@ -1695,7 +1732,7 @@ function evaluateActionReminderStatus(action) {
             type: "completed",
             badgeText: compDisp ? `✅ Tamamlandı (${compDisp})` : "✅ Tamamlandı",
             shortText: compDisp ? `✅ Tamamlandı (${compDisp})` : "✅ Tamamlandı",
-            reminderTargetText: `${action.assignee} & ${action.manager || 'ÖMER EREN'}`,
+            reminderTargetText: `${action.assignee} & ${controllerName}`,
             isReminderDay: false,
             diffDays: 999
         };
@@ -1712,7 +1749,7 @@ function evaluateActionReminderStatus(action) {
     const dueMidnight = new Date(y, m - 1, d);
 
     const diffDays = Math.round((dueMidnight - todayMidnight) / (1000 * 60 * 60 * 24));
-    const managerName = action.manager || "ÖMER EREN";
+    const managerName = controllerName;
     const dueTimeStr = action.dueTime || "17:00";
 
     // Aksiyonun oluşturulma tarihinden itibaren geçen gün sayısı
@@ -1838,8 +1875,8 @@ function checkAndTriggerSmartReminders() {
     // Giriş yapan kişi Yönetici (Ömer Eren, Rafet Canbek, Hakan Aydın) ise tüm hatırlatmaları görür,
     // Personel ise hem kendine ait olanları hem ortak uyarıyı görür
     const myPersonalReminders = activeReminders.filter(a =>
-        normalizeTR(a.assignee) === normalizeTR(currentUser.name) ||
-        normalizeTR(a.manager || 'ÖMER EREN') === normalizeTR(currentUser.name) ||
+        isUserActionAssignee(a, currentUser.name) ||
+        normalizeTR(getActionControllerName(a)) === normalizeTR(currentUser.name) ||
         isOmerEren(currentUser)
     );
 
@@ -1861,7 +1898,7 @@ function checkAndTriggerSmartReminders() {
 
     descEl.innerHTML = listToShow.slice(0, 4).map(a => {
         const st = evaluateActionReminderStatus(a);
-        return `<div>• <strong>[${st.shortText}]</strong> "${a.title}" &rarr; Sorumlu: <strong>${a.assignee}</strong> | Tamamlama: <strong>${formatDateTR(a.dueDate)} ${a.dueTime || '17:00'}</strong> | Durum: <strong>${a.status}</strong></div>`;
+        return `<div>• <strong>[${st.shortText}]</strong> "${a.title}" &rarr; Sorumlu: <strong>${a.assignee}</strong> | Kontrol: <strong>${getActionControllerName(a)}</strong> | Tamamlama: <strong>${formatDateTR(a.dueDate)} ${a.dueTime || '17:00'}</strong> | Durum: <strong>${a.status}</strong></div>`;
     }).join('');
 
     // Bugün aktif uyarı günü olan (Ertesi Gün Uyarısı veya Gün Aşırı Hatırlatma Günü) aksiyonlar için sesli ve masaüstü bildirimi tetikle
@@ -2637,9 +2674,14 @@ async function dispatchPushToServer(targets, payload) {
 
 async function dispatchActionAssignedPush(action) {
     if (!action || !action.assignee) return;
+    const assigneesList = getActionAssigneesList(action);
+    const controllerName = getActionControllerName(action);
     const title = `⚡ Size Yeni Görev/Aksiyon Atandı: ${action.title}`;
-    const body = `Toplantı: ${action.meetingTitle || 'Dizsan Toplantı'} | Termin: ${formatDateTR(action.dueDate)} ${action.dueTime || '09:00'} | Atayan: ${action.createdBy || (currentUser ? currentUser.name : 'Yönetici')}`;
-    const targets = [action.assignee];
+    const body = `Toplantı: ${action.meetingTitle || 'Dizsan Toplantı'} | Sorumlu: ${action.assignee} | Kontrol: ${controllerName} | Termin: ${formatDateTR(action.dueDate)} ${action.dueTime || '09:00'}`;
+    const targets = [...assigneesList];
+    if (controllerName && !targets.some(t => normalizeTR(t) === normalizeTR(controllerName))) {
+        targets.push(controllerName);
+    }
 
     dispatchPushToServer(targets, {
         title,
@@ -2649,7 +2691,7 @@ async function dispatchActionAssignedPush(action) {
         sound: 'INVITE'
     });
 
-    if (currentUser && normalizeTR(currentUser.name) === normalizeTR(action.assignee)) {
+    if (currentUser && (isUserActionAssignee(action, currentUser.name) || normalizeTR(currentUser.name) === normalizeTR(controllerName))) {
         sendBrowserNotification(title, body, `action_assign_${action.id}`, 'INVITE');
     }
 }
@@ -2657,11 +2699,12 @@ async function dispatchActionAssignedPush(action) {
 async function dispatchActionProgressPush(action, oldStatus, newStatus) {
     if (!action) return;
     const reporterName = currentUser ? currentUser.name : (action.assignee || 'Personel');
+    const controllerName = getActionControllerName(action);
     const title = `✅ Aksiyon Durum Bildirimi: ${reporterName}`;
-    const body = `'${action.title}' görevi '${newStatus}' olarak güncellendi. (Termin: ${formatDateTR(action.dueDate)} ${action.dueTime || ''})`;
+    const body = `'${action.title}' görevi '${newStatus}' olarak güncellendi. (Sorumlu: ${action.assignee} | Kontrol: ${controllerName} | Termin: ${formatDateTR(action.dueDate)} ${action.dueTime || ''})`;
     const targets = ['omer', 'omer eren'];
-    if (action.manager && !targets.includes(normalizeTR(action.manager))) {
-        targets.push(action.manager);
+    if (controllerName && !targets.includes(normalizeTR(controllerName))) {
+        targets.push(controllerName);
     }
 
     dispatchPushToServer(targets, {
@@ -2672,7 +2715,7 @@ async function dispatchActionProgressPush(action, oldStatus, newStatus) {
         sound: 'DONE'
     });
 
-    if (currentUser && isOmerEren(currentUser)) {
+    if (currentUser && (isOmerEren(currentUser) || normalizeTR(currentUser.name) === normalizeTR(controllerName))) {
         sendBrowserNotification(title, body, `action_prog_${action.id}`, 'DONE');
     }
 }
@@ -3956,7 +3999,15 @@ function populateSelectFilters() {
     }
 
     if (aSelect) {
-        aSelect.innerHTML = appState.users.map(u => `<option value="${u.name}">${u.name} — ${u.dept}</option>`).join('');
+        aSelect.innerHTML = `<option value="">+ Sorumlu Personel Seç / Ekle (Birden Fazla Seçilebilir)...</option>` +
+            appState.users.map(u => `<option value="${escapeHtmlAttr(u.name)}">${escapeHtml(u.name)} — ${escapeHtml(u.dept)}</option>`).join('');
+    }
+
+    const mgrSelect = document.getElementById('action-manager-select');
+    if (mgrSelect) {
+        const currMgr = mgrSelect.value || 'ÖMER EREN';
+        mgrSelect.innerHTML = appState.users.map(u => `<option value="${escapeHtmlAttr(u.name)}">${escapeHtml(u.name)} (${escapeHtml(u.dept)})</option>`).join('');
+        mgrSelect.value = appState.users.some(u => u.name === currMgr) ? currMgr : 'ÖMER EREN';
     }
 
     if (mSelect) {
@@ -3980,7 +4031,7 @@ function getMeetingAccessLevel(m, user = currentUser) {
 
     const hasAssignedAction = appState.actions.some(a =>
         a.meetingId === m.id &&
-        (normalizeTR(a.assignee) === normalizeTR(user.name) || normalizeTR(a.manager || '') === normalizeTR(user.name))
+        (isUserActionAssignee(a, user.name) || normalizeTR(getActionControllerName(a)) === normalizeTR(user.name))
     );
     if (hasAssignedAction) return 'ACTION_ONLY';
 
@@ -3990,8 +4041,8 @@ function getMeetingAccessLevel(m, user = currentUser) {
 function canUserSeeAction(a, user = currentUser) {
     if (!user || !a) return false;
     if (isOmerEren(user)) return true;
-    if (normalizeTR(a.assignee) === normalizeTR(user.name)) return true;
-    if (normalizeTR(a.manager || '') === normalizeTR(user.name)) return true;
+    if (isUserActionAssignee(a, user.name)) return true;
+    if (normalizeTR(getActionControllerName(a)) === normalizeTR(user.name)) return true;
     if (normalizeTR(a.createdBy || '') === normalizeTR(user.name)) return true;
 
     const parentMeeting = appState.meetings.find(m => m.id === a.meetingId);
@@ -4046,7 +4097,7 @@ function renderDashboard() {
                             <div style="display:flex; align-items:center; gap:0.45rem; margin-bottom:0.25rem; flex-wrap:wrap;">
                                 <span class="badge ${a.priority === 'Kritik' ? 'badge-critical' : 'badge-normal'}">${a.priority}</span>
                                 <strong style="font-size:0.85rem; color:#fff;">Sorumlu: ${a.assignee}</strong>
-                                <span style="font-size:0.75rem; color:var(--dizsan-light);">• Yönetici: ${a.manager || 'ÖMER EREN'}</span>
+                                <span style="font-size:0.75rem; color:#c4b5fd;">• Kontrol Eden: ${getActionControllerName(a)}</span>
                             </div>
                             <div style="font-size:0.83rem; color:#cbd5e1;">${a.title}</div>
                             ${renderRecordAuditBadge(a, true)}
@@ -4073,7 +4124,7 @@ function renderDashboard() {
                 const access = getMeetingAccessLevel(m);
                 const recType = m.recordType === 'Eğitim' ? '🎓 Eğitim' : '🤝 Toplantı';
                 if (access === 'ACTION_ONLY') {
-                    const myActions = appState.actions.filter(a => a.meetingId === m.id && (normalizeTR(a.assignee) === normalizeTR(currentUser?.name) || normalizeTR(a.manager || '') === normalizeTR(currentUser?.name)));
+                    const myActions = appState.actions.filter(a => a.meetingId === m.id && (isUserActionAssignee(a, currentUser?.name) || normalizeTR(getActionControllerName(a)) === normalizeTR(currentUser?.name)));
                     return `
                         <div style="background:rgba(245,158,11,0.06); border:1px solid rgba(245,158,11,0.3); border-radius:12px; padding:0.9rem;">
                             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.3rem;">
@@ -4175,7 +4226,7 @@ function renderMeetings() {
         if (partF !== 'ALL' && !(m.participants || []).includes(partF)) return false;
         if (q) {
             if (access === 'ACTION_ONLY') {
-                const myActs = appState.actions.filter(a => a.meetingId === m.id && normalizeTR(a.assignee) === normalizeTR(currentUser?.name));
+                const myActs = appState.actions.filter(a => a.meetingId === m.id && (isUserActionAssignee(a, currentUser?.name) || normalizeTR(getActionControllerName(a)) === normalizeTR(currentUser?.name)));
                 const actHay = normalizeTR(`${m.id} ${myActs.map(x => x.title).join(' ')}`);
                 if (!actHay.includes(q)) return false;
             } else {
@@ -4210,7 +4261,7 @@ function renderMeetings() {
         if (access === 'ACTION_ONLY') {
             const myActions = appState.actions.filter(a =>
                 a.meetingId === m.id &&
-                (normalizeTR(a.assignee) === normalizeTR(currentUser?.name) || normalizeTR(a.manager || '') === normalizeTR(currentUser?.name))
+                (isUserActionAssignee(a, currentUser?.name) || normalizeTR(getActionControllerName(a)) === normalizeTR(currentUser?.name))
             );
 
             return `
@@ -4237,7 +4288,11 @@ function renderMeetings() {
                                             <strong style="color:var(--dizsan-light); font-size:0.82rem;">${ma.id} — Size Atanan Aksiyon</strong>
                                             <span class="countdown-pill ${st.type}">${st.shortText}</span>
                                         </div>
-                                        <div style="font-weight:700; color:#fff; font-size:0.9rem; margin-bottom:0.4rem;">${ma.title}</div>
+                                        <div style="font-weight:700; color:#fff; font-size:0.9rem; margin-bottom:0.35rem;">${ma.title}</div>
+                                        <div style="display:flex; gap:0.6rem; flex-wrap:wrap; font-size:0.75rem; color:#cbd5e1; margin-bottom:0.35rem;">
+                                            <span><i class="fa-solid fa-users" style="color:#38bdf8;"></i> Sorumlu: <strong style="color:#fff;">${ma.assignee}</strong></span>
+                                            <span><i class="fa-solid fa-user-shield" style="color:#c4b5fd;"></i> Kontrol Eden: <strong style="color:#e9d5ff;">${getActionControllerName(ma)}</strong></span>
+                                        </div>
                                         ${renderRecordAuditBadge(ma, true)}
                                         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; font-size:0.78rem; color:var(--text-sec); margin-top:0.4rem;">
                                             <span>Termin: <strong>${formatDateTR(ma.dueDate)} ${ma.dueTime || '09:00'}</strong></span>
@@ -4300,7 +4355,7 @@ function renderMeetings() {
                     </div>
 
                     <div class="card-click-hint">
-                        <i class="fa-solid fa-hand-pointer"></i> Detay, Yoklama, Gündem Tikleme &amp; Karar Ekranı İçin Karta Basın
+                        <i class="fa-solid fa-hand-pointer"></i> Detay, Yoklama, Gündem Tikleme &amp; Aksiyon Ekranı İçin Karta Basın
                     </div>
 
                     ${renderRecordAuditBadge(m, false)}
@@ -4348,8 +4403,26 @@ function renderMeetings() {
                         </div>
                     </div>` : ''}
 
-                    <!-- ALINAN KARARLAR, KARAR SORUMLUSU VE TERMİN TARİHLERİ -->
-                    ${decisionItems.length > 0 ? `
+                    <!-- TOPLANTI AKSİYONLARI (SORUMLULAR, KONTROL EDEN VE TERMİN TARİHLERİ) -->
+                    ${relatedActions.length > 0 ? `
+                    <div style="margin-top:0.55rem; font-size:0.79rem; color:#bae6fd; background:rgba(2,132,199,0.1); border:1px solid rgba(56,189,248,0.3); padding:0.55rem 0.7rem; border-radius:8px;">
+                        <strong style="display:block; margin-bottom:0.35rem; color:var(--dizsan-light);"><i class="fa-solid fa-bolt"></i> Atanan Aksiyonlar, Sorumlular &amp; Kontrol Eden (${relatedActions.length}):</strong>
+                        <div style="display:flex; flex-direction:column; gap:0.32rem;">
+                            ${relatedActions.map((act, aIdx) => `
+                                <div style="background:rgba(15,23,42,0.72); border:1px solid ${act.status === 'Tamamlandı' ? 'rgba(16,185,129,0.35)' : 'rgba(56,189,248,0.28)'}; border-radius:6px; padding:0.38rem 0.52rem;">
+                                    <div style="display:flex; justify-content:space-between; align-items:center; gap:0.4rem;">
+                                        <span style="color:#fff; font-weight:600; font-size:0.79rem;">${aIdx + 1}. ${act.title}</span>
+                                        <span class="badge ${act.status === 'Tamamlandı' ? 'badge-done' : 'badge-normal'}" style="font-size:0.66rem; padding:1px 6px;">${act.status}</span>
+                                    </div>
+                                    <div style="display:flex; gap:0.65rem; flex-wrap:wrap; margin-top:0.22rem; font-size:0.71rem; color:#cbd5e1;">
+                                        <span><i class="fa-solid fa-users" style="color:#38bdf8;"></i> Sorumlu: <strong style="color:#fff;">${act.assignee}</strong></span>
+                                        <span><i class="fa-solid fa-user-shield" style="color:#c4b5fd;"></i> Kontrol: <strong style="color:#e9d5ff;">${getActionControllerName(act)}</strong></span>
+                                        <span><i class="fa-regular fa-calendar-check" style="color:#fbbf24;"></i> Termin: <strong style="color:#fde68a;">${formatDateTR(act.dueDate)} ${act.dueTime || '17:00'}</strong></span>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>` : (decisionItems.length > 0 ? `
                     <div style="margin-top:0.55rem; font-size:0.79rem; color:#a7f3d0; background:rgba(16,185,129,0.08); border:1px solid rgba(16,185,129,0.25); padding:0.55rem 0.7rem; border-radius:8px;">
                         <strong style="display:block; margin-bottom:0.35rem; color:#6ee7b7;"><i class="fa-solid fa-gavel"></i> ${isTraining ? 'Eğitim Sonucu & Değerlendirme:' : 'Alınan Kararlar, Sorumlusu & Termin:'}</strong>
                         <div style="display:flex; flex-direction:column; gap:0.32rem;">
@@ -4363,7 +4436,7 @@ function renderMeetings() {
                                 </div>
                             `).join('')}
                         </div>
-                    </div>` : ''}
+                    </div>` : '')}
 
                     ${attList.length > 0 ? `
                     <div style="margin-top:0.65rem; padding:0.6rem; background:rgba(16,185,129,0.06); border:1px solid rgba(16,185,129,0.25); border-radius:8px;">
@@ -4450,11 +4523,11 @@ function renderActions() {
         // Gizlilik Kuralı: Katılmadığı toplantıdaki başkasına ait aksiyonları göremez, sadece kendisine atanan aksiyonları veya katıldığı toplantının aksiyonlarını görür
         if (!canUserSeeAction(a)) return false;
 
-        if (assigneeF !== 'ALL' && a.assignee !== assigneeF) return false;
+        if (assigneeF !== 'ALL' && !isUserActionAssignee(a, assigneeF)) return false;
         if (prioF !== 'ALL' && a.priority !== prioF) return false;
         if (statF !== 'ALL' && a.status !== statF) return false;
         if (q) {
-            const hay = normalizeTR(`${a.id} ${a.title} ${a.assignee} ${a.manager || ''} ${a.meetingTitle} ${a.note || ''} ${a.createdBy || ''} ${a.updatedBy || ''}`);
+            const hay = normalizeTR(`${a.id} ${a.title} ${getActionAssigneesList(a).join(' ')} ${getActionControllerName(a)} ${a.meetingTitle} ${a.note || ''} ${a.createdBy || ''} ${a.updatedBy || ''}`);
             if (!hay.includes(q)) return false;
         }
         return true;
@@ -4484,10 +4557,10 @@ function renderActions() {
                     ${renderRecordAuditBadge(a, true)}
                 </td>
                 <td>
-                    <span class="participant-tag" style="font-weight:600;"><i class="fa-solid fa-user-check" style="color:var(--dizsan-light);"></i> ${a.assignee}</span>
+                    <div style="display:flex; flex-wrap:wrap; gap:4px;">${formatActionAssigneesBadges(a)}</div>
                 </td>
                 <td>
-                    <span class="participant-tag" style="border-color:rgba(245,158,11,0.35); color:#fde68a;"><i class="fa-solid fa-user-tie"></i> ${a.manager || 'ÖMER EREN'}</span>
+                    <span class="participant-tag" style="border-color:rgba(245,158,11,0.35); color:#fde68a;"><i class="fa-solid fa-user-shield"></i> ${getActionControllerName(a)}</span>
                 </td>
                 <td>
                     <span class="badge ${a.priority === 'Kritik' ? 'badge-critical' : 'badge-normal'}">
@@ -4570,7 +4643,7 @@ function renderReports() {
         const aDate = normalizeToISODate(a.dueDate);
         if (startIso && aDate < startIso) return false;
         if (endIso && aDate > endIso) return false;
-        if (personF !== 'ALL' && a.assignee !== personF) return false;
+        if (personF !== 'ALL' && !isUserActionAssignee(a, personF)) return false;
         if (deptF !== 'ALL') {
             const parentM = appState.meetings.find(m => m.id === a.meetingId);
             if (parentM && parentM.dept !== deptF) return false;
@@ -4607,7 +4680,7 @@ function renderReports() {
 
         pTbody.innerHTML = usersToList.map(u => {
             const attended = filteredMeetings.filter(m => (m.participants || []).includes(u.name)).length;
-            const assigned = filteredActions.filter(a => a.assignee === u.name);
+            const assigned = filteredActions.filter(a => isUserActionAssignee(a, u.name));
             const done = assigned.filter(a => a.status === 'Tamamlandı').length;
             const overdue = assigned.filter(a => evaluateActionReminderStatus(a).stage === 'OVERDUE').length;
             const pRate = assigned.length > 0 ? Math.round((done / assigned.length) * 100) : 100;
@@ -4710,7 +4783,7 @@ function printExecutiveReport() {
                 <tbody>
                     ${repUsers.map(u => {
                         const att = repMeetings.filter(m => (m.participants || []).includes(u.name)).length;
-                        const ass = repActions.filter(a => a.assignee === u.name);
+                        const ass = repActions.filter(a => isUserActionAssignee(a, u.name));
                         const dn = ass.filter(a => a.status === 'Tamamlandı').length;
                         return `
                             <tr>
@@ -4772,7 +4845,7 @@ function renderPersonnel() {
 
     tbody.innerHTML = visibleUsers.map((u, idx) => {
         const attended = appState.meetings.filter(m => (m.participants || []).includes(u.name)).length;
-        const openA = appState.actions.filter(a => a.assignee === u.name && a.status !== 'Tamamlandı').length;
+        const openA = appState.actions.filter(a => isUserActionAssignee(a, u.name) && a.status !== 'Tamamlandı').length;
 
         return `
             <tr>
@@ -5726,15 +5799,22 @@ function renderDraftAgendaItems(focusItemId = null) {
 
         return `
             <div class="agenda-item-card ${isDiscussed ? 'discussed' : 'undiscussed'}">
-                <div style="display:flex; align-items:center; gap:0.55rem;">
+                <div style="display:flex; align-items:center; gap:0.45rem; flex-wrap:wrap;">
                     <span style="font-weight:800; color:#38bdf8; font-size:0.86rem; min-width:22px;">${idx + 1}.</span>
 
-                    <input type="text" id="agenda-title-${it.id}" class="form-control" style="flex:1; min-width:0; padding:0.45rem 0.65rem; font-size:0.84rem; font-weight:600;" placeholder="${idx + 1}. Gündem maddesini yazın..." value="${safeTitle}" oninput="updateAgendaItemTitle('${it.id}', this.value)" onkeydown="handleAgendaTitleKeydown(event, '${it.id}')">
+                    <input type="text" id="agenda-title-${it.id}" class="form-control" style="flex:1 1 200px; min-width:0; padding:0.45rem 0.65rem; font-size:0.84rem; font-weight:600;" placeholder="${idx + 1}. Gündem maddesini yazın..." value="${safeTitle}" oninput="updateAgendaItemTitle('${it.id}', this.value)" onkeydown="handleAgendaTitleKeydown(event, '${it.id}')">
 
-                    <label style="display:inline-flex; align-items:center; gap:0.45rem; cursor:pointer; margin:0; padding:0.38rem 0.65rem; border-radius:8px; background:${isDiscussed ? 'rgba(2,132,199,0.25)' : 'rgba(255,255,255,0.04)'}; border:1.5px solid ${isDiscussed ? '#38bdf8' : 'rgba(148,163,184,0.28)'}; color:${isDiscussed ? '#ffffff' : '#94a3b8'}; font-size:0.76rem; font-weight:700; user-select:none; white-space:nowrap; flex-shrink:0;" title="Görüşüldüyse işaretleyin">
-                        <input type="checkbox" class="blue-tick-checkbox" ${isDiscussed ? 'checked' : ''} onchange="toggleAgendaItemDiscussed('${it.id}', this.checked)">
-                        <span>${isDiscussed ? 'Konuşuldu' : 'Konuşulmadı'}</span>
-                    </label>
+                    <div style="display:inline-flex; align-items:center; gap:0.35rem; background:rgba(15,23,42,0.65); padding:0.2rem; border-radius:10px; border:1px solid rgba(148,163,184,0.2); flex-shrink:0;">
+                        <label style="display:inline-flex; align-items:center; gap:0.4rem; cursor:pointer; margin:0; padding:0.34rem 0.6rem; border-radius:7px; background:${isDiscussed ? 'rgba(2,132,199,0.28)' : 'rgba(255,255,255,0.03)'}; border:1.5px solid ${isDiscussed ? '#38bdf8' : 'rgba(148,163,184,0.22)'}; color:${isDiscussed ? '#ffffff' : '#94a3b8'}; font-size:0.75rem; font-weight:700; user-select:none; white-space:nowrap; transition:all 0.15s;" title="Görüşüldüyse işaretleyin">
+                            <input type="checkbox" class="blue-tick-checkbox" ${isDiscussed ? 'checked' : ''} onchange="toggleAgendaItemDiscussed('${it.id}', this.checked)">
+                            <span>Konuşuldu</span>
+                        </label>
+
+                        <label style="display:inline-flex; align-items:center; gap:0.4rem; cursor:pointer; margin:0; padding:0.34rem 0.6rem; border-radius:7px; background:${!isDiscussed ? 'rgba(245,158,11,0.22)' : 'rgba(255,255,255,0.03)'}; border:1.5px solid ${!isDiscussed ? '#f59e0b' : 'rgba(148,163,184,0.22)'}; color:${!isDiscussed ? '#fef3c7' : '#94a3b8'}; font-size:0.75rem; font-weight:700; user-select:none; white-space:nowrap; transition:all 0.15s;" title="Görüşülmediyse işaretleyin">
+                            <input type="checkbox" class="amber-tick-checkbox" ${!isDiscussed ? 'checked' : ''} onchange="toggleAgendaItemDiscussed('${it.id}', !this.checked)">
+                            <span>Konuşulmadı</span>
+                        </label>
+                    </div>
 
                     <button type="button" class="btn btn-danger btn-sm" style="padding:0.4rem 0.55rem; flex-shrink:0;" onclick="removeAgendaItemRow('${it.id}')" title="Gündem Maddesini Sil">
                         <i class="fa-solid fa-trash"></i>
@@ -6246,9 +6326,7 @@ function openMeetingModal(meetingId = null) {
         ];
         renderDraftAgendaItems();
 
-        currentDraftDecisionItems = [
-            { id: 'dec-' + Date.now(), text: '', responsible: currentUser ? currentUser.name : 'ÖMER EREN', dueDate: todayIso, status: 'Bekliyor' }
-        ];
+        currentDraftDecisionItems = [];
         renderDraftDecisionItems();
 
         if (extToggle) extToggle.checked = false;
@@ -6257,6 +6335,8 @@ function openMeetingModal(meetingId = null) {
         currentDraftAttachments = [];
         renderDraftAttachments();
         renderExistingMeetingActionsInModal(null);
+        // Yeni toplantı açıldığında doğrudan 1 adet boş aksiyon satırı hazır gelsin (birden fazla sorumlu + kontrol edecek kişi alanı hemen görünsün)
+        addInlineActionRow();
         const auditBox = document.getElementById('meeting-audit-info-box');
         if (auditBox) {
             auditBox.innerHTML = renderRecordAuditBadge({
@@ -6312,8 +6392,9 @@ function renderExistingMeetingActionsInModal(meetingId) {
                             <div style="font-weight:700; font-size:0.81rem; color:#fff;">
                                 <span style="color:var(--dizsan-light);">${a.id}:</span> ${a.title}
                             </div>
-                            <div style="font-size:0.72rem; color:#cbd5e1; margin-top:2px; display:flex; flex-wrap:wrap; gap:0.55rem; align-items:center;">
-                                <span><i class="fa-solid fa-user" style="color:#38bdf8;"></i> <strong>${a.assignee}</strong></span>
+                            <div style="font-size:0.72rem; color:#cbd5e1; margin-top:3px; display:flex; flex-wrap:wrap; gap:0.45rem; align-items:center;">
+                                <span style="display:inline-flex; flex-wrap:wrap; gap:3px; align-items:center;"><strong style="color:#94a3b8;">Sorumlu:</strong> ${formatActionAssigneesBadges(a)}</span>
+                                <span style="display:inline-flex; align-items:center; gap:3px; padding:1px 6px; border-radius:5px; background:rgba(245,158,11,0.12); border:1px solid rgba(245,158,11,0.35); color:#fde68a;"><i class="fa-solid fa-user-shield"></i> Kontrol: <strong>${getActionControllerName(a)}</strong></span>
                                 <span><i class="fa-regular fa-clock" style="color:#fbbf24;"></i> <strong style="color:#fde68a;">${formatDateTR(a.dueDate)} ${a.dueTime || '17:00'}</strong></span>
                                 <span class="countdown-pill ${st.type}" style="font-size:0.66rem; padding:1px 6px;">${st.shortText || st.badgeText}</span>
                                 ${compDisp ? `<span style="color:#6ee7b7; font-weight:700;">✅ ${compDisp}</span>` : ''}
@@ -6336,41 +6417,139 @@ function renderExistingMeetingActionsInModal(meetingId) {
     `;
 }
 
-function addInlineActionRow() {
+let inlineRowSequence = 0;
+const inlineRowAssigneesMap = {};
+
+function renderInlineRowAssigneeChips(rowId) {
+    const chipsContainer = document.getElementById(`inline-assignee-chips-${rowId}`);
+    if (!chipsContainer) return;
+    const list = inlineRowAssigneesMap[rowId] || [];
+    if (list.length === 0) {
+        chipsContainer.innerHTML = `<span style="font-size:0.72rem; color:#94a3b8; font-style:italic; padding:2px 4px;">Henüz sorumlu seçilmedi (aşağıdaki listeden 1 veya birden fazla sorumlu seçin)</span>`;
+        return;
+    }
+    chipsContainer.innerHTML = list.map((name, idx) => `
+        <span class="assignee-chip">
+            <i class="fa-solid fa-user-check"></i> ${escapeHtmlAttr(name)}
+            <button type="button" onclick="removeInlineAssignee('${rowId}', ${idx})" title="Sorumluyu Kaldır"><i class="fa-solid fa-xmark"></i></button>
+        </span>
+    `).join('');
+}
+
+function addInlineAssigneeFromSelect(rowId, selectEl) {
+    if (!selectEl) return;
+    const val = selectEl.value;
+    if (!val) return;
+    if (!Array.isArray(inlineRowAssigneesMap[rowId])) {
+        inlineRowAssigneesMap[rowId] = [];
+    }
+    if (val === '__ALL_INVITED__') {
+        const invited = Array.from(document.querySelectorAll('input[name="meeting-participant"]:checked')).map(cb => cb.value);
+        const pool = invited.length > 0 ? invited : appState.users.map(u => u.name);
+        pool.forEach(pName => {
+            if (!inlineRowAssigneesMap[rowId].some(existing => normalizeTR(existing) === normalizeTR(pName))) {
+                inlineRowAssigneesMap[rowId].push(pName);
+            }
+        });
+    } else {
+        if (!inlineRowAssigneesMap[rowId].some(existing => normalizeTR(existing) === normalizeTR(val))) {
+            inlineRowAssigneesMap[rowId].push(val);
+        }
+    }
+    selectEl.value = '';
+    renderInlineRowAssigneeChips(rowId);
+}
+
+function removeInlineAssignee(rowId, idx) {
+    if (!Array.isArray(inlineRowAssigneesMap[rowId])) return;
+    inlineRowAssigneesMap[rowId].splice(idx, 1);
+    renderInlineRowAssigneeChips(rowId);
+}
+
+function removeInlineActionRow(rowId) {
+    delete inlineRowAssigneesMap[rowId];
+    const rowEl = document.getElementById(`inline-action-row-${rowId}`);
+    if (rowEl) rowEl.remove();
+}
+
+function addInlineActionRow(prefill = null) {
     const container = document.getElementById('inline-actions-container');
+    if (!container) return;
+    inlineRowSequence += 1;
+    const rowId = `iar_${Date.now()}_${inlineRowSequence}`;
     const row = document.createElement('div');
     row.className = 'inline-action-row';
+    row.id = `inline-action-row-${rowId}`;
+    row.dataset.rowId = rowId;
+
     const tomorrowIso = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+    const defaultAssignee = currentUser ? currentUser.name : (appState.users[0]?.name || 'ÖMER EREN');
+    const initialAssignees = prefill && Array.isArray(prefill.assignees) && prefill.assignees.length > 0
+        ? [...prefill.assignees]
+        : [defaultAssignee];
+    inlineRowAssigneesMap[rowId] = initialAssignees;
+
+    const defaultController = prefill && prefill.controller ? prefill.controller : 'ÖMER EREN';
+    const userOptionsHtml = appState.users.map(u => `<option value="${escapeHtmlAttr(u.name)}">${u.name} (${u.dept})</option>`).join('');
+    const controllerOptionsHtml = appState.users.map(u => `<option value="${escapeHtmlAttr(u.name)}" ${normalizeTR(u.name) === normalizeTR(defaultController) ? 'selected' : ''}>${u.name} (${u.dept})</option>`).join('');
 
     row.innerHTML = `
-        <div>
-            <label style="font-size:0.68rem; color:#bae6fd; display:block; margin-bottom:2px;">Aksiyon / Görev Açıklaması *</label>
-            <input type="text" class="form-control inline-action-title" placeholder="Yapılacak aksiyonu yazın..." required>
+        <div class="inline-action-top-grid">
+            <div>
+                <label style="font-size:0.72rem; font-weight:700; color:#bae6fd; display:block; margin-bottom:3px;">
+                    <i class="fa-solid fa-bolt" style="color:#38bdf8;"></i> Aksiyon / Alınan Karar &amp; Görev Açıklaması *
+                </label>
+                <input type="text" class="form-control inline-action-title" value="${prefill && prefill.title ? escapeHtmlAttr(prefill.title) : ''}" placeholder="Yapılacak aksiyonu veya alınan kararı yazın...">
+            </div>
+            <div>
+                <label style="font-size:0.72rem; font-weight:700; color:#bae6fd; display:block; margin-bottom:3px;">Öncelik</label>
+                <select class="form-control inline-action-priority">
+                    <option value="Normal" ${prefill && prefill.priority === 'Kritik' ? '' : 'selected'}>🔵 Normal</option>
+                    <option value="Kritik" ${prefill && prefill.priority === 'Kritik' ? 'selected' : ''}>🚨 Kritik</option>
+                </select>
+            </div>
+            <div>
+                <label style="font-size:0.72rem; font-weight:700; color:#fde68a; display:block; margin-bottom:3px;">Termin Tarihi *</label>
+                <input type="date" class="form-control inline-action-duedate" value="${prefill && prefill.dueDate ? prefill.dueDate : tomorrowIso}">
+            </div>
+            <div>
+                <label style="font-size:0.72rem; font-weight:700; color:#fde68a; display:block; margin-bottom:3px;">Saat *</label>
+                <input type="time" class="form-control inline-action-duetime" value="${prefill && prefill.dueTime ? prefill.dueTime : '17:00'}">
+            </div>
+            <div style="display:flex; align-items:flex-end; padding-bottom:1px;">
+                <button type="button" class="btn btn-danger btn-sm" style="height:36px; padding:0 0.65rem;" onclick="removeInlineActionRow('${rowId}')" title="Aksiyon Satırını Kaldır">
+                    <i class="fa-solid fa-trash-can"></i>
+                </button>
+            </div>
         </div>
-        <div>
-            <label style="font-size:0.68rem; color:#bae6fd; display:block; margin-bottom:2px;">Sorumlu *</label>
-            <select class="form-control inline-action-assignee">
-                ${appState.users.map(u => `<option value="${u.name}">${u.name}</option>`).join('')}
-            </select>
+        <div class="inline-action-bottom-grid">
+            <div>
+                <label style="font-size:0.72rem; font-weight:700; color:#7dd3fc; display:flex; align-items:center; justify-content:space-between; margin-bottom:3px;">
+                    <span><i class="fa-solid fa-users" style="color:#38bdf8;"></i> Sorumlu Personeller (Birden Fazla Seçilebilir) *</span>
+                    <span style="font-size:0.66rem; color:#94a3b8; font-weight:500;">Listeden seçtikçe eklenir</span>
+                </label>
+                <div id="inline-assignee-chips-${rowId}" class="multi-assignee-chips"></div>
+                <select class="form-control inline-action-assignee-picker" onchange="addInlineAssigneeFromSelect('${rowId}', this)">
+                    <option value="">+ Sorumlu Personel Seç / Ekle (Çoklu Seçim)...</option>
+                    <option value="__ALL_INVITED__">👥 Tüm Toplantı Katılımcılarını Sorumlu Ekle</option>
+                    ${userOptionsHtml}
+                </select>
+            </div>
+            <div>
+                <label style="font-size:0.72rem; font-weight:700; color:#fde68a; display:block; margin-bottom:3px;">
+                    <i class="fa-solid fa-user-shield" style="color:#f59e0b;"></i> Kontrol Edecek Kişi *
+                </label>
+                <select class="form-control inline-action-controller">
+                    ${controllerOptionsHtml}
+                </select>
+                <div style="font-size:0.67rem; color:#94a3b8; margin-top:3px;">
+                    <i class="fa-solid fa-circle-info"></i> Aksiyonun tamamlanmasını denetleyecek ve bildirim alacak kontrol sorumlusu
+                </div>
+            </div>
         </div>
-        <div>
-            <label style="font-size:0.68rem; color:#bae6fd; display:block; margin-bottom:2px;">Öncelik</label>
-            <select class="form-control inline-action-priority">
-                <option value="Normal">Normal</option>
-                <option value="Kritik">Kritik</option>
-            </select>
-        </div>
-        <div>
-            <label style="font-size:0.68rem; color:#fde68a; display:block; margin-bottom:2px;">Termin Tarihi *</label>
-            <input type="date" class="form-control inline-action-duedate" value="${tomorrowIso}" required>
-        </div>
-        <div>
-            <label style="font-size:0.68rem; color:#fde68a; display:block; margin-bottom:2px;">Saat *</label>
-            <input type="time" class="form-control inline-action-duetime" value="17:00" required>
-        </div>
-        <button type="button" class="btn btn-danger btn-sm" style="height:34px; padding:0 0.5rem;" onclick="this.parentElement.remove()" title="Satırı Kaldır"><i class="fa-solid fa-xmark"></i></button>
     `;
     container.appendChild(row);
+    renderInlineRowAssigneeChips(rowId);
     if (window.initAutoDateInputs) window.initAutoDateInputs(row);
 }
 
@@ -6558,7 +6737,12 @@ function saveMeeting(event) {
     const inlineRows = document.querySelectorAll('#inline-actions-container > div');
     inlineRows.forEach(r => {
         const aTitle = r.querySelector('.inline-action-title')?.value.trim();
-        const aAssignee = r.querySelector('.inline-action-assignee')?.value;
+        const rowId = r.dataset.rowId;
+        const selectedAssignees = (rowId && Array.isArray(inlineRowAssigneesMap[rowId]) && inlineRowAssigneesMap[rowId].length > 0)
+            ? [...inlineRowAssigneesMap[rowId]]
+            : [currentUser ? currentUser.name : 'ÖMER EREN'];
+        const aAssigneeStr = selectedAssignees.join(', ');
+        const aController = r.querySelector('.inline-action-controller')?.value || 'ÖMER EREN';
         const aPrio = r.querySelector('.inline-action-priority')?.value || 'Normal';
         const aDueRaw = r.querySelector('.inline-action-duedate')?.value;
         const aDueTimeRaw = r.querySelector('.inline-action-duetime')?.value || '17:00';
@@ -6571,8 +6755,10 @@ function saveMeeting(event) {
                 meetingId: targetMeetingId,
                 meetingTitle: title,
                 title: aTitle,
-                assignee: aAssignee,
-                manager: "ÖMER EREN",
+                assignees: selectedAssignees,
+                assignee: aAssigneeStr,
+                controller: aController,
+                manager: aController,
                 priority: aPrio,
                 dueDate: normalizeToISODate(aDueRaw),
                 dueTime: aDueTimeRaw,
@@ -6591,7 +6777,7 @@ function saveMeeting(event) {
                 updatedBy: '',
                 updatedAt: ''
             });
-            addAuditLog("AKSİYON", `${newActId} kodlu aksiyon '${aAssignee}' personeline ve Yönetici ÖMER EREN'e ertesi gün ve gün aşırı hatırlatıcılı olarak atandı (Tamamlama: ${formatDateTR(aDueRaw)} ${aDueTimeRaw}).`);
+            addAuditLog("AKSİYON", `${newActId} kodlu aksiyon Sorumlu(lar): '${aAssigneeStr}' ve Kontrol Edecek Kişi: '${aController}' olarak atandı (Tamamlama: ${formatDateTR(aDueRaw)} ${aDueTimeRaw}).`);
         }
     });
 
@@ -6670,11 +6856,57 @@ function onActionModalStatusChange(statusVal) {
     }
 }
 
+let currentActionModalAssignees = [];
+
+function renderActionModalAssigneeChips() {
+    const chipsBox = document.getElementById('action-modal-assignee-chips');
+    if (!chipsBox) return;
+    if (currentActionModalAssignees.length === 0) {
+        chipsBox.innerHTML = `<span style="font-size:0.72rem; color:#94a3b8; font-style:italic; padding:2px 4px;">Henüz sorumlu seçilmedi (aşağıdan 1 veya birden fazla sorumlu seçin)</span>`;
+        return;
+    }
+    chipsBox.innerHTML = currentActionModalAssignees.map((name, idx) => `
+        <span class="assignee-chip">
+            <i class="fa-solid fa-user-check"></i> ${escapeHtmlAttr(name)}
+            <button type="button" onclick="removeActionModalAssignee(${idx})" title="Sorumluyu Kaldır"><i class="fa-solid fa-xmark"></i></button>
+        </span>
+    `).join('');
+}
+
+function addActionModalAssigneeFromSelect(selectEl) {
+    if (!selectEl) return;
+    const val = selectEl.value;
+    if (!val) return;
+    if (val === '__ALL_USERS__') {
+        appState.users.forEach(u => {
+            if (!currentActionModalAssignees.some(x => normalizeTR(x) === normalizeTR(u.name))) {
+                currentActionModalAssignees.push(u.name);
+            }
+        });
+    } else {
+        if (!currentActionModalAssignees.some(x => normalizeTR(x) === normalizeTR(val))) {
+            currentActionModalAssignees.push(val);
+        }
+    }
+    selectEl.value = '';
+    renderActionModalAssigneeChips();
+}
+
+function removeActionModalAssignee(idx) {
+    currentActionModalAssignees.splice(idx, 1);
+    renderActionModalAssigneeChips();
+}
+
 function openActionModal(actionId = null) {
     populateSelectFilters();
     const modal = document.getElementById('action-modal');
     const compDateEl = document.getElementById('action-completed-date-input');
     const compTimeEl = document.getElementById('action-completed-time-input');
+    const aSelect = document.getElementById('action-assignee-select');
+    if (aSelect) {
+        aSelect.innerHTML = `<option value="">+ Sorumlu Personel Seç / Ekle (Çoklu Seçim)...</option><option value="__ALL_USERS__">👥 Tüm Personelleri Sorumlu Ekle</option>` +
+            appState.users.map(u => `<option value="${escapeHtmlAttr(u.name)}">${u.name} (${u.dept})</option>`).join('');
+    }
 
     if (actionId) {
         const a = appState.actions.find(x => x.id === actionId);
@@ -6683,8 +6915,13 @@ function openActionModal(actionId = null) {
         document.getElementById('action-id').value = a.id;
         document.getElementById('action-meeting-select').value = a.meetingId || 'GENEL';
         document.getElementById('action-title-input').value = a.title;
-        document.getElementById('action-assignee-select').value = a.assignee;
-        document.getElementById('action-manager-select').value = a.manager || 'ÖMER EREN';
+        currentActionModalAssignees = getActionAssigneesList(a);
+        if (currentActionModalAssignees.length === 0 && a.assignee) {
+            currentActionModalAssignees = [a.assignee];
+        }
+        renderActionModalAssigneeChips();
+        if (aSelect) aSelect.value = '';
+        document.getElementById('action-manager-select').value = getActionControllerName(a);
         document.getElementById('action-priority-select').value = a.priority || 'Normal';
         setMaskedDateInputValue(document.getElementById('action-duedate-input'), a.dueDate);
         document.getElementById('action-duetime-input').value = a.dueTime || '17:00';
@@ -6705,6 +6942,9 @@ function openActionModal(actionId = null) {
         document.getElementById('action-modal-title').innerHTML = `<i class="fa-solid fa-stopwatch" style="color:#fbbf24;"></i> Yeni Aksiyon &amp; Ertesi Gün / Gün Aşırı Hatırlatıcı Tanımla`;
         document.getElementById('action-id').value = '';
         document.getElementById('action-title-input').value = '';
+        currentActionModalAssignees = [currentUser ? currentUser.name : (appState.users[0]?.name || 'ÖMER EREN')];
+        renderActionModalAssigneeChips();
+        if (aSelect) aSelect.value = '';
         document.getElementById('action-manager-select').value = 'ÖMER EREN';
         document.getElementById('action-priority-select').value = 'Normal';
         const tomorrowIso = new Date(Date.now() + 86400000).toISOString().split('T')[0];
@@ -6742,8 +6982,20 @@ function saveAction(event) {
     const meetingTitle = matchedMeeting ? matchedMeeting.title : "Genel Operasyon Görevi";
 
     const title = document.getElementById('action-title-input').value.trim();
-    const assignee = document.getElementById('action-assignee-select').value;
-    const manager = document.getElementById('action-manager-select').value || "ÖMER EREN";
+    const pendingSelectVal = document.getElementById('action-assignee-select')?.value || '';
+    if (pendingSelectVal && pendingSelectVal !== '__ALL_USERS__') {
+        if (!currentActionModalAssignees.some(x => normalizeTR(x) === normalizeTR(pendingSelectVal))) {
+            currentActionModalAssignees.push(pendingSelectVal);
+        }
+    }
+    if (currentActionModalAssignees.length === 0) {
+        alert("Lütfen en az 1 Sorumlu Personel seçin!");
+        return;
+    }
+    const assignees = [...currentActionModalAssignees];
+    const assignee = assignees.join(', ');
+    const controller = document.getElementById('action-manager-select').value || "ÖMER EREN";
+    const manager = controller;
     const priority = document.getElementById('action-priority-select').value;
     const dueDate = normalizeToISODate(document.getElementById('action-duedate-input').value);
     const dueTime = document.getElementById('action-duetime-input').value || '17:00';
@@ -6767,7 +7019,7 @@ function saveAction(event) {
             const existing = appState.actions[idx];
             appState.actions[idx] = {
                 ...existing,
-                meetingId, meetingTitle, title, assignee, manager, priority, dueDate, dueTime, status, note,
+                meetingId, meetingTitle, title, assignees, assignee, controller, manager, priority, dueDate, dueTime, status, note,
                 completedDate, completedTime, completedAt,
                 remindOneDayBefore: true,
                 remindSameDay: true,
@@ -6779,7 +7031,7 @@ function saveAction(event) {
                 updatedBy: currentUser ? currentUser.name : "ÖMER EREN",
                 updatedAt: formatNowTR()
             };
-            addAuditLog("AKSİYON", `${idVal} aksiyonu ${currentUser ? currentUser.name : 'ÖMER EREN'} tarafından güncellendi (Sorumlu: ${assignee}, Durum: ${status}, Tamamlama Hedefi: ${formatDateTR(dueDate)} ${dueTime}${completedAt ? `, Kapanış: ${completedAt}` : ''}).`);
+            addAuditLog("AKSİYON", `${idVal} aksiyonu ${currentUser ? currentUser.name : 'ÖMER EREN'} tarafından güncellendi (Sorumlu(lar): ${assignee}, Kontrol Eden: ${controller}, Durum: ${status}, Tamamlama Hedefi: ${formatDateTR(dueDate)} ${dueTime}${completedAt ? `, Kapanış: ${completedAt}` : ''}).`);
         }
     } else {
         const newId = generateUniqueActionId();
@@ -6787,7 +7039,7 @@ function saveAction(event) {
         const todayIso = new Date().toISOString().split('T')[0];
         appState.actions.unshift({
             id: newId,
-            meetingId, meetingTitle, title, assignee, manager, priority, dueDate, dueTime, status, note,
+            meetingId, meetingTitle, title, assignees, assignee, controller, manager, priority, dueDate, dueTime, status, note,
             completedDate, completedTime, completedAt,
             remindOneDayBefore: true,
             remindSameDay: true,
@@ -6799,7 +7051,7 @@ function saveAction(event) {
             updatedBy: '',
             updatedAt: ''
         });
-        addAuditLog("AKSİYON", `${newId} aksiyonu tanımlandı: '${title}' -> Sorumlu: ${assignee} | Yönetici: ${manager} (Hedef Tamamlama: ${formatDateTR(dueDate)} ${dueTime} • Ertesi gün uyarısı ve gün aşırı hatırlatma aktif).`);
+        addAuditLog("AKSİYON", `${newId} aksiyonu tanımlandı: '${title}' -> Sorumlu(lar): ${assignee} | Kontrol Edecek Kişi: ${controller} (Hedef Tamamlama: ${formatDateTR(dueDate)} ${dueTime} • Ertesi gün uyarısı ve gün aşırı hatırlatma aktif).`);
     }
 
     const targetAction = idVal ? appState.actions.find(a => a.id === idVal) : appState.actions[0];
@@ -7125,9 +7377,9 @@ function printMeetingMinutes(meetingId) {
                 </div>
             </div>
 
+            ${decisionList.length > 0 ? `
             <div style="margin-bottom:16px; font-size:12px;">
                 <strong>${isTraining ? 'Alınan Kararlar ve Eğitim Sonucu:' : 'Alınan Kararlar, Karar Sorumlusu ve Termin Tarihleri:'}</strong>
-                ${decisionList.length > 0 ? `
                 <table style="width:100%; border-collapse:collapse; font-size:11.5px; margin-top:5px;">
                     <thead>
                         <tr style="background:#ecfdf5;">
@@ -7148,8 +7400,8 @@ function printMeetingMinutes(meetingId) {
                         `).join('')}
                     </tbody>
                 </table>
-                ` : `<div style="margin-top:4px; padding:10px; border:1px solid #cbd5e1; border-radius:4px; white-space:pre-line; line-height:1.5;">${m.decisions || '-'}</div>`}
             </div>
+            ` : ''}
 
             ${attList.length > 0 ? `
             <div style="margin-bottom:16px; font-size:12.5px;">
@@ -7167,14 +7419,14 @@ function printMeetingMinutes(meetingId) {
                 </div>
             </div>` : ''}
 
-            <h3 style="font-size:14px; margin:0 0 8px;">Atanan Aksiyonlar ve Termin Tarihleri</h3>
+            <h3 style="font-size:14px; margin:0 0 8px;">Toplantı Aksiyonları, Sorumlu Personeller ve Kontrol Edecek Kişi</h3>
             <table style="width:100%; border-collapse:collapse; font-size:11px; margin-bottom:22px;">
                 <thead>
                     <tr style="background:#e2e8f0;">
                         <th style="border:1px solid #94a3b8; padding:6px;">Kod</th>
                         <th style="border:1px solid #94a3b8; padding:6px;">Aksiyon / Görev Tanımı</th>
-                        <th style="border:1px solid #94a3b8; padding:6px;">Sorumlu Personel</th>
-                        <th style="border:1px solid #94a3b8; padding:6px;">Yönetici</th>
+                        <th style="border:1px solid #94a3b8; padding:6px;">Sorumlu Personel(ler)</th>
+                        <th style="border:1px solid #94a3b8; padding:6px;">Kontrol Edecek Kişi</th>
                         <th style="border:1px solid #94a3b8; padding:6px;">Termin Tarihi</th>
                         <th style="border:1px solid #94a3b8; padding:6px;">Oluşturan / Değiştiren</th>
                         <th style="border:1px solid #94a3b8; padding:6px;">Durum</th>
@@ -7187,8 +7439,8 @@ function printMeetingMinutes(meetingId) {
                         <tr>
                             <td style="border:1px solid #94a3b8; padding:6px;">${a.id}</td>
                             <td style="border:1px solid #94a3b8; padding:6px;">${a.title}</td>
-                            <td style="border:1px solid #94a3b8; padding:6px; font-weight:bold;">${a.assignee}</td>
-                            <td style="border:1px solid #94a3b8; padding:6px;">${a.manager || 'ÖMER EREN'}</td>
+                            <td style="border:1px solid #94a3b8; padding:6px; font-weight:bold;">${getActionAssigneesList(a).join(', ')}</td>
+                            <td style="border:1px solid #94a3b8; padding:6px; font-weight:bold;">${getActionControllerName(a)}</td>
                             <td style="border:1px solid #94a3b8; padding:6px;">${formatDateTR(a.dueDate)} ${a.dueTime || ''}</td>
                             <td style="border:1px solid #94a3b8; padding:6px; font-size:10px;">
                                 Oluşturan: ${aAudit.createdBy} (${aAudit.createdAt})<br>
@@ -7231,7 +7483,7 @@ function printMeetingMinutes(meetingId) {
 }
 
 function exportAllDataExcelCSV() {
-    let csv = "\uFEFFAksiyon Kodu;Toplantı Kodu;Toplantı Başlığı;Aksiyon Tanımı;Sorumlu Personel;Bilgilendirilen Yönetici;Öncelik;Termin Tarihi;Saat;Durum;Not;Oluşturan Kişi;Oluşturulma Tarihi ve Saati;Değiştiren Kişi;Değiştirilme Tarihi ve Saati\n";
+    let csv = "\uFEFFAksiyon Kodu;Toplantı Kodu;Toplantı Başlığı;Aksiyon Tanımı;Sorumlu Personel(ler);Kontrol Edecek Kişi;Öncelik;Termin Tarihi;Saat;Durum;Not;Oluşturan Kişi;Oluşturulma Tarihi ve Saati;Değiştiren Kişi;Değiştirilme Tarihi ve Saati\n";
     const visibleActions = isOmerEren(currentUser)
         ? appState.actions
         : appState.actions.filter(a => canUserSeeAction(a));
@@ -7242,7 +7494,7 @@ function exportAllDataExcelCSV() {
         const parentM = appState.meetings.find(m => m.id === a.meetingId);
         const access = parentM ? getMeetingAccessLevel(parentM) : 'FULL';
         const meetingTitleSafe = access === 'ACTION_ONLY' ? `${a.meetingId} (Sadece Aksiyon)` : a.meetingTitle;
-        csv += `${clean(a.id)};${clean(a.meetingId)};${clean(meetingTitleSafe)};${clean(a.title)};${clean(a.assignee)};${clean(a.manager || 'ÖMER EREN')};${clean(a.priority)};${formatDateTR(a.dueDate)};${clean(a.dueTime)};${clean(a.status)};${clean(a.note)};${clean(aAudit.createdBy)};${clean(aAudit.createdAt)};${clean(aAudit.updatedBy)};${clean(aAudit.updatedAt)}\n`;
+        csv += `${clean(a.id)};${clean(a.meetingId)};${clean(meetingTitleSafe)};${clean(a.title)};${clean(getActionAssigneesList(a).join(', '))};${clean(getActionControllerName(a))};${clean(a.priority)};${formatDateTR(a.dueDate)};${clean(a.dueTime)};${clean(a.status)};${clean(a.note)};${clean(aAudit.createdBy)};${clean(aAudit.createdAt)};${clean(aAudit.updatedBy)};${clean(aAudit.updatedAt)}\n`;
     });
 
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -7706,7 +7958,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 12000);
 
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('sw.js?v=4.9.2').then(reg => {
+        navigator.serviceWorker.register('sw.js?v=4.9.3').then(reg => {
             try { reg.update(); } catch (e) {}
             syncUserAndStateToServiceWorker();
         }).catch(() => {});

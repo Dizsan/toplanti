@@ -1,5 +1,5 @@
 {
-  "version": "v4.9.2",
+  "version": "v4.9.3",
   "updatedAt": "2026-10-28T17:16:22.403Z",
   "users": [
     {
@@ -2177,14 +2177,14 @@
       "fail_count": 0
     }
   ],
-  "appVersion": "4.9.4",
+  "appVersion": "4.9.3",
   "latestVersion": {
-    "version": "4.9.2",
-    "releaseNotes": "Toplantı kartı tıklama detayı, davetli/gelen/gelmeyen yoklaması ve mazeret alanı, tiklemeli gündem açıklamaları, konuşulmayan maddeleri başka toplantıya planlama, sorumlulu-terminli alınan kararlar ve aksiyon tamamlama tarihi/saati + ertesi gün / gün aşırı hatırlatma motoru yayınlandı",
-    "releasedAt": "2026-10-26 22:08:59"
+    "version": "4.9.3",
+    "releaseNotes": "Gündem maddeleri Konuşuldu/Konuşulmadı yan yana tik seçimi, Toplantı Aksiyonlarında birden fazla sorumlu personel ve Kontrol Edecek Kişi alanı eklendi, tekrar eden karar alanı sadeleştirildi.",
+    "releasedAt": "28.10.2026"
   },
-  "versionUpdatedAt": "2026-10-26 22:51:22",
-  "versionReleaseNotes": "Toplantı/Eğitim formu profesyonel hizalama, mavi tikli katılımcı yoklaması ve düzenlemede bildirim/ses kapatma güncellemesi (v4.9.4)",
+  "versionUpdatedAt": "28.10.2026",
+  "versionReleaseNotes": "Gündem maddeleri Konuşuldu/Konuşulmadı yan yana tik seçimi, Toplantı Aksiyonlarında birden fazla sorumlu personel ve Kontrol Edecek Kişi alanı eklendi, tekrar eden karar alanı sadeleştirildi.",
   "deletedIds": [],
   "usedResetTokens": [],
   "updatedAtMs": 1793044282325

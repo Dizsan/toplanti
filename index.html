@@ -49,7 +49,7 @@
     --radius-md: 14px;
     --radius-lg: 20px;
     --shadow-lg: 0 20px 40px -15px rgba(0, 0, 0, 0.6);
-    --sidebar-width: 245px;
+    --sidebar-width: 280px;
 }
 
 * {
@@ -508,21 +508,10 @@ body {
 .main-area {
     flex: 1;
     margin-left: var(--sidebar-width);
-    width: calc(100% - var(--sidebar-width));
-    max-width: calc(100% - var(--sidebar-width));
     display: flex;
     flex-direction: column;
     min-width: 0;
     padding-bottom: 80px;
-    box-sizing: border-box;
-}
-
-@media (max-width: 1024px) {
-    .main-area {
-        margin-left: 0;
-        width: 100%;
-        max-width: 100%;
-    }
 }
 
 .topbar {
@@ -907,38 +896,6 @@ body {
     gap: 0.75rem;
     flex-wrap: wrap;
     margin-bottom: 1.2rem;
-    align-items: center;
-}
-
-.inpage-back-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.45rem;
-    padding: 0.48rem 0.95rem;
-    border-radius: 10px;
-    background: linear-gradient(135deg, rgba(2, 132, 199, 0.28), rgba(15, 23, 42, 0.95));
-    border: 1px solid rgba(56, 189, 248, 0.55);
-    color: #f8fafc;
-    font-size: 0.82rem;
-    font-weight: 700;
-    cursor: pointer;
-    white-space: nowrap;
-    box-shadow: 0 2px 10px rgba(2, 132, 199, 0.2);
-    transition: all 0.18s ease;
-    flex-shrink: 0;
-}
-
-.inpage-back-btn:hover {
-    background: linear-gradient(135deg, rgba(2, 132, 199, 0.55), rgba(3, 105, 161, 0.95));
-    border-color: #38bdf8;
-    color: #ffffff;
-    transform: translateX(-2px);
-    box-shadow: 0 4px 14px rgba(56, 189, 248, 0.35);
-}
-
-.inpage-back-btn i {
-    color: #38bdf8;
-    font-size: 0.84rem;
 }
 
 .form-control {
@@ -1337,7 +1294,8 @@ select.form-control option {
 }
 
 .participant-check input[type="checkbox"],
-.blue-tick-checkbox {
+.blue-tick-checkbox,
+.amber-tick-checkbox {
     appearance: none;
     -webkit-appearance: none;
     width: 18px;
@@ -1354,7 +1312,8 @@ select.form-control option {
 }
 
 .participant-check input[type="checkbox"]::before,
-.blue-tick-checkbox::before {
+.blue-tick-checkbox::before,
+.amber-tick-checkbox::before {
     content: "";
     width: 10px;
     height: 5.5px;
@@ -1372,8 +1331,15 @@ select.form-control option {
     box-shadow: 0 0 8px rgba(56, 189, 248, 0.55);
 }
 
+.amber-tick-checkbox:checked {
+    background: linear-gradient(135deg, #d97706, #f59e0b);
+    border-color: #fbbf24;
+    box-shadow: 0 0 8px rgba(245, 158, 11, 0.55);
+}
+
 .participant-check input[type="checkbox"]:checked::before,
-.blue-tick-checkbox:checked::before {
+.blue-tick-checkbox:checked::before,
+.amber-tick-checkbox:checked::before {
     transform: rotate(-45deg) scale(1);
 }
 
@@ -1550,15 +1516,78 @@ select.form-control option {
 }
 
 .inline-action-row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+    background: rgba(15, 23, 42, 0.78);
+    padding: 0.65rem 0.75rem;
+    border-radius: 10px;
+    border: 1px solid rgba(56, 189, 248, 0.32);
+    box-sizing: border-box;
+}
+
+.inline-action-top-grid {
     display: grid;
-    grid-template-columns: minmax(0, 1.75fr) minmax(0, 1.15fr) 92px 140px 88px 34px;
+    grid-template-columns: minmax(0, 1fr) 105px 140px 92px 36px;
     gap: 0.45rem;
     align-items: end;
-    background: rgba(15, 23, 42, 0.75);
-    padding: 0.55rem 0.65rem;
-    border-radius: 10px;
-    border: 1px solid rgba(56, 189, 248, 0.28);
-    box-sizing: border-box;
+}
+
+.inline-action-bottom-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr);
+    gap: 0.6rem;
+    align-items: start;
+    padding-top: 0.48rem;
+    border-top: 1px dashed rgba(56, 189, 248, 0.22);
+}
+
+.inline-action-top-grid > div,
+.inline-action-bottom-grid > div {
+    min-width: 0;
+}
+
+.multi-assignee-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-bottom: 0.35rem;
+}
+
+.multi-assignee-chips:empty {
+    display: none;
+    margin-bottom: 0;
+}
+
+.assignee-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.22rem 0.55rem;
+    border-radius: 7px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    background: rgba(2, 132, 199, 0.28);
+    border: 1px solid rgba(56, 189, 248, 0.55);
+    color: #fff;
+    white-space: nowrap;
+}
+
+.assignee-chip button {
+    background: none;
+    border: none;
+    color: #fca5a5;
+    cursor: pointer;
+    font-size: 0.92rem;
+    line-height: 1;
+    padding: 0 2px;
+    font-weight: 800;
+    display: inline-flex;
+    align-items: center;
+}
+
+.assignee-chip button:hover {
+    color: #ef4444;
 }
 
 @media (max-width: 768px) {
@@ -1566,7 +1595,8 @@ select.form-control option {
         display: none;
     }
     .decision-item-row,
-    .inline-action-row {
+    .inline-action-top-grid,
+    .inline-action-bottom-grid {
         grid-template-columns: 1fr;
         gap: 0.45rem;
     }
@@ -2041,7 +2071,7 @@ select.form-control option {
                 <img src="data:image/jpeg;base64,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" alt="DİZSAN Logo" class="login-logo">
                 <h1>DİZSAN</h1>
                 <p>Kurumsal Toplantı, Eğitim, Çağrı, Aksiyon & Raporlama Sistemi</p>
-                <span class="version-pill"><i class="fa-solid fa-code-branch"></i> Sürüm <span class="dynamic-version-text">v4.9.2</span> • iOS / Android / Windows</span>
+                <span class="version-pill"><i class="fa-solid fa-code-branch"></i> Sürüm <span class="dynamic-version-text">v4.9.3</span> • iOS / Android / Windows</span>
             </div>
 
             <form id="login-form" onsubmit="handleLogin(event)">
@@ -2203,7 +2233,7 @@ select.form-control option {
                     <span class="brand-name">DİZSAN</span>
                     <span class="brand-sub">TOPLANTI & AKSİYON</span>
                     <span class="version-pill" onclick="switchTab('version-tab')" title="Sürüm ve Güncelleme Merkezini Gör">
-                        <i class="fa-solid fa-tag"></i> <span class="dynamic-version-text">v4.9.2</span>
+                        <i class="fa-solid fa-tag"></i> <span class="dynamic-version-text">v4.9.3</span>
                     </span>
                 </div>
             </div>
@@ -2553,8 +2583,8 @@ select.form-control option {
                                     <tr>
                                         <th>Kod / Toplantı</th>
                                         <th>Aksiyon &amp; Görev Tanımı</th>
-                                        <th>Sorumlu Personel</th>
-                                        <th>Bilgilendirilen Yönetici</th>
+                                        <th>Sorumlu Personel(ler)</th>
+                                        <th>Kontrol Edecek Kişi</th>
                                         <th>Öncelik</th>
                                         <th>Tamamlama Tarihi &amp; Saati</th>
                                         <th>Ertesi Gün &amp; Gün Aşırı Hatırlatıcı</th>
@@ -2811,7 +2841,7 @@ select.form-control option {
                             <div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap;">
                                 <h3><i class="fa-solid fa-user-shield" style="color:#34d399;"></i> Versiyon Güncelleme & Yayın Yönetimi (Sadece Yönetici: Ömer Eren)</h3>
                             </div>
-                            <span class="badge badge-done">Aktif Sürüm: <span class="dynamic-version-text">v4.9.2</span></span>
+                            <span class="badge badge-done">Aktif Sürüm: <span class="dynamic-version-text">v4.9.3</span></span>
                         </div>
 
                         <!-- Ömer Eren giriş yaptığında gösterilecek alan -->
@@ -3084,7 +3114,7 @@ select.form-control option {
                                 <i class="fa-solid fa-list-check" style="color:#38bdf8;"></i> Gündem Maddeleri *
                             </label>
                             <small style="display:block; color:#94a3b8; font-size:0.73rem;">
-                                Görüşülen maddelerin yanındaki <strong>Konuşuldu</strong> kutucuğunu işaretleyip açıklamasını yazın.
+                                Her gündem maddesinin yanındaki <strong>Konuşuldu</strong> veya <strong>Konuşulmadı</strong> kutucuğunu işaretleyin.
                             </small>
                         </div>
                         <button type="button" class="btn btn-primary btn-sm" onclick="addAgendaItemRow('', false, '', true)">
@@ -3103,40 +3133,11 @@ select.form-control option {
                     <textarea id="meeting-notes-input" style="display:none;"></textarea>
                 </div>
 
-                <!-- ======================================================================
-                     BÖLÜM 3: ALINAN KARARLAR
-                     ====================================================================== -->
-                <div class="form-group" style="margin-bottom:1rem; background:rgba(15,23,42,0.55); border:1px solid rgba(56,189,248,0.28); border-radius:14px; padding:0.9rem;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; margin-bottom:0.55rem;">
-                        <div>
-                            <label style="margin:0; font-size:0.9rem; color:#fff; font-weight:800;">
-                                <i class="fa-solid fa-gavel" style="color:#38bdf8;"></i> Alınan Kararlar
-                            </label>
-                            <small style="display:block; color:#94a3b8; font-size:0.73rem;">
-                                Karar açıklamasını, sorumlusunu ve termin tarihini girin.
-                            </small>
-                        </div>
-                        <button type="button" class="btn btn-primary btn-sm" onclick="addDecisionItemRow('', '', '', 'Bekliyor', true)">
-                            <i class="fa-solid fa-plus"></i> Karar Ekle
-                        </button>
-                    </div>
+                <!-- Geriye dönük uyumluluk için gizli karar konteynerleri (Tekrar eden üst karar/aksiyon alanı kaldırıldı, aşağıdaki Toplantı Aksiyonları ile birleştirildi) -->
+                <div id="meeting-decisions-container" style="display:none;"></div>
+                <textarea id="meeting-decisions-input" style="display:none;"></textarea>
 
-                    <!-- Sütun Başlıkları (Masaüstü) -->
-                    <div class="decision-header-row">
-                        <span>No</span>
-                        <span>Karar Açıklaması</span>
-                        <span>Sorumlu</span>
-                        <span>Termin Tarihi</span>
-                        <span style="text-align:right;">İşlem</span>
-                    </div>
-
-                    <!-- Alınan Kararlar Satır Konteyneri -->
-                    <div id="meeting-decisions-container" style="display:flex; flex-direction:column; gap:0.45rem;"></div>
-
-                    <textarea id="meeting-decisions-input" style="display:none;"></textarea>
-                </div>
-
-                <!-- BÖLÜM 4: TOPLANTI / EĞİTİM EKLERİ -->
+                <!-- BÖLÜM 3: TOPLANTI / EĞİTİM EKLERİ -->
                 <div style="margin-bottom:1rem; background:rgba(15,23,42,0.55); border:1px solid rgba(16,185,129,0.28); border-radius:14px; padding:0.85rem;">
                     <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; margin-bottom:0.5rem;">
                         <div>
@@ -3158,15 +3159,15 @@ select.form-control option {
                     <div id="meeting-attachments-preview" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(170px, 1fr)); gap:0.5rem;"></div>
                 </div>
 
-                <!-- BÖLÜM 5: TOPLANTI AKSİYONLARI -->
+                <!-- BÖLÜM 4: TOPLANTI AKSİYONLARI & KARARLARI (ÇOKLU SORUMLU + KONTROL EDECEK KİŞİ) -->
                 <div style="background:rgba(15,23,42,0.55); border:1px solid rgba(56,189,248,0.28); border-radius:14px; padding:0.9rem;">
                     <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; margin-bottom:0.6rem;">
                         <div>
-                            <strong style="font-size:0.88rem; color:var(--dizsan-light); display:block;">
-                                <i class="fa-solid fa-bolt"></i> Toplantı Aksiyonları (Görev &amp; Termin Atama)
+                            <strong style="font-size:0.9rem; color:var(--dizsan-light); display:block;">
+                                <i class="fa-solid fa-bolt"></i> Toplantı Aksiyonları &amp; Kararları (Çoklu Sorumlu &amp; Kontrol Edecek Kişi Atama)
                             </strong>
                             <small style="color:#94a3b8; font-size:0.73rem;">
-                                Atanan aksiyonlar tamamlanana kadar otomatik hatırlatılır.
+                                Her aksiyona <strong>birden fazla sorumlu personel</strong> ve <strong>kontrol edecek kişi</strong> atayabilirsiniz. Tamamlanana kadar otomatik hatırlatılır.
                             </small>
                         </div>
                         <button type="button" class="btn btn-primary btn-sm" onclick="addInlineActionRow()">
@@ -3300,11 +3301,12 @@ select.form-control option {
 
                     <div class="form-grid">
                         <div class="form-group">
-                            <label>Aksiyon Verilen Sorumlu Personel *</label>
-                            <select id="action-assignee-select" class="form-control" required></select>
+                            <label><i class="fa-solid fa-users" style="color:#38bdf8;"></i> Sorumlu Personeller (Birden Fazla Seçilebilir) *</label>
+                            <div id="action-modal-assignee-chips" class="multi-assignee-chips"></div>
+                            <select id="action-assignee-select" class="form-control" onchange="addActionModalAssigneeFromSelect(this)"></select>
                         </div>
                         <div class="form-group">
-                            <label>Hatırlatma Yapılacak Yönetici *</label>
+                            <label><i class="fa-solid fa-user-shield" style="color:#f59e0b;"></i> Kontrol Edecek Kişi *</label>
                             <select id="action-manager-select" class="form-control" required>
                                 <option value="ÖMER EREN">ÖMER EREN (Yönetici)</option>
                                 <option value="RAFET CANBEK">RAFET CANBEK (Genel Müdür)</option>
@@ -4981,8 +4983,8 @@ select.form-control option {
  * ==========================================================================
  */
 
-const INITIAL_APP_VERSION = "v4.9.2";
-const CURRENT_APP_VERSION = "4.9.2";
+const INITIAL_APP_VERSION = "v4.9.3";
+const CURRENT_APP_VERSION = "4.9.3";
 const VAPID_PUBLIC_KEY = "BJIJfCBiDwya3clZOWS08EDxfuN18xtfJGTX0n_apWBTEW7-kO_FGKNy5VDRvUsMgc46IP5oxLlIHqgrDo-JTkE";
 const STORAGE_KEY_STATE = "dizsan_toplanti_shared_state_v2";
 const STORAGE_KEY_SESSION = "dizsan_toplanti_active_user";
@@ -5114,6 +5116,12 @@ const OFFICIAL_PERSONNEL_RAW = [
 const OFFICIAL_PERSONNEL_LIST = OFFICIAL_PERSONNEL_RAW.map(u => ({ ...u, email: resolveUserEmail(u) }));
 
 const INITIAL_CHANGELOG = [
+    {
+        version: "v4.9.3",
+        date: "28.10.2026",
+        author: "ÖMER EREN",
+        notes: "Gündem maddeleri Konuşuldu/Konuşulmadı yan yana tik seçimi, Toplantı Aksiyonlarında birden fazla sorumlu personel ve Kontrol Edecek Kişi alanı eklendi, tekrar eden karar alanı sadeleştirildi."
+    },
     {
         version: "v1.8.5",
         date: "25.10.2026",
@@ -6651,6 +6659,36 @@ function getActionCompletedDisplay(action) {
     return '';
 }
 
+function getActionAssigneesList(a) {
+    if (!a) return [];
+    if (Array.isArray(a.assignees) && a.assignees.length > 0) {
+        return a.assignees.map(x => String(x || '').trim()).filter(Boolean);
+    }
+    if (a.assignee) {
+        return String(a.assignee).split(',').map(x => x.trim()).filter(Boolean);
+    }
+    return [];
+}
+
+function isUserActionAssignee(a, userName) {
+    if (!a || !userName) return false;
+    const targetNorm = normalizeTR(userName);
+    return getActionAssigneesList(a).some(name => normalizeTR(name) === targetNorm);
+}
+
+function getActionControllerName(a) {
+    if (!a) return 'ÖMER EREN';
+    return String(a.controller || a.manager || 'ÖMER EREN').trim() || 'ÖMER EREN';
+}
+
+function formatActionAssigneesBadges(a) {
+    const list = getActionAssigneesList(a);
+    if (list.length === 0) {
+        return `<span class="participant-tag" style="font-weight:600;"><i class="fa-solid fa-user-check" style="color:var(--dizsan-light);"></i> -</span>`;
+    }
+    return `<div style="display:flex; flex-wrap:wrap; gap:0.28rem;">${list.map(name => `<span class="participant-tag" style="font-weight:600;"><i class="fa-solid fa-user-check" style="color:var(--dizsan-light);"></i> ${escapeHtml(name)}</span>`).join('')}</div>`;
+}
+
 /**
  * Kapanmayan / devam eden aksiyonlar için hatırlatma kuralı:
  * 1) Tamamlandı ise kapanış tarihi ve saati gösterilir.
@@ -6659,6 +6697,7 @@ function getActionCompletedDisplay(action) {
  *    - Ayrıca aksiyon oluşturulduktan sonraki ertesi gün (1. gün) hâlâ kapanmadıysa uyarı verir ve gün aşırı (3, 5, 7... gün) hatırlatmaya devam eder.
  */
 function evaluateActionReminderStatus(action) {
+    const controllerName = getActionControllerName(action);
     if (action.status === "Tamamlandı") {
         const compDisp = getActionCompletedDisplay(action);
         return {
@@ -6666,7 +6705,7 @@ function evaluateActionReminderStatus(action) {
             type: "completed",
             badgeText: compDisp ? `✅ Tamamlandı (${compDisp})` : "✅ Tamamlandı",
             shortText: compDisp ? `✅ Tamamlandı (${compDisp})` : "✅ Tamamlandı",
-            reminderTargetText: `${action.assignee} & ${action.manager || 'ÖMER EREN'}`,
+            reminderTargetText: `${action.assignee} & ${controllerName}`,
             isReminderDay: false,
             diffDays: 999
         };
@@ -6683,7 +6722,7 @@ function evaluateActionReminderStatus(action) {
     const dueMidnight = new Date(y, m - 1, d);
 
     const diffDays = Math.round((dueMidnight - todayMidnight) / (1000 * 60 * 60 * 24));
-    const managerName = action.manager || "ÖMER EREN";
+    const managerName = controllerName;
     const dueTimeStr = action.dueTime || "17:00";
 
     // Aksiyonun oluşturulma tarihinden itibaren geçen gün sayısı
@@ -6809,8 +6848,8 @@ function checkAndTriggerSmartReminders() {
     // Giriş yapan kişi Yönetici (Ömer Eren, Rafet Canbek, Hakan Aydın) ise tüm hatırlatmaları görür,
     // Personel ise hem kendine ait olanları hem ortak uyarıyı görür
     const myPersonalReminders = activeReminders.filter(a =>
-        normalizeTR(a.assignee) === normalizeTR(currentUser.name) ||
-        normalizeTR(a.manager || 'ÖMER EREN') === normalizeTR(currentUser.name) ||
+        isUserActionAssignee(a, currentUser.name) ||
+        normalizeTR(getActionControllerName(a)) === normalizeTR(currentUser.name) ||
         isOmerEren(currentUser)
     );
 
@@ -6832,7 +6871,7 @@ function checkAndTriggerSmartReminders() {
 
     descEl.innerHTML = listToShow.slice(0, 4).map(a => {
         const st = evaluateActionReminderStatus(a);
-        return `<div>• <strong>[${st.shortText}]</strong> "${a.title}" &rarr; Sorumlu: <strong>${a.assignee}</strong> | Tamamlama: <strong>${formatDateTR(a.dueDate)} ${a.dueTime || '17:00'}</strong> | Durum: <strong>${a.status}</strong></div>`;
+        return `<div>• <strong>[${st.shortText}]</strong> "${a.title}" &rarr; Sorumlu: <strong>${a.assignee}</strong> | Kontrol: <strong>${getActionControllerName(a)}</strong> | Tamamlama: <strong>${formatDateTR(a.dueDate)} ${a.dueTime || '17:00'}</strong> | Durum: <strong>${a.status}</strong></div>`;
     }).join('');
 
     // Bugün aktif uyarı günü olan (Ertesi Gün Uyarısı veya Gün Aşırı Hatırlatma Günü) aksiyonlar için sesli ve masaüstü bildirimi tetikle
@@ -7608,9 +7647,14 @@ async function dispatchPushToServer(targets, payload) {
 
 async function dispatchActionAssignedPush(action) {
     if (!action || !action.assignee) return;
+    const assigneesList = getActionAssigneesList(action);
+    const controllerName = getActionControllerName(action);
     const title = `⚡ Size Yeni Görev/Aksiyon Atandı: ${action.title}`;
-    const body = `Toplantı: ${action.meetingTitle || 'Dizsan Toplantı'} | Termin: ${formatDateTR(action.dueDate)} ${action.dueTime || '09:00'} | Atayan: ${action.createdBy || (currentUser ? currentUser.name : 'Yönetici')}`;
-    const targets = [action.assignee];
+    const body = `Toplantı: ${action.meetingTitle || 'Dizsan Toplantı'} | Sorumlu: ${action.assignee} | Kontrol: ${controllerName} | Termin: ${formatDateTR(action.dueDate)} ${action.dueTime || '09:00'}`;
+    const targets = [...assigneesList];
+    if (controllerName && !targets.some(t => normalizeTR(t) === normalizeTR(controllerName))) {
+        targets.push(controllerName);
+    }
 
     dispatchPushToServer(targets, {
         title,
@@ -7620,7 +7664,7 @@ async function dispatchActionAssignedPush(action) {
         sound: 'INVITE'
     });
 
-    if (currentUser && normalizeTR(currentUser.name) === normalizeTR(action.assignee)) {
+    if (currentUser && (isUserActionAssignee(action, currentUser.name) || normalizeTR(currentUser.name) === normalizeTR(controllerName))) {
         sendBrowserNotification(title, body, `action_assign_${action.id}`, 'INVITE');
     }
 }
@@ -7628,11 +7672,12 @@ async function dispatchActionAssignedPush(action) {
 async function dispatchActionProgressPush(action, oldStatus, newStatus) {
     if (!action) return;
     const reporterName = currentUser ? currentUser.name : (action.assignee || 'Personel');
+    const controllerName = getActionControllerName(action);
     const title = `✅ Aksiyon Durum Bildirimi: ${reporterName}`;
-    const body = `'${action.title}' görevi '${newStatus}' olarak güncellendi. (Termin: ${formatDateTR(action.dueDate)} ${action.dueTime || ''})`;
+    const body = `'${action.title}' görevi '${newStatus}' olarak güncellendi. (Sorumlu: ${action.assignee} | Kontrol: ${controllerName} | Termin: ${formatDateTR(action.dueDate)} ${action.dueTime || ''})`;
     const targets = ['omer', 'omer eren'];
-    if (action.manager && !targets.includes(normalizeTR(action.manager))) {
-        targets.push(action.manager);
+    if (controllerName && !targets.includes(normalizeTR(controllerName))) {
+        targets.push(controllerName);
     }
 
     dispatchPushToServer(targets, {
@@ -7643,7 +7688,7 @@ async function dispatchActionProgressPush(action, oldStatus, newStatus) {
         sound: 'DONE'
     });
 
-    if (currentUser && isOmerEren(currentUser)) {
+    if (currentUser && (isOmerEren(currentUser) || normalizeTR(currentUser.name) === normalizeTR(controllerName))) {
         sendBrowserNotification(title, body, `action_prog_${action.id}`, 'DONE');
     }
 }
@@ -8223,6 +8268,7 @@ function checkAndTriggerMeetingCallAlerts() {
         else if (diffMins > 60 && diffMins <= 60 * 24 * 14) {
             const soundKey = `alert_invite_${m.id}_${myNameNorm}`;
             const legacySoundKey = `alert_invite_${m.id}_${myNameNorm}_${m.date}_${m.time}`;
+            const isEditedRecord = Boolean(m.updatedBy || m.updatedAt);
             if (!isEditedRecord && !localStorage.getItem(soundKey) && !localStorage.getItem(legacySoundKey)) {
                 playMeetingCallSound('INVITE');
                 sendBrowserNotification(
@@ -8926,7 +8972,15 @@ function populateSelectFilters() {
     }
 
     if (aSelect) {
-        aSelect.innerHTML = appState.users.map(u => `<option value="${u.name}">${u.name} — ${u.dept}</option>`).join('');
+        aSelect.innerHTML = `<option value="">+ Sorumlu Personel Seç / Ekle (Birden Fazla Seçilebilir)...</option>` +
+            appState.users.map(u => `<option value="${escapeHtmlAttr(u.name)}">${escapeHtml(u.name)} — ${escapeHtml(u.dept)}</option>`).join('');
+    }
+
+    const mgrSelect = document.getElementById('action-manager-select');
+    if (mgrSelect) {
+        const currMgr = mgrSelect.value || 'ÖMER EREN';
+        mgrSelect.innerHTML = appState.users.map(u => `<option value="${escapeHtmlAttr(u.name)}">${escapeHtml(u.name)} (${escapeHtml(u.dept)})</option>`).join('');
+        mgrSelect.value = appState.users.some(u => u.name === currMgr) ? currMgr : 'ÖMER EREN';
     }
 
     if (mSelect) {
@@ -8950,7 +9004,7 @@ function getMeetingAccessLevel(m, user = currentUser) {
 
     const hasAssignedAction = appState.actions.some(a =>
         a.meetingId === m.id &&
-        (normalizeTR(a.assignee) === normalizeTR(user.name) || normalizeTR(a.manager || '') === normalizeTR(user.name))
+        (isUserActionAssignee(a, user.name) || normalizeTR(getActionControllerName(a)) === normalizeTR(user.name))
     );
     if (hasAssignedAction) return 'ACTION_ONLY';
 
@@ -8960,8 +9014,8 @@ function getMeetingAccessLevel(m, user = currentUser) {
 function canUserSeeAction(a, user = currentUser) {
     if (!user || !a) return false;
     if (isOmerEren(user)) return true;
-    if (normalizeTR(a.assignee) === normalizeTR(user.name)) return true;
-    if (normalizeTR(a.manager || '') === normalizeTR(user.name)) return true;
+    if (isUserActionAssignee(a, user.name)) return true;
+    if (normalizeTR(getActionControllerName(a)) === normalizeTR(user.name)) return true;
     if (normalizeTR(a.createdBy || '') === normalizeTR(user.name)) return true;
 
     const parentMeeting = appState.meetings.find(m => m.id === a.meetingId);
@@ -9016,7 +9070,7 @@ function renderDashboard() {
                             <div style="display:flex; align-items:center; gap:0.45rem; margin-bottom:0.25rem; flex-wrap:wrap;">
                                 <span class="badge ${a.priority === 'Kritik' ? 'badge-critical' : 'badge-normal'}">${a.priority}</span>
                                 <strong style="font-size:0.85rem; color:#fff;">Sorumlu: ${a.assignee}</strong>
-                                <span style="font-size:0.75rem; color:var(--dizsan-light);">• Yönetici: ${a.manager || 'ÖMER EREN'}</span>
+                                <span style="font-size:0.75rem; color:#c4b5fd;">• Kontrol Eden: ${getActionControllerName(a)}</span>
                             </div>
                             <div style="font-size:0.83rem; color:#cbd5e1;">${a.title}</div>
                             ${renderRecordAuditBadge(a, true)}
@@ -9043,7 +9097,7 @@ function renderDashboard() {
                 const access = getMeetingAccessLevel(m);
                 const recType = m.recordType === 'Eğitim' ? '🎓 Eğitim' : '🤝 Toplantı';
                 if (access === 'ACTION_ONLY') {
-                    const myActions = appState.actions.filter(a => a.meetingId === m.id && (normalizeTR(a.assignee) === normalizeTR(currentUser?.name) || normalizeTR(a.manager || '') === normalizeTR(currentUser?.name)));
+                    const myActions = appState.actions.filter(a => a.meetingId === m.id && (isUserActionAssignee(a, currentUser?.name) || normalizeTR(getActionControllerName(a)) === normalizeTR(currentUser?.name)));
                     return `
                         <div style="background:rgba(245,158,11,0.06); border:1px solid rgba(245,158,11,0.3); border-radius:12px; padding:0.9rem;">
                             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.3rem;">
@@ -9145,7 +9199,7 @@ function renderMeetings() {
         if (partF !== 'ALL' && !(m.participants || []).includes(partF)) return false;
         if (q) {
             if (access === 'ACTION_ONLY') {
-                const myActs = appState.actions.filter(a => a.meetingId === m.id && normalizeTR(a.assignee) === normalizeTR(currentUser?.name));
+                const myActs = appState.actions.filter(a => a.meetingId === m.id && (isUserActionAssignee(a, currentUser?.name) || normalizeTR(getActionControllerName(a)) === normalizeTR(currentUser?.name)));
                 const actHay = normalizeTR(`${m.id} ${myActs.map(x => x.title).join(' ')}`);
                 if (!actHay.includes(q)) return false;
             } else {
@@ -9180,7 +9234,7 @@ function renderMeetings() {
         if (access === 'ACTION_ONLY') {
             const myActions = appState.actions.filter(a =>
                 a.meetingId === m.id &&
-                (normalizeTR(a.assignee) === normalizeTR(currentUser?.name) || normalizeTR(a.manager || '') === normalizeTR(currentUser?.name))
+                (isUserActionAssignee(a, currentUser?.name) || normalizeTR(getActionControllerName(a)) === normalizeTR(currentUser?.name))
             );
 
             return `
@@ -9207,7 +9261,11 @@ function renderMeetings() {
                                             <strong style="color:var(--dizsan-light); font-size:0.82rem;">${ma.id} — Size Atanan Aksiyon</strong>
                                             <span class="countdown-pill ${st.type}">${st.shortText}</span>
                                         </div>
-                                        <div style="font-weight:700; color:#fff; font-size:0.9rem; margin-bottom:0.4rem;">${ma.title}</div>
+                                        <div style="font-weight:700; color:#fff; font-size:0.9rem; margin-bottom:0.35rem;">${ma.title}</div>
+                                        <div style="display:flex; gap:0.6rem; flex-wrap:wrap; font-size:0.75rem; color:#cbd5e1; margin-bottom:0.35rem;">
+                                            <span><i class="fa-solid fa-users" style="color:#38bdf8;"></i> Sorumlu: <strong style="color:#fff;">${ma.assignee}</strong></span>
+                                            <span><i class="fa-solid fa-user-shield" style="color:#c4b5fd;"></i> Kontrol Eden: <strong style="color:#e9d5ff;">${getActionControllerName(ma)}</strong></span>
+                                        </div>
                                         ${renderRecordAuditBadge(ma, true)}
                                         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; font-size:0.78rem; color:var(--text-sec); margin-top:0.4rem;">
                                             <span>Termin: <strong>${formatDateTR(ma.dueDate)} ${ma.dueTime || '09:00'}</strong></span>
@@ -9270,7 +9328,7 @@ function renderMeetings() {
                     </div>
 
                     <div class="card-click-hint">
-                        <i class="fa-solid fa-hand-pointer"></i> Detay, Yoklama, Gündem Tikleme &amp; Karar Ekranı İçin Karta Basın
+                        <i class="fa-solid fa-hand-pointer"></i> Detay, Yoklama, Gündem Tikleme &amp; Aksiyon Ekranı İçin Karta Basın
                     </div>
 
                     ${renderRecordAuditBadge(m, false)}
@@ -9318,8 +9376,26 @@ function renderMeetings() {
                         </div>
                     </div>` : ''}
 
-                    <!-- ALINAN KARARLAR, KARAR SORUMLUSU VE TERMİN TARİHLERİ -->
-                    ${decisionItems.length > 0 ? `
+                    <!-- TOPLANTI AKSİYONLARI (SORUMLULAR, KONTROL EDEN VE TERMİN TARİHLERİ) -->
+                    ${relatedActions.length > 0 ? `
+                    <div style="margin-top:0.55rem; font-size:0.79rem; color:#bae6fd; background:rgba(2,132,199,0.1); border:1px solid rgba(56,189,248,0.3); padding:0.55rem 0.7rem; border-radius:8px;">
+                        <strong style="display:block; margin-bottom:0.35rem; color:var(--dizsan-light);"><i class="fa-solid fa-bolt"></i> Atanan Aksiyonlar, Sorumlular &amp; Kontrol Eden (${relatedActions.length}):</strong>
+                        <div style="display:flex; flex-direction:column; gap:0.32rem;">
+                            ${relatedActions.map((act, aIdx) => `
+                                <div style="background:rgba(15,23,42,0.72); border:1px solid ${act.status === 'Tamamlandı' ? 'rgba(16,185,129,0.35)' : 'rgba(56,189,248,0.28)'}; border-radius:6px; padding:0.38rem 0.52rem;">
+                                    <div style="display:flex; justify-content:space-between; align-items:center; gap:0.4rem;">
+                                        <span style="color:#fff; font-weight:600; font-size:0.79rem;">${aIdx + 1}. ${act.title}</span>
+                                        <span class="badge ${act.status === 'Tamamlandı' ? 'badge-done' : 'badge-normal'}" style="font-size:0.66rem; padding:1px 6px;">${act.status}</span>
+                                    </div>
+                                    <div style="display:flex; gap:0.65rem; flex-wrap:wrap; margin-top:0.22rem; font-size:0.71rem; color:#cbd5e1;">
+                                        <span><i class="fa-solid fa-users" style="color:#38bdf8;"></i> Sorumlu: <strong style="color:#fff;">${act.assignee}</strong></span>
+                                        <span><i class="fa-solid fa-user-shield" style="color:#c4b5fd;"></i> Kontrol: <strong style="color:#e9d5ff;">${getActionControllerName(act)}</strong></span>
+                                        <span><i class="fa-regular fa-calendar-check" style="color:#fbbf24;"></i> Termin: <strong style="color:#fde68a;">${formatDateTR(act.dueDate)} ${act.dueTime || '17:00'}</strong></span>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>` : (decisionItems.length > 0 ? `
                     <div style="margin-top:0.55rem; font-size:0.79rem; color:#a7f3d0; background:rgba(16,185,129,0.08); border:1px solid rgba(16,185,129,0.25); padding:0.55rem 0.7rem; border-radius:8px;">
                         <strong style="display:block; margin-bottom:0.35rem; color:#6ee7b7;"><i class="fa-solid fa-gavel"></i> ${isTraining ? 'Eğitim Sonucu & Değerlendirme:' : 'Alınan Kararlar, Sorumlusu & Termin:'}</strong>
                         <div style="display:flex; flex-direction:column; gap:0.32rem;">
@@ -9333,7 +9409,7 @@ function renderMeetings() {
                                 </div>
                             `).join('')}
                         </div>
-                    </div>` : ''}
+                    </div>` : '')}
 
                     ${attList.length > 0 ? `
                     <div style="margin-top:0.65rem; padding:0.6rem; background:rgba(16,185,129,0.06); border:1px solid rgba(16,185,129,0.25); border-radius:8px;">
@@ -9420,11 +9496,11 @@ function renderActions() {
         // Gizlilik Kuralı: Katılmadığı toplantıdaki başkasına ait aksiyonları göremez, sadece kendisine atanan aksiyonları veya katıldığı toplantının aksiyonlarını görür
         if (!canUserSeeAction(a)) return false;
 
-        if (assigneeF !== 'ALL' && a.assignee !== assigneeF) return false;
+        if (assigneeF !== 'ALL' && !isUserActionAssignee(a, assigneeF)) return false;
         if (prioF !== 'ALL' && a.priority !== prioF) return false;
         if (statF !== 'ALL' && a.status !== statF) return false;
         if (q) {
-            const hay = normalizeTR(`${a.id} ${a.title} ${a.assignee} ${a.manager || ''} ${a.meetingTitle} ${a.note || ''} ${a.createdBy || ''} ${a.updatedBy || ''}`);
+            const hay = normalizeTR(`${a.id} ${a.title} ${getActionAssigneesList(a).join(' ')} ${getActionControllerName(a)} ${a.meetingTitle} ${a.note || ''} ${a.createdBy || ''} ${a.updatedBy || ''}`);
             if (!hay.includes(q)) return false;
         }
         return true;
@@ -9454,10 +9530,10 @@ function renderActions() {
                     ${renderRecordAuditBadge(a, true)}
                 </td>
                 <td>
-                    <span class="participant-tag" style="font-weight:600;"><i class="fa-solid fa-user-check" style="color:var(--dizsan-light);"></i> ${a.assignee}</span>
+                    <div style="display:flex; flex-wrap:wrap; gap:4px;">${formatActionAssigneesBadges(a)}</div>
                 </td>
                 <td>
-                    <span class="participant-tag" style="border-color:rgba(245,158,11,0.35); color:#fde68a;"><i class="fa-solid fa-user-tie"></i> ${a.manager || 'ÖMER EREN'}</span>
+                    <span class="participant-tag" style="border-color:rgba(245,158,11,0.35); color:#fde68a;"><i class="fa-solid fa-user-shield"></i> ${getActionControllerName(a)}</span>
                 </td>
                 <td>
                     <span class="badge ${a.priority === 'Kritik' ? 'badge-critical' : 'badge-normal'}">
@@ -9540,7 +9616,7 @@ function renderReports() {
         const aDate = normalizeToISODate(a.dueDate);
         if (startIso && aDate < startIso) return false;
         if (endIso && aDate > endIso) return false;
-        if (personF !== 'ALL' && a.assignee !== personF) return false;
+        if (personF !== 'ALL' && !isUserActionAssignee(a, personF)) return false;
         if (deptF !== 'ALL') {
             const parentM = appState.meetings.find(m => m.id === a.meetingId);
             if (parentM && parentM.dept !== deptF) return false;
@@ -9577,7 +9653,7 @@ function renderReports() {
 
         pTbody.innerHTML = usersToList.map(u => {
             const attended = filteredMeetings.filter(m => (m.participants || []).includes(u.name)).length;
-            const assigned = filteredActions.filter(a => a.assignee === u.name);
+            const assigned = filteredActions.filter(a => isUserActionAssignee(a, u.name));
             const done = assigned.filter(a => a.status === 'Tamamlandı').length;
             const overdue = assigned.filter(a => evaluateActionReminderStatus(a).stage === 'OVERDUE').length;
             const pRate = assigned.length > 0 ? Math.round((done / assigned.length) * 100) : 100;
@@ -9680,7 +9756,7 @@ function printExecutiveReport() {
                 <tbody>
                     ${repUsers.map(u => {
                         const att = repMeetings.filter(m => (m.participants || []).includes(u.name)).length;
-                        const ass = repActions.filter(a => a.assignee === u.name);
+                        const ass = repActions.filter(a => isUserActionAssignee(a, u.name));
                         const dn = ass.filter(a => a.status === 'Tamamlandı').length;
                         return `
                             <tr>
@@ -9742,7 +9818,7 @@ function renderPersonnel() {
 
     tbody.innerHTML = visibleUsers.map((u, idx) => {
         const attended = appState.meetings.filter(m => (m.participants || []).includes(u.name)).length;
-        const openA = appState.actions.filter(a => a.assignee === u.name && a.status !== 'Tamamlandı').length;
+        const openA = appState.actions.filter(a => isUserActionAssignee(a, u.name) && a.status !== 'Tamamlandı').length;
 
         return `
             <tr>
@@ -10696,15 +10772,22 @@ function renderDraftAgendaItems(focusItemId = null) {
 
         return `
             <div class="agenda-item-card ${isDiscussed ? 'discussed' : 'undiscussed'}">
-                <div style="display:flex; align-items:center; gap:0.55rem;">
+                <div style="display:flex; align-items:center; gap:0.45rem; flex-wrap:wrap;">
                     <span style="font-weight:800; color:#38bdf8; font-size:0.86rem; min-width:22px;">${idx + 1}.</span>
 
-                    <input type="text" id="agenda-title-${it.id}" class="form-control" style="flex:1; min-width:0; padding:0.45rem 0.65rem; font-size:0.84rem; font-weight:600;" placeholder="${idx + 1}. Gündem maddesini yazın..." value="${safeTitle}" oninput="updateAgendaItemTitle('${it.id}', this.value)" onkeydown="handleAgendaTitleKeydown(event, '${it.id}')">
+                    <input type="text" id="agenda-title-${it.id}" class="form-control" style="flex:1 1 200px; min-width:0; padding:0.45rem 0.65rem; font-size:0.84rem; font-weight:600;" placeholder="${idx + 1}. Gündem maddesini yazın..." value="${safeTitle}" oninput="updateAgendaItemTitle('${it.id}', this.value)" onkeydown="handleAgendaTitleKeydown(event, '${it.id}')">
 
-                    <label style="display:inline-flex; align-items:center; gap:0.45rem; cursor:pointer; margin:0; padding:0.38rem 0.65rem; border-radius:8px; background:${isDiscussed ? 'rgba(2,132,199,0.25)' : 'rgba(255,255,255,0.04)'}; border:1.5px solid ${isDiscussed ? '#38bdf8' : 'rgba(148,163,184,0.28)'}; color:${isDiscussed ? '#ffffff' : '#94a3b8'}; font-size:0.76rem; font-weight:700; user-select:none; white-space:nowrap; flex-shrink:0;" title="Görüşüldüyse işaretleyin">
-                        <input type="checkbox" class="blue-tick-checkbox" ${isDiscussed ? 'checked' : ''} onchange="toggleAgendaItemDiscussed('${it.id}', this.checked)">
-                        <span>${isDiscussed ? 'Konuşuldu' : 'Konuşulmadı'}</span>
-                    </label>
+                    <div style="display:inline-flex; align-items:center; gap:0.35rem; background:rgba(15,23,42,0.65); padding:0.2rem; border-radius:10px; border:1px solid rgba(148,163,184,0.2); flex-shrink:0;">
+                        <label style="display:inline-flex; align-items:center; gap:0.4rem; cursor:pointer; margin:0; padding:0.34rem 0.6rem; border-radius:7px; background:${isDiscussed ? 'rgba(2,132,199,0.28)' : 'rgba(255,255,255,0.03)'}; border:1.5px solid ${isDiscussed ? '#38bdf8' : 'rgba(148,163,184,0.22)'}; color:${isDiscussed ? '#ffffff' : '#94a3b8'}; font-size:0.75rem; font-weight:700; user-select:none; white-space:nowrap; transition:all 0.15s;" title="Görüşüldüyse işaretleyin">
+                            <input type="checkbox" class="blue-tick-checkbox" ${isDiscussed ? 'checked' : ''} onchange="toggleAgendaItemDiscussed('${it.id}', this.checked)">
+                            <span>Konuşuldu</span>
+                        </label>
+
+                        <label style="display:inline-flex; align-items:center; gap:0.4rem; cursor:pointer; margin:0; padding:0.34rem 0.6rem; border-radius:7px; background:${!isDiscussed ? 'rgba(245,158,11,0.22)' : 'rgba(255,255,255,0.03)'}; border:1.5px solid ${!isDiscussed ? '#f59e0b' : 'rgba(148,163,184,0.22)'}; color:${!isDiscussed ? '#fef3c7' : '#94a3b8'}; font-size:0.75rem; font-weight:700; user-select:none; white-space:nowrap; transition:all 0.15s;" title="Görüşülmediyse işaretleyin">
+                            <input type="checkbox" class="amber-tick-checkbox" ${!isDiscussed ? 'checked' : ''} onchange="toggleAgendaItemDiscussed('${it.id}', !this.checked)">
+                            <span>Konuşulmadı</span>
+                        </label>
+                    </div>
 
                     <button type="button" class="btn btn-danger btn-sm" style="padding:0.4rem 0.55rem; flex-shrink:0;" onclick="removeAgendaItemRow('${it.id}')" title="Gündem Maddesini Sil">
                         <i class="fa-solid fa-trash"></i>
@@ -11216,9 +11299,7 @@ function openMeetingModal(meetingId = null) {
         ];
         renderDraftAgendaItems();
 
-        currentDraftDecisionItems = [
-            { id: 'dec-' + Date.now(), text: '', responsible: currentUser ? currentUser.name : 'ÖMER EREN', dueDate: todayIso, status: 'Bekliyor' }
-        ];
+        currentDraftDecisionItems = [];
         renderDraftDecisionItems();
 
         if (extToggle) extToggle.checked = false;
@@ -11227,6 +11308,8 @@ function openMeetingModal(meetingId = null) {
         currentDraftAttachments = [];
         renderDraftAttachments();
         renderExistingMeetingActionsInModal(null);
+        // Yeni toplantı açıldığında doğrudan 1 adet boş aksiyon satırı hazır gelsin (birden fazla sorumlu + kontrol edecek kişi alanı hemen görünsün)
+        addInlineActionRow();
         const auditBox = document.getElementById('meeting-audit-info-box');
         if (auditBox) {
             auditBox.innerHTML = renderRecordAuditBadge({
@@ -11282,8 +11365,9 @@ function renderExistingMeetingActionsInModal(meetingId) {
                             <div style="font-weight:700; font-size:0.81rem; color:#fff;">
                                 <span style="color:var(--dizsan-light);">${a.id}:</span> ${a.title}
                             </div>
-                            <div style="font-size:0.72rem; color:#cbd5e1; margin-top:2px; display:flex; flex-wrap:wrap; gap:0.55rem; align-items:center;">
-                                <span><i class="fa-solid fa-user" style="color:#38bdf8;"></i> <strong>${a.assignee}</strong></span>
+                            <div style="font-size:0.72rem; color:#cbd5e1; margin-top:3px; display:flex; flex-wrap:wrap; gap:0.45rem; align-items:center;">
+                                <span style="display:inline-flex; flex-wrap:wrap; gap:3px; align-items:center;"><strong style="color:#94a3b8;">Sorumlu:</strong> ${formatActionAssigneesBadges(a)}</span>
+                                <span style="display:inline-flex; align-items:center; gap:3px; padding:1px 6px; border-radius:5px; background:rgba(245,158,11,0.12); border:1px solid rgba(245,158,11,0.35); color:#fde68a;"><i class="fa-solid fa-user-shield"></i> Kontrol: <strong>${getActionControllerName(a)}</strong></span>
                                 <span><i class="fa-regular fa-clock" style="color:#fbbf24;"></i> <strong style="color:#fde68a;">${formatDateTR(a.dueDate)} ${a.dueTime || '17:00'}</strong></span>
                                 <span class="countdown-pill ${st.type}" style="font-size:0.66rem; padding:1px 6px;">${st.shortText || st.badgeText}</span>
                                 ${compDisp ? `<span style="color:#6ee7b7; font-weight:700;">✅ ${compDisp}</span>` : ''}
@@ -11306,41 +11390,139 @@ function renderExistingMeetingActionsInModal(meetingId) {
     `;
 }
 
-function addInlineActionRow() {
+let inlineRowSequence = 0;
+const inlineRowAssigneesMap = {};
+
+function renderInlineRowAssigneeChips(rowId) {
+    const chipsContainer = document.getElementById(`inline-assignee-chips-${rowId}`);
+    if (!chipsContainer) return;
+    const list = inlineRowAssigneesMap[rowId] || [];
+    if (list.length === 0) {
+        chipsContainer.innerHTML = `<span style="font-size:0.72rem; color:#94a3b8; font-style:italic; padding:2px 4px;">Henüz sorumlu seçilmedi (aşağıdaki listeden 1 veya birden fazla sorumlu seçin)</span>`;
+        return;
+    }
+    chipsContainer.innerHTML = list.map((name, idx) => `
+        <span class="assignee-chip">
+            <i class="fa-solid fa-user-check"></i> ${escapeHtmlAttr(name)}
+            <button type="button" onclick="removeInlineAssignee('${rowId}', ${idx})" title="Sorumluyu Kaldır"><i class="fa-solid fa-xmark"></i></button>
+        </span>
+    `).join('');
+}
+
+function addInlineAssigneeFromSelect(rowId, selectEl) {
+    if (!selectEl) return;
+    const val = selectEl.value;
+    if (!val) return;
+    if (!Array.isArray(inlineRowAssigneesMap[rowId])) {
+        inlineRowAssigneesMap[rowId] = [];
+    }
+    if (val === '__ALL_INVITED__') {
+        const invited = Array.from(document.querySelectorAll('input[name="meeting-participant"]:checked')).map(cb => cb.value);
+        const pool = invited.length > 0 ? invited : appState.users.map(u => u.name);
+        pool.forEach(pName => {
+            if (!inlineRowAssigneesMap[rowId].some(existing => normalizeTR(existing) === normalizeTR(pName))) {
+                inlineRowAssigneesMap[rowId].push(pName);
+            }
+        });
+    } else {
+        if (!inlineRowAssigneesMap[rowId].some(existing => normalizeTR(existing) === normalizeTR(val))) {
+            inlineRowAssigneesMap[rowId].push(val);
+        }
+    }
+    selectEl.value = '';
+    renderInlineRowAssigneeChips(rowId);
+}
+
+function removeInlineAssignee(rowId, idx) {
+    if (!Array.isArray(inlineRowAssigneesMap[rowId])) return;
+    inlineRowAssigneesMap[rowId].splice(idx, 1);
+    renderInlineRowAssigneeChips(rowId);
+}
+
+function removeInlineActionRow(rowId) {
+    delete inlineRowAssigneesMap[rowId];
+    const rowEl = document.getElementById(`inline-action-row-${rowId}`);
+    if (rowEl) rowEl.remove();
+}
+
+function addInlineActionRow(prefill = null) {
     const container = document.getElementById('inline-actions-container');
+    if (!container) return;
+    inlineRowSequence += 1;
+    const rowId = `iar_${Date.now()}_${inlineRowSequence}`;
     const row = document.createElement('div');
     row.className = 'inline-action-row';
+    row.id = `inline-action-row-${rowId}`;
+    row.dataset.rowId = rowId;
+
     const tomorrowIso = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+    const defaultAssignee = currentUser ? currentUser.name : (appState.users[0]?.name || 'ÖMER EREN');
+    const initialAssignees = prefill && Array.isArray(prefill.assignees) && prefill.assignees.length > 0
+        ? [...prefill.assignees]
+        : [defaultAssignee];
+    inlineRowAssigneesMap[rowId] = initialAssignees;
+
+    const defaultController = prefill && prefill.controller ? prefill.controller : 'ÖMER EREN';
+    const userOptionsHtml = appState.users.map(u => `<option value="${escapeHtmlAttr(u.name)}">${u.name} (${u.dept})</option>`).join('');
+    const controllerOptionsHtml = appState.users.map(u => `<option value="${escapeHtmlAttr(u.name)}" ${normalizeTR(u.name) === normalizeTR(defaultController) ? 'selected' : ''}>${u.name} (${u.dept})</option>`).join('');
 
     row.innerHTML = `
-        <div>
-            <label style="font-size:0.68rem; color:#bae6fd; display:block; margin-bottom:2px;">Aksiyon / Görev Açıklaması *</label>
-            <input type="text" class="form-control inline-action-title" placeholder="Yapılacak aksiyonu yazın..." required>
+        <div class="inline-action-top-grid">
+            <div>
+                <label style="font-size:0.72rem; font-weight:700; color:#bae6fd; display:block; margin-bottom:3px;">
+                    <i class="fa-solid fa-bolt" style="color:#38bdf8;"></i> Aksiyon / Alınan Karar &amp; Görev Açıklaması *
+                </label>
+                <input type="text" class="form-control inline-action-title" value="${prefill && prefill.title ? escapeHtmlAttr(prefill.title) : ''}" placeholder="Yapılacak aksiyonu veya alınan kararı yazın...">
+            </div>
+            <div>
+                <label style="font-size:0.72rem; font-weight:700; color:#bae6fd; display:block; margin-bottom:3px;">Öncelik</label>
+                <select class="form-control inline-action-priority">
+                    <option value="Normal" ${prefill && prefill.priority === 'Kritik' ? '' : 'selected'}>🔵 Normal</option>
+                    <option value="Kritik" ${prefill && prefill.priority === 'Kritik' ? 'selected' : ''}>🚨 Kritik</option>
+                </select>
+            </div>
+            <div>
+                <label style="font-size:0.72rem; font-weight:700; color:#fde68a; display:block; margin-bottom:3px;">Termin Tarihi *</label>
+                <input type="date" class="form-control inline-action-duedate" value="${prefill && prefill.dueDate ? prefill.dueDate : tomorrowIso}">
+            </div>
+            <div>
+                <label style="font-size:0.72rem; font-weight:700; color:#fde68a; display:block; margin-bottom:3px;">Saat *</label>
+                <input type="time" class="form-control inline-action-duetime" value="${prefill && prefill.dueTime ? prefill.dueTime : '17:00'}">
+            </div>
+            <div style="display:flex; align-items:flex-end; padding-bottom:1px;">
+                <button type="button" class="btn btn-danger btn-sm" style="height:36px; padding:0 0.65rem;" onclick="removeInlineActionRow('${rowId}')" title="Aksiyon Satırını Kaldır">
+                    <i class="fa-solid fa-trash-can"></i>
+                </button>
+            </div>
         </div>
-        <div>
-            <label style="font-size:0.68rem; color:#bae6fd; display:block; margin-bottom:2px;">Sorumlu *</label>
-            <select class="form-control inline-action-assignee">
-                ${appState.users.map(u => `<option value="${u.name}">${u.name}</option>`).join('')}
-            </select>
+        <div class="inline-action-bottom-grid">
+            <div>
+                <label style="font-size:0.72rem; font-weight:700; color:#7dd3fc; display:flex; align-items:center; justify-content:space-between; margin-bottom:3px;">
+                    <span><i class="fa-solid fa-users" style="color:#38bdf8;"></i> Sorumlu Personeller (Birden Fazla Seçilebilir) *</span>
+                    <span style="font-size:0.66rem; color:#94a3b8; font-weight:500;">Listeden seçtikçe eklenir</span>
+                </label>
+                <div id="inline-assignee-chips-${rowId}" class="multi-assignee-chips"></div>
+                <select class="form-control inline-action-assignee-picker" onchange="addInlineAssigneeFromSelect('${rowId}', this)">
+                    <option value="">+ Sorumlu Personel Seç / Ekle (Çoklu Seçim)...</option>
+                    <option value="__ALL_INVITED__">👥 Tüm Toplantı Katılımcılarını Sorumlu Ekle</option>
+                    ${userOptionsHtml}
+                </select>
+            </div>
+            <div>
+                <label style="font-size:0.72rem; font-weight:700; color:#fde68a; display:block; margin-bottom:3px;">
+                    <i class="fa-solid fa-user-shield" style="color:#f59e0b;"></i> Kontrol Edecek Kişi *
+                </label>
+                <select class="form-control inline-action-controller">
+                    ${controllerOptionsHtml}
+                </select>
+                <div style="font-size:0.67rem; color:#94a3b8; margin-top:3px;">
+                    <i class="fa-solid fa-circle-info"></i> Aksiyonun tamamlanmasını denetleyecek ve bildirim alacak kontrol sorumlusu
+                </div>
+            </div>
         </div>
-        <div>
-            <label style="font-size:0.68rem; color:#bae6fd; display:block; margin-bottom:2px;">Öncelik</label>
-            <select class="form-control inline-action-priority">
-                <option value="Normal">Normal</option>
-                <option value="Kritik">Kritik</option>
-            </select>
-        </div>
-        <div>
-            <label style="font-size:0.68rem; color:#fde68a; display:block; margin-bottom:2px;">Termin Tarihi *</label>
-            <input type="date" class="form-control inline-action-duedate" value="${tomorrowIso}" required>
-        </div>
-        <div>
-            <label style="font-size:0.68rem; color:#fde68a; display:block; margin-bottom:2px;">Saat *</label>
-            <input type="time" class="form-control inline-action-duetime" value="17:00" required>
-        </div>
-        <button type="button" class="btn btn-danger btn-sm" style="height:34px; padding:0 0.5rem;" onclick="this.parentElement.remove()" title="Satırı Kaldır"><i class="fa-solid fa-xmark"></i></button>
     `;
     container.appendChild(row);
+    renderInlineRowAssigneeChips(rowId);
     if (window.initAutoDateInputs) window.initAutoDateInputs(row);
 }
 
@@ -11528,7 +11710,12 @@ function saveMeeting(event) {
     const inlineRows = document.querySelectorAll('#inline-actions-container > div');
     inlineRows.forEach(r => {
         const aTitle = r.querySelector('.inline-action-title')?.value.trim();
-        const aAssignee = r.querySelector('.inline-action-assignee')?.value;
+        const rowId = r.dataset.rowId;
+        const selectedAssignees = (rowId && Array.isArray(inlineRowAssigneesMap[rowId]) && inlineRowAssigneesMap[rowId].length > 0)
+            ? [...inlineRowAssigneesMap[rowId]]
+            : [currentUser ? currentUser.name : 'ÖMER EREN'];
+        const aAssigneeStr = selectedAssignees.join(', ');
+        const aController = r.querySelector('.inline-action-controller')?.value || 'ÖMER EREN';
         const aPrio = r.querySelector('.inline-action-priority')?.value || 'Normal';
         const aDueRaw = r.querySelector('.inline-action-duedate')?.value;
         const aDueTimeRaw = r.querySelector('.inline-action-duetime')?.value || '17:00';
@@ -11541,8 +11728,10 @@ function saveMeeting(event) {
                 meetingId: targetMeetingId,
                 meetingTitle: title,
                 title: aTitle,
-                assignee: aAssignee,
-                manager: "ÖMER EREN",
+                assignees: selectedAssignees,
+                assignee: aAssigneeStr,
+                controller: aController,
+                manager: aController,
                 priority: aPrio,
                 dueDate: normalizeToISODate(aDueRaw),
                 dueTime: aDueTimeRaw,
@@ -11561,7 +11750,7 @@ function saveMeeting(event) {
                 updatedBy: '',
                 updatedAt: ''
             });
-            addAuditLog("AKSİYON", `${newActId} kodlu aksiyon '${aAssignee}' personeline ve Yönetici ÖMER EREN'e ertesi gün ve gün aşırı hatırlatıcılı olarak atandı (Tamamlama: ${formatDateTR(aDueRaw)} ${aDueTimeRaw}).`);
+            addAuditLog("AKSİYON", `${newActId} kodlu aksiyon Sorumlu(lar): '${aAssigneeStr}' ve Kontrol Edecek Kişi: '${aController}' olarak atandı (Tamamlama: ${formatDateTR(aDueRaw)} ${aDueTimeRaw}).`);
         }
     });
 
@@ -11640,11 +11829,57 @@ function onActionModalStatusChange(statusVal) {
     }
 }
 
+let currentActionModalAssignees = [];
+
+function renderActionModalAssigneeChips() {
+    const chipsBox = document.getElementById('action-modal-assignee-chips');
+    if (!chipsBox) return;
+    if (currentActionModalAssignees.length === 0) {
+        chipsBox.innerHTML = `<span style="font-size:0.72rem; color:#94a3b8; font-style:italic; padding:2px 4px;">Henüz sorumlu seçilmedi (aşağıdan 1 veya birden fazla sorumlu seçin)</span>`;
+        return;
+    }
+    chipsBox.innerHTML = currentActionModalAssignees.map((name, idx) => `
+        <span class="assignee-chip">
+            <i class="fa-solid fa-user-check"></i> ${escapeHtmlAttr(name)}
+            <button type="button" onclick="removeActionModalAssignee(${idx})" title="Sorumluyu Kaldır"><i class="fa-solid fa-xmark"></i></button>
+        </span>
+    `).join('');
+}
+
+function addActionModalAssigneeFromSelect(selectEl) {
+    if (!selectEl) return;
+    const val = selectEl.value;
+    if (!val) return;
+    if (val === '__ALL_USERS__') {
+        appState.users.forEach(u => {
+            if (!currentActionModalAssignees.some(x => normalizeTR(x) === normalizeTR(u.name))) {
+                currentActionModalAssignees.push(u.name);
+            }
+        });
+    } else {
+        if (!currentActionModalAssignees.some(x => normalizeTR(x) === normalizeTR(val))) {
+            currentActionModalAssignees.push(val);
+        }
+    }
+    selectEl.value = '';
+    renderActionModalAssigneeChips();
+}
+
+function removeActionModalAssignee(idx) {
+    currentActionModalAssignees.splice(idx, 1);
+    renderActionModalAssigneeChips();
+}
+
 function openActionModal(actionId = null) {
     populateSelectFilters();
     const modal = document.getElementById('action-modal');
     const compDateEl = document.getElementById('action-completed-date-input');
     const compTimeEl = document.getElementById('action-completed-time-input');
+    const aSelect = document.getElementById('action-assignee-select');
+    if (aSelect) {
+        aSelect.innerHTML = `<option value="">+ Sorumlu Personel Seç / Ekle (Çoklu Seçim)...</option><option value="__ALL_USERS__">👥 Tüm Personelleri Sorumlu Ekle</option>` +
+            appState.users.map(u => `<option value="${escapeHtmlAttr(u.name)}">${u.name} (${u.dept})</option>`).join('');
+    }
 
     if (actionId) {
         const a = appState.actions.find(x => x.id === actionId);
@@ -11653,8 +11888,13 @@ function openActionModal(actionId = null) {
         document.getElementById('action-id').value = a.id;
         document.getElementById('action-meeting-select').value = a.meetingId || 'GENEL';
         document.getElementById('action-title-input').value = a.title;
-        document.getElementById('action-assignee-select').value = a.assignee;
-        document.getElementById('action-manager-select').value = a.manager || 'ÖMER EREN';
+        currentActionModalAssignees = getActionAssigneesList(a);
+        if (currentActionModalAssignees.length === 0 && a.assignee) {
+            currentActionModalAssignees = [a.assignee];
+        }
+        renderActionModalAssigneeChips();
+        if (aSelect) aSelect.value = '';
+        document.getElementById('action-manager-select').value = getActionControllerName(a);
         document.getElementById('action-priority-select').value = a.priority || 'Normal';
         setMaskedDateInputValue(document.getElementById('action-duedate-input'), a.dueDate);
         document.getElementById('action-duetime-input').value = a.dueTime || '17:00';
@@ -11675,6 +11915,9 @@ function openActionModal(actionId = null) {
         document.getElementById('action-modal-title').innerHTML = `<i class="fa-solid fa-stopwatch" style="color:#fbbf24;"></i> Yeni Aksiyon &amp; Ertesi Gün / Gün Aşırı Hatırlatıcı Tanımla`;
         document.getElementById('action-id').value = '';
         document.getElementById('action-title-input').value = '';
+        currentActionModalAssignees = [currentUser ? currentUser.name : (appState.users[0]?.name || 'ÖMER EREN')];
+        renderActionModalAssigneeChips();
+        if (aSelect) aSelect.value = '';
         document.getElementById('action-manager-select').value = 'ÖMER EREN';
         document.getElementById('action-priority-select').value = 'Normal';
         const tomorrowIso = new Date(Date.now() + 86400000).toISOString().split('T')[0];
@@ -11712,8 +11955,20 @@ function saveAction(event) {
     const meetingTitle = matchedMeeting ? matchedMeeting.title : "Genel Operasyon Görevi";
 
     const title = document.getElementById('action-title-input').value.trim();
-    const assignee = document.getElementById('action-assignee-select').value;
-    const manager = document.getElementById('action-manager-select').value || "ÖMER EREN";
+    const pendingSelectVal = document.getElementById('action-assignee-select')?.value || '';
+    if (pendingSelectVal && pendingSelectVal !== '__ALL_USERS__') {
+        if (!currentActionModalAssignees.some(x => normalizeTR(x) === normalizeTR(pendingSelectVal))) {
+            currentActionModalAssignees.push(pendingSelectVal);
+        }
+    }
+    if (currentActionModalAssignees.length === 0) {
+        alert("Lütfen en az 1 Sorumlu Personel seçin!");
+        return;
+    }
+    const assignees = [...currentActionModalAssignees];
+    const assignee = assignees.join(', ');
+    const controller = document.getElementById('action-manager-select').value || "ÖMER EREN";
+    const manager = controller;
     const priority = document.getElementById('action-priority-select').value;
     const dueDate = normalizeToISODate(document.getElementById('action-duedate-input').value);
     const dueTime = document.getElementById('action-duetime-input').value || '17:00';
@@ -11737,7 +11992,7 @@ function saveAction(event) {
             const existing = appState.actions[idx];
             appState.actions[idx] = {
                 ...existing,
-                meetingId, meetingTitle, title, assignee, manager, priority, dueDate, dueTime, status, note,
+                meetingId, meetingTitle, title, assignees, assignee, controller, manager, priority, dueDate, dueTime, status, note,
                 completedDate, completedTime, completedAt,
                 remindOneDayBefore: true,
                 remindSameDay: true,
@@ -11749,7 +12004,7 @@ function saveAction(event) {
                 updatedBy: currentUser ? currentUser.name : "ÖMER EREN",
                 updatedAt: formatNowTR()
             };
-            addAuditLog("AKSİYON", `${idVal} aksiyonu ${currentUser ? currentUser.name : 'ÖMER EREN'} tarafından güncellendi (Sorumlu: ${assignee}, Durum: ${status}, Tamamlama Hedefi: ${formatDateTR(dueDate)} ${dueTime}${completedAt ? `, Kapanış: ${completedAt}` : ''}).`);
+            addAuditLog("AKSİYON", `${idVal} aksiyonu ${currentUser ? currentUser.name : 'ÖMER EREN'} tarafından güncellendi (Sorumlu(lar): ${assignee}, Kontrol Eden: ${controller}, Durum: ${status}, Tamamlama Hedefi: ${formatDateTR(dueDate)} ${dueTime}${completedAt ? `, Kapanış: ${completedAt}` : ''}).`);
         }
     } else {
         const newId = generateUniqueActionId();
@@ -11757,7 +12012,7 @@ function saveAction(event) {
         const todayIso = new Date().toISOString().split('T')[0];
         appState.actions.unshift({
             id: newId,
-            meetingId, meetingTitle, title, assignee, manager, priority, dueDate, dueTime, status, note,
+            meetingId, meetingTitle, title, assignees, assignee, controller, manager, priority, dueDate, dueTime, status, note,
             completedDate, completedTime, completedAt,
             remindOneDayBefore: true,
             remindSameDay: true,
@@ -11769,7 +12024,7 @@ function saveAction(event) {
             updatedBy: '',
             updatedAt: ''
         });
-        addAuditLog("AKSİYON", `${newId} aksiyonu tanımlandı: '${title}' -> Sorumlu: ${assignee} | Yönetici: ${manager} (Hedef Tamamlama: ${formatDateTR(dueDate)} ${dueTime} • Ertesi gün uyarısı ve gün aşırı hatırlatma aktif).`);
+        addAuditLog("AKSİYON", `${newId} aksiyonu tanımlandı: '${title}' -> Sorumlu(lar): ${assignee} | Kontrol Edecek Kişi: ${controller} (Hedef Tamamlama: ${formatDateTR(dueDate)} ${dueTime} • Ertesi gün uyarısı ve gün aşırı hatırlatma aktif).`);
     }
 
     const targetAction = idVal ? appState.actions.find(a => a.id === idVal) : appState.actions[0];
@@ -12095,9 +12350,9 @@ function printMeetingMinutes(meetingId) {
                 </div>
             </div>
 
+            ${decisionList.length > 0 ? `
             <div style="margin-bottom:16px; font-size:12px;">
                 <strong>${isTraining ? 'Alınan Kararlar ve Eğitim Sonucu:' : 'Alınan Kararlar, Karar Sorumlusu ve Termin Tarihleri:'}</strong>
-                ${decisionList.length > 0 ? `
                 <table style="width:100%; border-collapse:collapse; font-size:11.5px; margin-top:5px;">
                     <thead>
                         <tr style="background:#ecfdf5;">
@@ -12118,8 +12373,8 @@ function printMeetingMinutes(meetingId) {
                         `).join('')}
                     </tbody>
                 </table>
-                ` : `<div style="margin-top:4px; padding:10px; border:1px solid #cbd5e1; border-radius:4px; white-space:pre-line; line-height:1.5;">${m.decisions || '-'}</div>`}
             </div>
+            ` : ''}
 
             ${attList.length > 0 ? `
             <div style="margin-bottom:16px; font-size:12.5px;">
@@ -12137,14 +12392,14 @@ function printMeetingMinutes(meetingId) {
                 </div>
             </div>` : ''}
 
-            <h3 style="font-size:14px; margin:0 0 8px;">Atanan Aksiyonlar ve Termin Tarihleri</h3>
+            <h3 style="font-size:14px; margin:0 0 8px;">Toplantı Aksiyonları, Sorumlu Personeller ve Kontrol Edecek Kişi</h3>
             <table style="width:100%; border-collapse:collapse; font-size:11px; margin-bottom:22px;">
                 <thead>
                     <tr style="background:#e2e8f0;">
                         <th style="border:1px solid #94a3b8; padding:6px;">Kod</th>
                         <th style="border:1px solid #94a3b8; padding:6px;">Aksiyon / Görev Tanımı</th>
-                        <th style="border:1px solid #94a3b8; padding:6px;">Sorumlu Personel</th>
-                        <th style="border:1px solid #94a3b8; padding:6px;">Yönetici</th>
+                        <th style="border:1px solid #94a3b8; padding:6px;">Sorumlu Personel(ler)</th>
+                        <th style="border:1px solid #94a3b8; padding:6px;">Kontrol Edecek Kişi</th>
                         <th style="border:1px solid #94a3b8; padding:6px;">Termin Tarihi</th>
                         <th style="border:1px solid #94a3b8; padding:6px;">Oluşturan / Değiştiren</th>
                         <th style="border:1px solid #94a3b8; padding:6px;">Durum</th>
@@ -12157,8 +12412,8 @@ function printMeetingMinutes(meetingId) {
                         <tr>
                             <td style="border:1px solid #94a3b8; padding:6px;">${a.id}</td>
                             <td style="border:1px solid #94a3b8; padding:6px;">${a.title}</td>
-                            <td style="border:1px solid #94a3b8; padding:6px; font-weight:bold;">${a.assignee}</td>
-                            <td style="border:1px solid #94a3b8; padding:6px;">${a.manager || 'ÖMER EREN'}</td>
+                            <td style="border:1px solid #94a3b8; padding:6px; font-weight:bold;">${getActionAssigneesList(a).join(', ')}</td>
+                            <td style="border:1px solid #94a3b8; padding:6px; font-weight:bold;">${getActionControllerName(a)}</td>
                             <td style="border:1px solid #94a3b8; padding:6px;">${formatDateTR(a.dueDate)} ${a.dueTime || ''}</td>
                             <td style="border:1px solid #94a3b8; padding:6px; font-size:10px;">
                                 Oluşturan: ${aAudit.createdBy} (${aAudit.createdAt})<br>
@@ -12201,7 +12456,7 @@ function printMeetingMinutes(meetingId) {
 }
 
 function exportAllDataExcelCSV() {
-    let csv = "\uFEFFAksiyon Kodu;Toplantı Kodu;Toplantı Başlığı;Aksiyon Tanımı;Sorumlu Personel;Bilgilendirilen Yönetici;Öncelik;Termin Tarihi;Saat;Durum;Not;Oluşturan Kişi;Oluşturulma Tarihi ve Saati;Değiştiren Kişi;Değiştirilme Tarihi ve Saati\n";
+    let csv = "\uFEFFAksiyon Kodu;Toplantı Kodu;Toplantı Başlığı;Aksiyon Tanımı;Sorumlu Personel(ler);Kontrol Edecek Kişi;Öncelik;Termin Tarihi;Saat;Durum;Not;Oluşturan Kişi;Oluşturulma Tarihi ve Saati;Değiştiren Kişi;Değiştirilme Tarihi ve Saati\n";
     const visibleActions = isOmerEren(currentUser)
         ? appState.actions
         : appState.actions.filter(a => canUserSeeAction(a));
@@ -12212,7 +12467,7 @@ function exportAllDataExcelCSV() {
         const parentM = appState.meetings.find(m => m.id === a.meetingId);
         const access = parentM ? getMeetingAccessLevel(parentM) : 'FULL';
         const meetingTitleSafe = access === 'ACTION_ONLY' ? `${a.meetingId} (Sadece Aksiyon)` : a.meetingTitle;
-        csv += `${clean(a.id)};${clean(a.meetingId)};${clean(meetingTitleSafe)};${clean(a.title)};${clean(a.assignee)};${clean(a.manager || 'ÖMER EREN')};${clean(a.priority)};${formatDateTR(a.dueDate)};${clean(a.dueTime)};${clean(a.status)};${clean(a.note)};${clean(aAudit.createdBy)};${clean(aAudit.createdAt)};${clean(aAudit.updatedBy)};${clean(aAudit.updatedAt)}\n`;
+        csv += `${clean(a.id)};${clean(a.meetingId)};${clean(meetingTitleSafe)};${clean(a.title)};${clean(getActionAssigneesList(a).join(', '))};${clean(getActionControllerName(a))};${clean(a.priority)};${formatDateTR(a.dueDate)};${clean(a.dueTime)};${clean(a.status)};${clean(a.note)};${clean(aAudit.createdBy)};${clean(aAudit.createdAt)};${clean(aAudit.updatedBy)};${clean(aAudit.updatedAt)}\n`;
     });
 
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -12676,13 +12931,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 12000);
 
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('sw.js?v=4.9.2').then(reg => {
+        navigator.serviceWorker.register('sw.js?v=4.9.3').then(reg => {
             try { reg.update(); } catch (e) {}
             syncUserAndStateToServiceWorker();
         }).catch(() => {});
     }
 });
-</script>
+
+    </script>
 <script>
 /**
  * DİZSAN KURUMSAL SIFIR TEMAS OTOMATİK GÜNCELLEME MOTORU (dizsan-auto-updater.js)
