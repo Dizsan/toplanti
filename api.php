@@ -63,6 +63,49 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             unset($u);
         }
+        $attDir = __DIR__ . '/attachments';
+        if (!is_dir($attDir)) {
+            @mkdir($attDir, 0775, true);
+        }
+        if (isset($decoded['meetings']) && is_array($decoded['meetings'])) {
+            foreach ($decoded['meetings'] as &$m) {
+                if (is_array($m) && isset($m['attachments']) && is_array($m['attachments'])) {
+                    foreach ($m['attachments'] as &$att) {
+                        if (is_array($att) && !empty($att['dataUrl']) && strpos($att['dataUrl'], 'data:') === 0) {
+                            $commaPos = strpos($att['dataUrl'], ',');
+                            if ($commaPos !== false) {
+                                $b64 = preg_replace('/\s+/', '', substr($att['dataUrl'], $commaPos + 1));
+                                $bin = base64_decode($b64, true);
+                                if ($bin !== false && strlen($bin) > 0) {
+                                    $rawId = isset($att['id']) && $att['id'] !== '' ? (string)$att['id'] : (string)time();
+                                    $safeId = preg_replace('/[^A-Za-z0-9_-]/', '_', $rawId);
+                                    $mime = strtolower(isset($att['type']) ? (string)$att['type'] : '');
+                                    $nameLower = strtolower(isset($att['name']) ? (string)$att['name'] : '');
+                                    $ext = '.bin';
+                                    if (strpos($mime, 'pdf') !== false || substr($nameLower, -4) === '.pdf') {
+                                        $ext = '.pdf';
+                                    } elseif (strpos($mime, 'png') !== false || substr($nameLower, -4) === '.png') {
+                                        $ext = '.png';
+                                    } elseif (strpos($mime, 'jpeg') !== false || strpos($mime, 'jpg') !== false || substr($nameLower, -4) === '.jpg' || substr($nameLower, -5) === '.jpeg') {
+                                        $ext = '.jpg';
+                                    } elseif (strpos($mime, 'webp') !== false || substr($nameLower, -5) === '.webp') {
+                                        $ext = '.webp';
+                                    }
+                                    $relPath = 'attachments/' . $safeId . $ext;
+                                    $absPath = $attDir . '/' . $safeId . $ext;
+                                    if (@file_put_contents($absPath, $bin) !== false) {
+                                        $att['fileUrl'] = $relPath;
+                                        $att['dataUrl'] = '';
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    unset($att);
+                }
+            }
+            unset($m);
+        }
         file_put_contents($dataFile, json_encode($decoded, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE), LOCK_EX);
         echo json_encode(['status' => 'ok', 'updated_at' => date('c')]);
     } else {

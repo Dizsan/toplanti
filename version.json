@@ -1,6 +1,6 @@
 {
-  "version": "5.0.2",
-  "build": 502,
-  "updatedAt": "29.10.2026 00:45",
-  "notes": "v5.0.2: Alt madde aksiyonları 3 kademeli numaralandırma sistemine (2.1.1. Aksiyon, 2.1.2. Aksiyon) geçirildi; Enter veya + Yeni Aksiyon ile alt satıra geçildiğinde otomatik ardışık alt aksiyon kodu üretimi sağlandı."
+  "version": "5.0.3",
+  "build": 503,
+  "updatedAt": "29.10.2026 01:21",
+  "notes": "v5.0.3: Tüm fotoğraf ve ek dosyalar boyut sınırı olmaksızın %100 attachments/ klasörüne taşındı; shared_state.json içindeki Base64 resim verisi tamamen temizlendi."
 }

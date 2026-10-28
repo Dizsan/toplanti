@@ -10,8 +10,8 @@
  * ==========================================================================
  */
 
-const INITIAL_APP_VERSION = "v5.0.2";
-const CURRENT_APP_VERSION = "5.0.2";
+const INITIAL_APP_VERSION = "v5.0.3";
+const CURRENT_APP_VERSION = "5.0.3";
 const VAPID_PUBLIC_KEY = "BJIJfCBiDwya3clZOWS08EDxfuN18xtfJGTX0n_apWBTEW7-kO_FGKNy5VDRvUsMgc46IP5oxLlIHqgrDo-JTkE";
 const STORAGE_KEY_STATE = "dizsan_toplanti_shared_state_v2";
 const STORAGE_KEY_SESSION = "dizsan_toplanti_active_user";
@@ -144,7 +144,7 @@ const OFFICIAL_PERSONNEL_LIST = OFFICIAL_PERSONNEL_RAW.map(u => ({ ...u, email: 
 
 const INITIAL_CHANGELOG = [
     {
-        version: "v5.0.2",
+        version: "v5.0.3",
         date: "28.10.2026 23:51",
         author: "Sistem Güncellemesi (ÖMER EREN)",
         notes: "Her alt gündem maddesinin (1.1, 1.2, 1.3, 1.4 vb.) sonuna bağımsız Aksiyon tiki eklendi; örneğin 1.1'de aksiyon yokken 1.2'de Aksiyon tiki işaretlendiğinde altta doğrudan 1.2 koduyla başlayan aksiyon metin alanı açılması sağlandı."
@@ -478,6 +478,19 @@ async function getAttachmentFromIDB(attId) {
     }
 }
 
+function getAttachmentRelPath(att) {
+    if (att && att.fileUrl) return att.fileUrl;
+    const safeId = String((att && att.id) || Date.now()).replace(/[^A-Za-z0-9_-]/g, '_');
+    let ext = '.bin';
+    const mime = String((att && att.type) || '').toLowerCase();
+    const nameLower = String((att && att.name) || '').toLowerCase();
+    if (mime.includes('pdf') || nameLower.endsWith('.pdf')) ext = '.pdf';
+    else if (mime.includes('png') || nameLower.endsWith('.png')) ext = '.png';
+    else if (mime.includes('jpeg') || mime.includes('jpg') || nameLower.endsWith('.jpg') || nameLower.endsWith('.jpeg')) ext = '.jpg';
+    else if (mime.includes('webp') || nameLower.endsWith('.webp')) ext = '.webp';
+    return `attachments/${safeId}${ext}`;
+}
+
 async function rehydrateAttachmentsFromIDB(stateObj) {
     if (!stateObj || !Array.isArray(stateObj.meetings)) return false;
     let restoredAny = false;
@@ -485,7 +498,7 @@ async function rehydrateAttachmentsFromIDB(stateObj) {
         for (const m of stateObj.meetings) {
             if (!Array.isArray(m.attachments)) continue;
             for (const att of m.attachments) {
-                if (att && att.id && !att.dataUrl) {
+                if (att && att.id && !att.dataUrl && !att.fileUrl) {
                     const cached = await getAttachmentFromIDB(att.id);
                     if (cached && cached.dataUrl) {
                         att.dataUrl = cached.dataUrl;
@@ -507,12 +520,10 @@ function buildCompactStateForLocalStorage(stateObj) {
         cloned.meetings.forEach(m => {
             if (Array.isArray(m.attachments)) {
                 m.attachments.forEach(att => {
-                    if (att && att.dataUrl && att.dataUrl.length > 180000) {
+                    if (att && att.dataUrl) {
                         att.hasCachedBlob = true;
                         if (!att.fileUrl) {
-                            const safeId = String(att.id || '').replace(/[^A-Za-z0-9_-]/g, '_');
-                            const isPdf = (att.type || '').toLowerCase().includes('pdf') || (att.name || '').toLowerCase().endsWith('.pdf');
-                            att.fileUrl = `attachments/${safeId}${isPdf ? '.pdf' : '.bin'}`;
+                            att.fileUrl = getAttachmentRelPath(att);
                         }
                         att.dataUrl = "";
                     }
@@ -695,23 +706,17 @@ async function syncToServer() {
 }
 
 async function uploadAttachmentToGitHubIfNeeded(att, token) {
-    if (!att || !att.dataUrl || att.dataUrl.length < 250000) return;
+    if (!att || !att.dataUrl || att.kind === 'NOTE') return;
     try {
         const commaIdx = att.dataUrl.indexOf(',');
         if (commaIdx === -1) return;
         const b64Content = att.dataUrl.slice(commaIdx + 1).replace(/\s/g, '');
         const safeId = String(att.id || Date.now()).replace(/[^A-Za-z0-9_-]/g, '_');
-        let ext = '.bin';
-        const mime = (att.type || '').toLowerCase();
-        const nameLower = (att.name || '').toLowerCase();
-        if (mime.includes('pdf') || nameLower.endsWith('.pdf')) ext = '.pdf';
-        else if (mime.includes('png') || nameLower.endsWith('.png')) ext = '.png';
-        else if (mime.includes('jpeg') || mime.includes('jpg') || nameLower.endsWith('.jpg') || nameLower.endsWith('.jpeg')) ext = '.jpg';
-
-        const relPath = `attachments/${safeId}${ext}`;
+        const relPath = getAttachmentRelPath(att);
         const apiUrl = `https://api.github.com/repos/Dizsan/toplanti/contents/${relPath}`;
 
         if (att.fileUrl && (att.fileUrl === relPath || att.fileUrl.endsWith(relPath))) {
+            att.dataUrl = '';
             return;
         }
 
@@ -744,21 +749,20 @@ async function uploadAttachmentToGitHubIfNeeded(att, token) {
         });
         if (putRes.ok) {
             att.fileUrl = relPath;
+            att.dataUrl = '';
         }
     } catch (e) {}
 }
 
 function buildCompactCloudPayload(stateObj) {
-    const cloned = sanitizeStateForCloud(stateObj);
+    const cloned = JSON.parse(JSON.stringify(sanitizeStateForCloud(stateObj)));
     if (Array.isArray(cloned.meetings)) {
         cloned.meetings.forEach(m => {
             if (Array.isArray(m.attachments)) {
                 m.attachments.forEach(att => {
-                    if (att && att.dataUrl && att.dataUrl.length > 250000) {
-                        if (!att.fileUrl) {
-                            const safeId = String(att.id || '').replace(/[^A-Za-z0-9_-]/g, '_');
-                            const isPdf = (att.type || '').toLowerCase().includes('pdf') || (att.name || '').toLowerCase().endsWith('.pdf');
-                            att.fileUrl = `attachments/${safeId}${isPdf ? '.pdf' : '.bin'}`;
+                    if (att && (att.dataUrl || att.kind !== 'NOTE')) {
+                        if (!att.fileUrl && att.id) {
+                            att.fileUrl = getAttachmentRelPath(att);
                         }
                         att.dataUrl = '';
                     }
@@ -776,7 +780,7 @@ async function pushStateToGitHubCloud(isRetry = false) {
             for (const m of appState.meetings) {
                 if (Array.isArray(m.attachments)) {
                     for (const att of m.attachments) {
-                        if (att && att.dataUrl && att.dataUrl.length >= 250000) {
+                        if (att && att.dataUrl) {
                             await uploadAttachmentToGitHubIfNeeded(att, token);
                         }
                     }
@@ -938,8 +942,9 @@ async function syncFromServer() {
                     if (!existing) {
                         mergedAttMap.set(String(la.id), { ...la });
                     } else {
-                        if (!existing.dataUrl && la.dataUrl) existing.dataUrl = la.dataUrl;
                         if (!existing.fileUrl && la.fileUrl) existing.fileUrl = la.fileUrl;
+                        if (!existing.fileUrl && !existing.dataUrl && la.dataUrl) existing.dataUrl = la.dataUrl;
+                        if (existing.fileUrl) existing.dataUrl = '';
                     }
                 });
                 m.attachments = Array.from(mergedAttMap.values());
@@ -5381,7 +5386,7 @@ async function openAttachmentPreviewModal(meetingId, attId) {
 }
 
 async function renderAttachmentPreviewModalContent(att) {
-    if (!att.dataUrl && att.id) {
+    if (!att.fileUrl && !att.dataUrl && att.id) {
         const cached = await getAttachmentFromIDB(att.id);
         if (cached && cached.dataUrl) {
             att.dataUrl = cached.dataUrl;
@@ -8476,11 +8481,12 @@ function printMeetingMinutes(meetingId) {
                 <strong>Eklenen Fotoğraf, El Yazısı Kağıt Tutanak ve Belgeler (${attList.length} Adet):</strong>
                 <div style="margin-top:6px; display:grid; grid-template-columns:repeat(2, 1fr); gap:10px;">
                     ${attList.map(att => {
-                        const isImg = (att.type || '').startsWith('image/');
+                        const isImg = (att.type || '').startsWith('image/') || /\.(png|jpe?g|gif|webp|bmp)$/i.test(att.name || att.fileUrl || '');
+                        const printImgSrc = isImg ? (att.fileUrl || att.dataUrl || '') : '';
                         return `
                             <div style="border:1px solid #cbd5e1; padding:8px; border-radius:4px;">
                                 <div style="font-weight:bold; font-size:11px; margin-bottom:4px;">📎 ${att.name || 'Ek Belge'} ${att.note ? `— ${att.note}` : ''}</div>
-                                ${isImg && att.dataUrl ? `<img src="${att.dataUrl}" style="max-width:100%; max-height:210px; object-fit:contain; display:block; margin-top:4px;">` : ''}
+                                ${printImgSrc ? `<img src="${printImgSrc}" style="max-width:100%; max-height:210px; object-fit:contain; display:block; margin-top:4px;">` : ''}
                             </div>
                         `;
                     }).join('')}
@@ -9036,7 +9042,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 12000);
 
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('sw.js?v=5.0.2').then(reg => {
+        navigator.serviceWorker.register('sw.js?v=5.0.3').then(reg => {
             try { reg.update(); } catch (e) {}
             syncUserAndStateToServiceWorker();
         }).catch(() => {});
