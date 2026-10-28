@@ -10,7 +10,7 @@
  * ==========================================================================
  */
 
-const INITIAL_APP_VERSION = "v4.9.7";
+const INITIAL_APP_VERSION = "v4.9.8";
 const CURRENT_APP_VERSION = "4.9.5";
 const VAPID_PUBLIC_KEY = "BJIJfCBiDwya3clZOWS08EDxfuN18xtfJGTX0n_apWBTEW7-kO_FGKNy5VDRvUsMgc46IP5oxLlIHqgrDo-JTkE";
 const STORAGE_KEY_STATE = "dizsan_toplanti_shared_state_v2";
@@ -143,6 +143,12 @@ const OFFICIAL_PERSONNEL_RAW = [
 const OFFICIAL_PERSONNEL_LIST = OFFICIAL_PERSONNEL_RAW.map(u => ({ ...u, email: resolveUserEmail(u) }));
 
 const INITIAL_CHANGELOG = [
+    {
+        version: "v4.9.8",
+        date: "28.10.2026 23:22",
+        author: "Sistem Güncellemesi (ÖMER EREN)",
+        notes: "Gündem maddeleri konuşuldu olarak işaretlendiğinde alt maddelerin ve aksiyonların otomatik olarak 1.1, 1.2 (2. madde için 2.1, 2.2 vb.) şeklinde hiyerarşik numaralandırılması sağlandı."
+    },
     {
         version: "v4.9.7",
         date: "28.10.2026 23:05",
@@ -4364,8 +4370,9 @@ function renderMeetings() {
                                         </div>
                                     </div>
                                     ${isAgDisc && ag.explanation ? `
-                                        <div style="margin-top:0.22rem; padding-top:0.22rem; border-top:1px dashed rgba(52,211,153,0.3); font-size:0.75rem; color:#a7f3d0; white-space:pre-line;">
-                                            <i class="fa-solid fa-comment-dots"></i> <strong>Açıklama:</strong> ${ag.explanation}
+                                        <div style="margin-top:0.25rem; padding-top:0.25rem; border-top:1px dashed rgba(52,211,153,0.3); font-size:0.75rem; color:#a7f3d0; white-space:pre-line;">
+                                            <div style="font-weight:700; color:#6ee7b7; margin-bottom:2px;"><i class="fa-solid fa-comment-dots"></i> ${idx + 1}. Madde Alt Notları (${idx + 1}.1, ${idx + 1}.2):</div>
+                                            <div style="padding-left:0.35rem;">${formatAgendaExplanationSubItems(ag.explanation, idx + 1)}</div>
                                         </div>
                                     ` : ''}
                                     ${agActions.length > 0 ? `
@@ -5963,14 +5970,22 @@ function removeAgendaItemRow(itemId) {
 
 function toggleAgendaItemDiscussed(itemId, nextState) {
     syncDraftAgendaStateFromDOM();
-    const item = currentDraftAgendaItems.find(it => it.id === itemId);
-    if (!item) return;
+    const itemIdx = currentDraftAgendaItems.findIndex(it => it.id === itemId);
+    if (itemIdx === -1) return;
+    const item = currentDraftAgendaItems[itemIdx];
+    const agNum = itemIdx + 1;
     item.discussed = (nextState === true || nextState === false) ? nextState : null;
+    if (item.discussed === true && (!item.explanation || !item.explanation.trim())) {
+        item.explanation = `${agNum}.1 `;
+    }
     renderDraftAgendaItems();
     if (item.discussed === true) {
         setTimeout(() => {
             const expEl = document.getElementById(`agenda-exp-${itemId}`);
-            if (expEl) expEl.focus();
+            if (expEl) {
+                expEl.focus();
+                expEl.selectionStart = expEl.selectionEnd = expEl.value.length;
+            }
         }, 40);
     }
 }
@@ -5986,6 +6001,119 @@ function updateAgendaItemExplanation(itemId, val) {
     const item = currentDraftAgendaItems.find(it => it.id === itemId);
     if (!item) return;
     item.explanation = val;
+}
+
+function formatAgendaExplanationSubItems(rawText, agNum = 1) {
+    if (!rawText) return '';
+    const cleaned = cleanNumberedText(rawText);
+    if (!cleaned) return '';
+    const lines = cleaned.split('\n').map(l => l.trim()).filter(Boolean);
+    return lines.map((line, subIdx) => {
+        const stripped = line.replace(/^\d+(?:\.\d+)?[\.\)\-]?\s*/, '').trim();
+        return stripped ? `${agNum}.${subIdx + 1} ${stripped}` : '';
+    }).filter(Boolean).join('\n');
+}
+
+function handleAgendaExplanationFocus(textarea, itemId, agNum) {
+    if (!textarea) return;
+    if (textarea.value.trim() === '') {
+        textarea.value = `${agNum}.1 `;
+        updateAgendaItemExplanation(itemId, textarea.value);
+        setTimeout(() => {
+            textarea.selectionStart = textarea.selectionEnd = textarea.value.length;
+        }, 0);
+    }
+}
+
+function handleAgendaExplanationInput(textarea, itemId, agNum) {
+    if (!textarea) return;
+    const val = textarea.value;
+    if (val.length === 1 && val !== '\n' && !/^\d/.test(val)) {
+        textarea.value = `${agNum}.1 ` + val;
+        textarea.selectionStart = textarea.selectionEnd = textarea.value.length;
+    }
+    updateAgendaItemExplanation(itemId, textarea.value);
+}
+
+function handleAgendaExplanationKeydown(event, textarea, itemId, agNum) {
+    if (!textarea) return;
+    if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
+
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const val = textarea.value;
+
+        const beforeCursor = val.substring(0, start);
+        const afterCursor = val.substring(end);
+
+        const linesBefore = beforeCursor.split('\n');
+        const currentLine = linesBefore[linesBefore.length - 1] || '';
+
+        let nextSubNum = linesBefore.length + 1;
+        const subMatch = currentLine.match(/^\s*\d+\.(\d+)[\.\)\-]?\s*/);
+        if (subMatch) {
+            nextSubNum = parseInt(subMatch[1], 10) + 1;
+        } else {
+            for (let i = linesBefore.length - 1; i >= 0; i--) {
+                const m = linesBefore[i].match(/^\s*\d+\.(\d+)[\.\)\-]?\s*/);
+                if (m) {
+                    nextSubNum = parseInt(m[1], 10) + (linesBefore.length - i);
+                    break;
+                }
+            }
+        }
+
+        let updatedBefore = beforeCursor;
+        if (linesBefore.length === 1 && !/^\s*\d+\.\d+/.test(currentLine) && currentLine.trim().length > 0) {
+            const cleanFirst = currentLine.replace(/^\s*\d+[\.\)\-]\s*/, '');
+            updatedBefore = `${agNum}.1 ` + cleanFirst;
+            nextSubNum = 2;
+        } else if (linesBefore.length === 1 && currentLine.trim().length === 0) {
+            updatedBefore = `${agNum}.1 `;
+            nextSubNum = 2;
+        }
+
+        const insertStr = `\n${agNum}.${nextSubNum} `;
+        textarea.value = updatedBefore + insertStr + afterCursor;
+        const newCursorPos = updatedBefore.length + insertStr.length;
+        textarea.selectionStart = textarea.selectionEnd = newCursorPos;
+        const lineCount = textarea.value.split('\n').length;
+        if (lineCount > textarea.rows && lineCount <= 8) {
+            textarea.rows = lineCount;
+        }
+        textarea.scrollTop = textarea.scrollHeight;
+        updateAgendaItemExplanation(itemId, textarea.value);
+    }
+}
+
+function appendNextAgendaSubItem(itemId, agNum) {
+    const textarea = document.getElementById(`agenda-exp-${itemId}`);
+    if (!textarea) return;
+    const raw = textarea.value;
+    if (!raw.trim()) {
+        textarea.value = `${agNum}.1 `;
+    } else {
+        const lines = raw.split('\n');
+        let lastSub = lines.length;
+        for (let i = lines.length - 1; i >= 0; i--) {
+            const m = lines[i].match(/^\s*\d+\.(\d+)[\.\)\-]?\s*/);
+            if (m) {
+                lastSub = parseInt(m[1], 10);
+                break;
+            }
+        }
+        const nextSub = lastSub + 1;
+        textarea.value = raw.replace(/\s*$/, '') + `\n${agNum}.${nextSub} `;
+    }
+    const lineCount = textarea.value.split('\n').length;
+    if (lineCount > textarea.rows && lineCount <= 8) {
+        textarea.rows = lineCount;
+    }
+    updateAgendaItemExplanation(itemId, textarea.value);
+    textarea.focus();
+    textarea.selectionStart = textarea.selectionEnd = textarea.value.length;
+    textarea.scrollTop = textarea.scrollHeight;
 }
 
 function handleAgendaTitleKeydown(event, itemId) {
@@ -6091,10 +6219,10 @@ function renderDraftAgendaItems(focusItemId = null) {
                     <div class="inline-action-top-grid">
                         <div style="width:100%;">
                             <label style="font-size:0.74rem; font-weight:700; color:#bae6fd; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.4rem; margin-bottom:4px;">
-                                <span><i class="fa-solid fa-bolt" style="color:#38bdf8;"></i> ${idx + 1}. Madde — ${actionOrderNum}. Aksiyon / Görev Açıklaması *</span>
-                                <span style="font-size:0.68rem; color:#7dd3fc; font-weight:600;">Tam satır görünüm • Enter veya "+ Yeni Aksiyon" ile aynı konuya yeni aksiyon ekleyin</span>
+                                <span><i class="fa-solid fa-bolt" style="color:#38bdf8;"></i> ${idx + 1}.${actionOrderNum} Madde Aksiyonu / Görev Açıklaması *</span>
+                                <span style="font-size:0.68rem; color:#7dd3fc; font-weight:600;">Tam satır görünüm • Enter veya "+ Yeni Aksiyon" ile ${idx + 1}.${actionOrderNum + 1} aksiyonu ekleyin</span>
                             </label>
-                            <input type="text" id="iar-title-${da.rowId}" class="form-control inline-action-title" style="width:100% !important; font-size:0.86rem !important; font-weight:600; padding:0.55rem 0.75rem !important;" value="${escapeHtmlAttr(da.title || '')}" placeholder="${idx + 1}. madde için ${actionOrderNum}. yapılacak aksiyonu veya görev açıklamasını tam satır olarak yazın..." oninput="updateAgendaDraftActionField('${it.id}', '${da.rowId}', 'title', this.value)" onkeydown="handleInlineActionTitleKeydown(event, '${it.id}')">
+                            <input type="text" id="iar-title-${da.rowId}" class="form-control inline-action-title" style="width:100% !important; font-size:0.86rem !important; font-weight:600; padding:0.55rem 0.75rem !important;" value="${escapeHtmlAttr(da.title || '')}" placeholder="${idx + 1}.${actionOrderNum} yapılacak aksiyonu veya görev açıklamasını tam satır olarak yazın..." oninput="updateAgendaDraftActionField('${it.id}', '${da.rowId}', 'title', this.value)" onkeydown="handleInlineActionTitleKeydown(event, '${it.id}')">
                         </div>
                     </div>
                     <div class="inline-action-meta-grid">
@@ -6177,7 +6305,15 @@ function renderDraftAgendaItems(focusItemId = null) {
 
                 ${isDiscussed ? `
                     <div class="agenda-explanation-box">
-                        <textarea id="agenda-exp-${it.id}" class="form-control" rows="2" style="width:100%; box-sizing:border-box; background:rgba(15,23,42,0.9); border-color:rgba(56,189,248,0.4);" placeholder="${idx + 1}. gündem maddesinde konuşulan detayları / notları buraya yazın..." oninput="updateAgendaItemExplanation('${it.id}', this.value)">${safeExp}</textarea>
+                        <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.35rem; margin-bottom:0.35rem;">
+                            <span style="font-size:0.72rem; font-weight:700; color:#7dd3fc;">
+                                <i class="fa-solid fa-list-ol" style="color:#38bdf8;"></i> ${idx + 1}. Gündem Maddesi Alt Başlıkları / Detayları (${idx + 1}.1, ${idx + 1}.2 ...)
+                            </span>
+                            <button type="button" class="btn btn-secondary btn-sm" style="padding:0.22rem 0.55rem; font-size:0.69rem; border-color:rgba(56,189,248,0.45); color:#bae6fd;" onclick="appendNextAgendaSubItem('${it.id}', ${idx + 1})">
+                                <i class="fa-solid fa-plus"></i> + Alt Madde Ekle (${idx + 1}.1, ${idx + 1}.2)
+                            </button>
+                        </div>
+                        <textarea id="agenda-exp-${it.id}" class="form-control" rows="${Math.max(3, (it.explanation || '').split('\n').length)}" style="width:100%; box-sizing:border-box; background:rgba(15,23,42,0.9); border-color:rgba(56,189,248,0.4); font-weight:500; line-height:1.5;" placeholder="${idx + 1}.1 Konuşulan ilk alt madde / detay...\n${idx + 1}.2 Konuşulan ikinci alt madde / detay... (Enter ile otomatik ${idx + 1}.1, ${idx + 1}.2 numaralanır)" onfocus="handleAgendaExplanationFocus(this, '${it.id}', ${idx + 1})" oninput="handleAgendaExplanationInput(this, '${it.id}', ${idx + 1})" onkeydown="handleAgendaExplanationKeydown(event, this, '${it.id}', ${idx + 1})">${safeExp || `${idx + 1}.1 `}</textarea>
                     </div>
                 ` : (it.transferredToMeetingId ? `
                     <div style="margin-top:0.35rem; font-size:0.72rem; color:#38bdf8;">
@@ -6834,10 +6970,10 @@ function addInlineActionRow(prefill = null) {
 
 function cleanNumberedText(rawText) {
     if (!rawText) return '';
-    // Sadece "1." veya boş numaralı satırları temizle
+    // Sadece "1.", "1.1" veya boş numaralı satırları temizle
     return rawText
         .split('\n')
-        .filter(line => !/^\s*\d+[\.\)\-]?\s*$/.test(line))
+        .filter(line => !/^\s*\d+(?:\.\d+)?[\.\)\-]?\s*$/.test(line))
         .join('\n')
         .trim();
 }
@@ -6961,7 +7097,7 @@ function saveMeeting(event) {
         });
     });
 
-    const validAgendaItems = validAgendaSource.map(it => {
+    const validAgendaItems = validAgendaSource.map((it, idx) => {
         const cleanItTitle = String(it.title || '').trim();
         appState.actions.forEach(a => {
             if (a.meetingId === targetMeetingId) {
@@ -6976,7 +7112,7 @@ function saveMeeting(event) {
             id: it.id || ('agd-' + Date.now()),
             title: cleanItTitle,
             discussed: (it.discussed === true || it.discussed === false) ? it.discussed : null,
-            explanation: it.discussed === true ? String(it.explanation || '').trim() : '',
+            explanation: it.discussed === true ? formatAgendaExplanationSubItems(it.explanation, idx + 1) : '',
             hasAction: Boolean(hasSavedAct),
             transferredToMeetingId: String(it.transferredToMeetingId || '').trim()
         };
@@ -7750,7 +7886,7 @@ function printMeetingMinutes(meetingId) {
                                 return `
                                 <div style="margin-bottom:6px; padding:6px 8px; background:#f0fdf4; border-left:3px solid #10b981;">
                                     <div><strong>${idx + 1}. ${ag.title}</strong></div>
-                                    ${ag.explanation ? `<div style="margin-top:3px; color:#334155; font-size:11.5px; white-space:pre-line;">💬 Açıklama: ${ag.explanation}</div>` : ''}
+                                    ${ag.explanation ? `<div style="margin-top:3px; padding-left:8px; color:#334155; font-size:11.5px; white-space:pre-line;">${formatAgendaExplanationSubItems(ag.explanation, idx + 1)}</div>` : ''}
                                     ${agActs.length > 0 ? `
                                         <div style="margin-top:5px; padding:5px 8px; background:#e0f2fe; border-left:3px solid #0284c7; font-size:11px; color:#0f172a;">
                                             <div style="font-weight:bold; color:#0369a1; margin-bottom:2px;">⚡ Bu Maddenin Aksiyonları (${agActs.length}):</div>
@@ -8366,7 +8502,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 12000);
 
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('sw.js?v=4.9.7').then(reg => {
+        navigator.serviceWorker.register('sw.js?v=4.9.8').then(reg => {
             try { reg.update(); } catch (e) {}
             syncUserAndStateToServiceWorker();
         }).catch(() => {});

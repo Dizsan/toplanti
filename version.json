@@ -1,7 +1,7 @@
 {
   "app": "Dizsan Toplantı, Eğitim & Aksiyon Yönetim Sistemi",
-  "version": "4.9.7",
-  "build": 497,
-  "releasedAt": "2026-10-28T23:05:00+03:00",
-  "notes": "v4.9.7: Aynı konuya birden fazla aksiyon alanı ekleme ve aksiyon açıklama satırının tam genişlikte görünmesi için Öncelik/Termin/Saat alanlarının alt satıra alınması."
+  "version": "4.9.8",
+  "build": 498,
+  "releasedAt": "2026-10-28T23:22:00+03:00",
+  "notes": "v4.9.8: Gündem maddeleri altında 1.1, 1.2 hiyerarşik alt madde ve aksiyon numaralandırma sistemi."
 }
