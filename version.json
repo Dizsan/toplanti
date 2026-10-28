@@ -1,7 +1,7 @@
 {
   "app": "Dizsan Toplantı, Eğitim & Aksiyon Yönetim Sistemi",
-  "version": "4.9.8",
-  "build": 498,
-  "releasedAt": "2026-10-28T23:22:00+03:00",
-  "notes": "v4.9.8: Gündem maddeleri altında 1.1, 1.2 hiyerarşik alt madde ve aksiyon numaralandırma sistemi."
+  "version": "4.9.9",
+  "build": 499,
+  "releasedAt": "2026-10-28T23:51:00+03:00",
+  "notes": "v4.9.9: Alt gündem maddelerinin (1.1, 1.2, 1.3, 1.4) sonuna bağımsız Aksiyon tiki ve seçilen alt madde koduyla (örn. 1.2) doğrudan aksiyon alanı açılması."
 }
