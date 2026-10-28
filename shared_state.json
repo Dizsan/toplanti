@@ -1,6 +1,6 @@
 {
   "version": "v4.9.5",
-  "updatedAt": "2026-10-28T19:20:43.608Z",
+  "updatedAt": "2026-10-28T19:40:55.355Z",
   "users": [
     {
       "order": 0,
@@ -399,37 +399,6 @@
   ],
   "actions": [
     {
-      "id": "AKS-103",
-      "meetingId": "TOP-2026-003",
-      "meetingTitle": "Stok Bilgilendirme ve Yeni Stok Hazırlıkları",
-      "agendaItemId": "agd-1793207395727-357",
-      "agendaItemTitle": "Temel Stok Eklenecek Çıkartılacaklar Listeden kontrol edildi",
-      "title": "Temel Stok Güncellemesi",
-      "assignee": "ÖMER EREN",
-      "assignees": [
-        "ÖMER EREN"
-      ],
-      "controller": "ÖMER EREN",
-      "manager": "ÖMER EREN",
-      "priority": "Normal",
-      "dueDate": "2026-10-29",
-      "dueTime": "17:00",
-      "status": "Bekliyor",
-      "note": "",
-      "completedDate": "",
-      "completedTime": "",
-      "completedAt": "",
-      "remindOneDayBefore": true,
-      "remindSameDay": true,
-      "remindNextDay": true,
-      "remindEveryOtherDay": true,
-      "createdDate": "2026-10-28",
-      "createdBy": "ÖMER EREN",
-      "createdAt": "28.10.2026 20:16:21",
-      "updatedBy": "",
-      "updatedAt": ""
-    },
-    {
       "id": "AKS-102",
       "meetingId": "TOP-2026-002",
       "meetingTitle": "Finans ve Ödeme Toplantısı Planlama",
@@ -462,6 +431,14 @@
     }
   ],
   "logs": [
+    {
+      "id": "LOG-1793216455350",
+      "timestamp": "28.10.2026 22:40:55",
+      "user": "ÖMER EREN",
+      "category": "AKSİYON",
+      "detail": "AKS-103 kodlu aksiyon Yönetici ÖMER EREN tarafından silindi.",
+      "platform": "macOS / Masaüstü"
+    },
     {
       "id": "LOG-1793215242115",
       "timestamp": "28.10.2026 22:20:42",
@@ -1273,10 +1250,10 @@
   ],
   "changelog": [
     {
-      "version": "v4.9.4",
+      "version": "v4.9.5",
       "date": "28.10.2026",
       "author": "ÖMER EREN",
-      "notes": "Her gündem maddesinin altına 'Aksiyon Var' tiki eklendi; aksiyonu olan maddelerin hem kayıtlı aksiyonları hem de yeni aksiyon giriş formları doğrudan ilgili gündem maddesinin altında bütünleşik olarak gösterilecek şekilde düzenlendi."
+      "notes": "Yeni gündem maddesi eklendiğinde Konuşuldu ve Konuşulmadı tiklerinin her ikisinin de işaretsiz gelmesi sağlandı; Her gündem maddesinin altına 'Aksiyon Var' tiki eklendi; aksiyonu olan maddelerin hem kayıtlı aksiyonları hem de yeni aksiyon giriş formları doğrudan ilgili gündem maddesinin altında bütünleşik olarak gösterilecek şekilde düzenlendi."
     },
     {
       "version": "v4.9.3",
@@ -1415,7 +1392,7 @@
       "resolvedBy": "ÖMER EREN"
     }
   ],
-  "stateRevision": 174,
+  "stateRevision": 176,
   "pushSubscriptions": [
     {
       "id": "SUB-1793029403205-553",
@@ -2131,6 +2108,7 @@
   "versionUpdatedAt": "28.10.2026",
   "versionReleaseNotes": "Yeni gündem maddesi eklendiğinde Konuşuldu ve Konuşulmadı tiklerinin her ikisinin de işaretsiz gelmesi sağlandı ve madde altı aksiyon tiki entegre edildi.",
   "deletedIds": [
+    "AKS-103",
     "TOP-2026-003"
   ],
   "usedResetTokens": [],
