@@ -1,6 +1,6 @@
 {
-  "version": "v4.9.3",
-  "updatedAt": "2026-10-28T17:16:22.403Z",
+  "version": "v4.9.4",
+  "updatedAt": "2026-10-28T18:45:00.000Z",
   "users": [
     {
       "order": 0,
@@ -264,28 +264,32 @@
           "title": "Genel Stok Durumu",
           "discussed": true,
           "explanation": "Genel Stok Durumu aktarıldı ölü ve hareketsiz stoklar rapor halinde arkadaşlara aktarıldı",
-          "transferredToMeetingId": ""
+          "transferredToMeetingId": "",
+          "hasAction": false
         },
         {
           "id": "agd-1793207149528-456",
           "title": "Stok Planlama",
           "discussed": true,
           "explanation": "Yeni Stok güncellemesi yapıldı gelecekte yok denmemsi adına detaylandırlıcak bir excel listesi oluşturuldu",
-          "transferredToMeetingId": ""
+          "transferredToMeetingId": "",
+          "hasAction": false
         },
         {
           "id": "agd-1793207156626-761",
           "title": "Gelecek Stok Hazırlıkları",
           "discussed": true,
           "explanation": "Kaba liste oluşturuldu detaylarını Fatih Usta ve Rafet Bey ayarlayacak atölye ile planlama yapılıp Yönetim onayına sunulacak",
-          "transferredToMeetingId": ""
+          "transferredToMeetingId": "",
+          "hasAction": false
         },
         {
           "id": "agd-1793207395727-357",
           "title": "Temel Stok Eklenecek Çıkartılacaklar Listeden kontrol edildi",
           "discussed": true,
           "explanation": "Temel Stok için Doğuş ve Dizsan Temel Stok Listesi Güncellenecek",
-          "transferredToMeetingId": ""
+          "transferredToMeetingId": "",
+          "hasAction": true
         }
       ],
       "decisionItems": [
@@ -360,7 +364,8 @@
           "title": "Genel Borç şablonu çıkartıldı durum değerlendirmesi yapıldı",
           "discussed": true,
           "explanation": "Genel Durum Çıkartıldı",
-          "transferredToMeetingId": ""
+          "transferredToMeetingId": "",
+          "hasAction": true
         }
       ],
       "decisionItems": []
@@ -489,8 +494,14 @@
       "id": "AKS-103",
       "meetingId": "TOP-2026-003",
       "meetingTitle": "Stok Bilgilendirme ve Yeni Stok Hazırlıkları",
+      "agendaItemId": "agd-1793207395727-357",
+      "agendaItemTitle": "Temel Stok Eklenecek Çıkartılacaklar Listeden kontrol edildi",
       "title": "Temel Stok Güncellemesi",
       "assignee": "ÖMER EREN",
+      "assignees": [
+        "ÖMER EREN"
+      ],
+      "controller": "ÖMER EREN",
       "manager": "ÖMER EREN",
       "priority": "Normal",
       "dueDate": "2026-10-29",
@@ -514,8 +525,14 @@
       "id": "AKS-102",
       "meetingId": "TOP-2026-002",
       "meetingTitle": "Finans ve Ödeme Toplantısı Planlama",
+      "agendaItemId": "agd-0-3702",
+      "agendaItemTitle": "Genel Borç şablonu çıkartıldı durum değerlendirmesi yapıldı",
       "title": "Yarın Sgk ve Personel ödeme detayları verilecek",
       "assignee": "GÖKHAN ÖZBULUT",
+      "assignees": [
+        "GÖKHAN ÖZBULUT"
+      ],
+      "controller": "ÖMER EREN",
       "manager": "ÖMER EREN",
       "priority": "Kritik",
       "dueDate": "2026-10-27",
@@ -2177,15 +2194,15 @@
       "fail_count": 0
     }
   ],
-  "appVersion": "4.9.3",
+  "appVersion": "4.9.4",
   "latestVersion": {
-    "version": "4.9.3",
-    "releaseNotes": "Gündem maddeleri Konuşuldu/Konuşulmadı yan yana tik seçimi, Toplantı Aksiyonlarında birden fazla sorumlu personel ve Kontrol Edecek Kişi alanı eklendi, tekrar eden karar alanı sadeleştirildi.",
+    "version": "4.9.4",
+    "releaseNotes": "Her gündem maddesinin altına 'Aksiyon Var' tiki eklendi; aksiyonu olan maddelerin hem kayıtlı aksiyonları hem de yeni aksiyon giriş formları doğrudan ilgili gündem maddesinin altında bütünleşik olarak gösterilecek şekilde düzenlendi.",
     "releasedAt": "28.10.2026"
   },
   "versionUpdatedAt": "28.10.2026",
-  "versionReleaseNotes": "Gündem maddeleri Konuşuldu/Konuşulmadı yan yana tik seçimi, Toplantı Aksiyonlarında birden fazla sorumlu personel ve Kontrol Edecek Kişi alanı eklendi, tekrar eden karar alanı sadeleştirildi.",
+  "versionReleaseNotes": "Her gündem maddesinin altına 'Aksiyon Var' tiki eklendi; aksiyonu olan maddelerin hem kayıtlı aksiyonları hem de yeni aksiyon giriş formları doğrudan ilgili gündem maddesinin altında bütünleşik olarak gösterilecek şekilde düzenlendi.",
   "deletedIds": [],
   "usedResetTokens": [],
-  "updatedAtMs": 1793044282325
+  "updatedAtMs": 1793213100000
 }

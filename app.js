@@ -10,8 +10,8 @@
  * ==========================================================================
  */
 
-const INITIAL_APP_VERSION = "v4.9.3";
-const CURRENT_APP_VERSION = "4.9.3";
+const INITIAL_APP_VERSION = "v4.9.4";
+const CURRENT_APP_VERSION = "4.9.4";
 const VAPID_PUBLIC_KEY = "BJIJfCBiDwya3clZOWS08EDxfuN18xtfJGTX0n_apWBTEW7-kO_FGKNy5VDRvUsMgc46IP5oxLlIHqgrDo-JTkE";
 const STORAGE_KEY_STATE = "dizsan_toplanti_shared_state_v2";
 const STORAGE_KEY_SESSION = "dizsan_toplanti_active_user";
@@ -143,6 +143,12 @@ const OFFICIAL_PERSONNEL_RAW = [
 const OFFICIAL_PERSONNEL_LIST = OFFICIAL_PERSONNEL_RAW.map(u => ({ ...u, email: resolveUserEmail(u) }));
 
 const INITIAL_CHANGELOG = [
+    {
+        version: "v4.9.4",
+        date: "28.10.2026",
+        author: "ÖMER EREN",
+        notes: "Her gündem maddesinin altına 'Aksiyon Var' tiki eklendi; aksiyonu olan maddelerin hem kayıtlı aksiyonları hem de yeni aksiyon giriş formları doğrudan ilgili gündem maddesinin altında bütünleşik olarak gösterilecek şekilde düzenlendi."
+    },
     {
         version: "v4.9.3",
         date: "28.10.2026",
@@ -4360,33 +4366,62 @@ function renderMeetings() {
 
                     ${renderRecordAuditBadge(m, false)}
 
-                    <!-- GÜNDEM MADDELERİ (KONUŞULANLAR & KONUŞULMAYANLAR) ÖZETİ -->
+                    <!-- GÜNDEM MADDELERİ (KONUŞULANLAR & KONUŞULMAYANLAR) VE MADDE ALTI AKSİYON ÖZETİ -->
                     <div class="meeting-summary-box" style="max-height:none; overflow:visible; margin-top:0.6rem;">
                         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.35rem; margin-bottom:0.35rem;">
-                            <strong style="color:#fff;"><i class="fa-solid fa-list-check" style="color:var(--dizsan-light);"></i> ${isTraining ? 'Eğitim Gündemi & Notlar:' : 'Gündem Maddeleri:'}</strong>
+                            <strong style="color:#fff;"><i class="fa-solid fa-list-check" style="color:var(--dizsan-light);"></i> ${isTraining ? 'Eğitim Gündemi & Notlar:' : 'Gündem Maddeleri & Madde Altı Aksiyonlar:'}</strong>
                             <div style="display:flex; gap:0.3rem; font-size:0.7rem;">
                                 <span style="background:rgba(16,185,129,0.2); color:#6ee7b7; padding:1px 6px; border-radius:5px; font-weight:700;">✅ ${discussedAgendas.length} Konuşuldu</span>
                                 ${undiscussedAgendas.length > 0 ? `<span style="background:rgba(245,158,11,0.22); color:#fde68a; padding:1px 6px; border-radius:5px; font-weight:700;">⏳ ${undiscussedAgendas.length} Konuşulmadı</span>` : ''}
+                                ${relatedActions.length > 0 ? `<span style="background:rgba(2,132,199,0.22); color:#7dd3fc; padding:1px 6px; border-radius:5px; font-weight:700;">⚡ ${relatedActions.length} Aksiyon</span>` : ''}
                             </div>
                         </div>
-                        <div style="display:flex; flex-direction:column; gap:0.32rem;">
-                            ${agendaItems.filter(x => x.title).map((ag, idx) => `
-                                <div style="padding:0.32rem 0.5rem; border-radius:6px; background:${ag.discussed ? 'rgba(16,185,129,0.1)' : 'rgba(245,158,11,0.08)'}; border:1px solid ${ag.discussed ? 'rgba(16,185,129,0.3)' : 'rgba(245,158,11,0.28)'};">
-                                    <div style="display:flex; align-items:center; justify-content:space-between; gap:0.4rem;">
+                        <div style="display:flex; flex-direction:column; gap:0.38rem;">
+                            ${agendaItems.filter(x => x.title).map((ag, idx) => {
+                                const agActions = relatedActions.filter(act => act.agendaItemId === ag.id);
+                                return `
+                                <div style="padding:0.38rem 0.55rem; border-radius:7px; background:${ag.discussed ? 'rgba(16,185,129,0.1)' : 'rgba(245,158,11,0.08)'}; border:1px solid ${ag.discussed ? 'rgba(16,185,129,0.3)' : 'rgba(245,158,11,0.28)'};">
+                                    <div style="display:flex; align-items:center; justify-content:space-between; gap:0.4rem; flex-wrap:wrap;">
                                         <span style="font-weight:600; color:${ag.discussed ? '#d1fae5' : '#fef3c7'}; font-size:0.8rem;">
                                             ${ag.discussed ? '✅' : '⬜'} ${idx + 1}. ${ag.title}
                                         </span>
-                                        <span style="font-size:0.68rem; color:${ag.discussed ? '#34d399' : '#fbbf24'}; font-weight:700; white-space:nowrap;">
-                                            ${ag.discussed ? 'Konuşuldu' : (ag.transferredToMeetingId ? `➔ ${ag.transferredToMeetingId}` : 'Konuşulmadı')}
-                                        </span>
+                                        <div style="display:flex; align-items:center; gap:0.35rem;">
+                                            ${agActions.length > 0 ? `<span style="background:rgba(2,132,199,0.25); border:1px solid rgba(56,189,248,0.45); color:#7dd3fc; padding:1px 6px; border-radius:5px; font-size:0.66rem; font-weight:800;"><i class="fa-solid fa-square-check"></i> ⚡ ${agActions.length} Aksiyon</span>` : ''}
+                                            <span style="font-size:0.68rem; color:${ag.discussed ? '#34d399' : '#fbbf24'}; font-weight:700; white-space:nowrap;">
+                                                ${ag.discussed ? 'Konuşuldu' : (ag.transferredToMeetingId ? `➔ ${ag.transferredToMeetingId}` : 'Konuşulmadı')}
+                                            </span>
+                                        </div>
                                     </div>
                                     ${ag.discussed && ag.explanation ? `
                                         <div style="margin-top:0.22rem; padding-top:0.22rem; border-top:1px dashed rgba(52,211,153,0.3); font-size:0.75rem; color:#a7f3d0; white-space:pre-line;">
                                             <i class="fa-solid fa-comment-dots"></i> <strong>Açıklama:</strong> ${ag.explanation}
                                         </div>
                                     ` : ''}
+                                    ${agActions.length > 0 ? `
+                                        <div style="margin-top:0.35rem; padding:0.38rem 0.5rem; border-radius:6px; background:rgba(2,132,199,0.14); border:1px solid rgba(56,189,248,0.38); border-left:3px solid #38bdf8;">
+                                            <div style="font-size:0.7rem; font-weight:800; color:#7dd3fc; margin-bottom:0.25rem;">
+                                                <i class="fa-solid fa-bolt"></i> Bu Maddenin Aksiyonu (${agActions.length}):
+                                            </div>
+                                            <div style="display:flex; flex-direction:column; gap:0.28rem;">
+                                                ${agActions.map((act, aIdx) => `
+                                                    <div style="background:rgba(15,23,42,0.78); border:1px solid ${act.status === 'Tamamlandı' ? 'rgba(16,185,129,0.4)' : 'rgba(56,189,248,0.3)'}; border-radius:5px; padding:0.32rem 0.48rem;">
+                                                        <div style="display:flex; justify-content:space-between; align-items:center; gap:0.4rem;">
+                                                            <span style="color:#fff; font-weight:700; font-size:0.76rem;"><span style="color:#38bdf8;">${act.id}:</span> ${act.title}</span>
+                                                            <span class="badge ${act.status === 'Tamamlandı' ? 'badge-done' : 'badge-normal'}" style="font-size:0.64rem; padding:1px 6px;">${act.status}</span>
+                                                        </div>
+                                                        <div style="display:flex; gap:0.55rem; flex-wrap:wrap; margin-top:0.18rem; font-size:0.69rem; color:#cbd5e1;">
+                                                            <span><i class="fa-solid fa-users" style="color:#38bdf8;"></i> Sorumlu: <strong style="color:#fff;">${getActionAssigneesList(act).join(', ')}</strong></span>
+                                                            <span><i class="fa-solid fa-user-shield" style="color:#c4b5fd;"></i> Kontrol: <strong style="color:#e9d5ff;">${getActionControllerName(act)}</strong></span>
+                                                            <span><i class="fa-regular fa-calendar-check" style="color:#fbbf24;"></i> Termin: <strong style="color:#fde68a;">${formatDateTR(act.dueDate)} ${act.dueTime || '17:00'}</strong></span>
+                                                        </div>
+                                                    </div>
+                                                `).join('')}
+                                            </div>
+                                        </div>
+                                    ` : ''}
                                 </div>
-                            `).join('')}
+                                `;
+                            }).join('')}
                         </div>
                     </div>
 
@@ -4403,40 +4438,49 @@ function renderMeetings() {
                         </div>
                     </div>` : ''}
 
-                    <!-- TOPLANTI AKSİYONLARI (SORUMLULAR, KONTROL EDEN VE TERMİN TARİHLERİ) -->
-                    ${relatedActions.length > 0 ? `
-                    <div style="margin-top:0.55rem; font-size:0.79rem; color:#bae6fd; background:rgba(2,132,199,0.1); border:1px solid rgba(56,189,248,0.3); padding:0.55rem 0.7rem; border-radius:8px;">
-                        <strong style="display:block; margin-bottom:0.35rem; color:var(--dizsan-light);"><i class="fa-solid fa-bolt"></i> Atanan Aksiyonlar, Sorumlular &amp; Kontrol Eden (${relatedActions.length}):</strong>
-                        <div style="display:flex; flex-direction:column; gap:0.32rem;">
-                            ${relatedActions.map((act, aIdx) => `
-                                <div style="background:rgba(15,23,42,0.72); border:1px solid ${act.status === 'Tamamlandı' ? 'rgba(16,185,129,0.35)' : 'rgba(56,189,248,0.28)'}; border-radius:6px; padding:0.38rem 0.52rem;">
-                                    <div style="display:flex; justify-content:space-between; align-items:center; gap:0.4rem;">
-                                        <span style="color:#fff; font-weight:600; font-size:0.79rem;">${aIdx + 1}. ${act.title}</span>
-                                        <span class="badge ${act.status === 'Tamamlandı' ? 'badge-done' : 'badge-normal'}" style="font-size:0.66rem; padding:1px 6px;">${act.status}</span>
-                                    </div>
-                                    <div style="display:flex; gap:0.65rem; flex-wrap:wrap; margin-top:0.22rem; font-size:0.71rem; color:#cbd5e1;">
-                                        <span><i class="fa-solid fa-users" style="color:#38bdf8;"></i> Sorumlu: <strong style="color:#fff;">${act.assignee}</strong></span>
-                                        <span><i class="fa-solid fa-user-shield" style="color:#c4b5fd;"></i> Kontrol: <strong style="color:#e9d5ff;">${getActionControllerName(act)}</strong></span>
-                                        <span><i class="fa-regular fa-calendar-check" style="color:#fbbf24;"></i> Termin: <strong style="color:#fde68a;">${formatDateTR(act.dueDate)} ${act.dueTime || '17:00'}</strong></span>
-                                    </div>
+                    <!-- EĞER HERHANGİ BİR MADDEYE BAĞLANMAMIŞ AKSİYON VEYA ESKİ KARAR VARSA GÖSTER -->
+                    ${(() => {
+                        const unlinkedActions = relatedActions.filter(act => !agendaItems.some(ag => ag.title && ag.id === act.agendaItemId));
+                        if (unlinkedActions.length > 0) {
+                            return `
+                            <div style="margin-top:0.55rem; font-size:0.79rem; color:#bae6fd; background:rgba(2,132,199,0.1); border:1px solid rgba(56,189,248,0.3); padding:0.55rem 0.7rem; border-radius:8px;">
+                                <strong style="display:block; margin-bottom:0.35rem; color:var(--dizsan-light);"><i class="fa-solid fa-bolt"></i> Genel Toplantı Aksiyonları (${unlinkedActions.length}):</strong>
+                                <div style="display:flex; flex-direction:column; gap:0.32rem;">
+                                    ${unlinkedActions.map((act, aIdx) => `
+                                        <div style="background:rgba(15,23,42,0.72); border:1px solid ${act.status === 'Tamamlandı' ? 'rgba(16,185,129,0.35)' : 'rgba(56,189,248,0.28)'}; border-radius:6px; padding:0.38rem 0.52rem;">
+                                            <div style="display:flex; justify-content:space-between; align-items:center; gap:0.4rem;">
+                                                <span style="color:#fff; font-weight:600; font-size:0.79rem;">${aIdx + 1}. ${act.title}</span>
+                                                <span class="badge ${act.status === 'Tamamlandı' ? 'badge-done' : 'badge-normal'}" style="font-size:0.66rem; padding:1px 6px;">${act.status}</span>
+                                            </div>
+                                            <div style="display:flex; gap:0.65rem; flex-wrap:wrap; margin-top:0.22rem; font-size:0.71rem; color:#cbd5e1;">
+                                                <span><i class="fa-solid fa-users" style="color:#38bdf8;"></i> Sorumlu: <strong style="color:#fff;">${getActionAssigneesList(act).join(', ')}</strong></span>
+                                                <span><i class="fa-solid fa-user-shield" style="color:#c4b5fd;"></i> Kontrol: <strong style="color:#e9d5ff;">${getActionControllerName(act)}</strong></span>
+                                                <span><i class="fa-regular fa-calendar-check" style="color:#fbbf24;"></i> Termin: <strong style="color:#fde68a;">${formatDateTR(act.dueDate)} ${act.dueTime || '17:00'}</strong></span>
+                                            </div>
+                                        </div>
+                                    `).join('')}
                                 </div>
-                            `).join('')}
-                        </div>
-                    </div>` : (decisionItems.length > 0 ? `
-                    <div style="margin-top:0.55rem; font-size:0.79rem; color:#a7f3d0; background:rgba(16,185,129,0.08); border:1px solid rgba(16,185,129,0.25); padding:0.55rem 0.7rem; border-radius:8px;">
-                        <strong style="display:block; margin-bottom:0.35rem; color:#6ee7b7;"><i class="fa-solid fa-gavel"></i> ${isTraining ? 'Eğitim Sonucu & Değerlendirme:' : 'Alınan Kararlar, Sorumlusu & Termin:'}</strong>
-                        <div style="display:flex; flex-direction:column; gap:0.32rem;">
-                            ${decisionItems.map((dec, dIdx) => `
-                                <div style="background:rgba(15,23,42,0.65); border:1px solid rgba(52,211,153,0.25); border-radius:6px; padding:0.35rem 0.5rem;">
-                                    <div style="color:#ecfdf5; font-weight:600; font-size:0.79rem;">${dIdx + 1}. ${dec.text}</div>
-                                    <div style="display:flex; gap:0.6rem; flex-wrap:wrap; margin-top:0.2rem; font-size:0.71rem; color:#93c5fd;">
-                                        <span><i class="fa-solid fa-user-check" style="color:#38bdf8;"></i> Sorumlu: <strong style="color:#fff;">${dec.responsible || 'Belirtilmedi'}</strong></span>
-                                        <span><i class="fa-regular fa-calendar-check" style="color:#fbbf24;"></i> Termin: <strong style="color:#fde68a;">${dec.dueDate ? formatDateTR(dec.dueDate) : '-'}</strong></span>
-                                    </div>
+                            </div>`;
+                        }
+                        if (relatedActions.length === 0 && decisionItems.length > 0) {
+                            return `
+                            <div style="margin-top:0.55rem; font-size:0.79rem; color:#a7f3d0; background:rgba(16,185,129,0.08); border:1px solid rgba(16,185,129,0.25); padding:0.55rem 0.7rem; border-radius:8px;">
+                                <strong style="display:block; margin-bottom:0.35rem; color:#6ee7b7;"><i class="fa-solid fa-gavel"></i> ${isTraining ? 'Eğitim Sonucu & Değerlendirme:' : 'Alınan Kararlar, Sorumlusu & Termin:'}</strong>
+                                <div style="display:flex; flex-direction:column; gap:0.32rem;">
+                                    ${decisionItems.map((dec, dIdx) => `
+                                        <div style="background:rgba(15,23,42,0.65); border:1px solid rgba(52,211,153,0.25); border-radius:6px; padding:0.35rem 0.5rem;">
+                                            <div style="color:#ecfdf5; font-weight:600; font-size:0.79rem;">${dIdx + 1}. ${dec.text}</div>
+                                            <div style="display:flex; gap:0.6rem; flex-wrap:wrap; margin-top:0.2rem; font-size:0.71rem; color:#93c5fd;">
+                                                <span><i class="fa-solid fa-user-check" style="color:#38bdf8;"></i> Sorumlu: <strong style="color:#fff;">${dec.responsible || 'Belirtilmedi'}</strong></span>
+                                                <span><i class="fa-regular fa-calendar-check" style="color:#fbbf24;"></i> Termin: <strong style="color:#fde68a;">${dec.dueDate ? formatDateTR(dec.dueDate) : '-'}</strong></span>
+                                            </div>
+                                        </div>
+                                    `).join('')}
                                 </div>
-                            `).join('')}
-                        </div>
-                    </div>` : '')}
+                            </div>`;
+                        }
+                        return '';
+                    })()}
 
                     ${attList.length > 0 ? `
                     <div style="margin-top:0.65rem; padding:0.6rem; background:rgba(16,185,129,0.06); border:1px solid rgba(16,185,129,0.25); border-radius:8px;">
@@ -4553,6 +4597,7 @@ function renderActions() {
                 </td>
                 <td>
                     <div style="font-weight:600; color:#fff; margin-bottom:3px;">${a.title}</div>
+                    ${a.agendaItemTitle && access !== 'ACTION_ONLY' ? `<div style="font-size:0.72rem; color:#7dd3fc; margin-bottom:2px;"><i class="fa-solid fa-list-check"></i> Bağlı Madde: <strong>${escapeHtml(a.agendaItemTitle)}</strong></div>` : ''}
                     ${a.note ? `<div style="font-size:0.76rem; color:var(--text-sec);"><i class="fa-regular fa-comment-dots"></i> ${a.note}</div>` : ''}
                     ${renderRecordAuditBadge(a, true)}
                 </td>
@@ -5427,15 +5472,62 @@ function getMeetingAttendanceSummary(m) {
     return { invited, attended, absent };
 }
 
+function ensureMeetingActionsLinkedToAgenda(m, agendaList) {
+    if (!m || !m.id || !Array.isArray(agendaList) || agendaList.length === 0) return;
+    if (!Array.isArray(appState.actions)) return;
+    const mActions = appState.actions.filter(a => a && a.meetingId === m.id);
+    if (mActions.length === 0) return;
+
+    const validIds = new Set(agendaList.map(ag => ag.id));
+    mActions.forEach(a => {
+        if (a.agendaItemId && validIds.has(a.agendaItemId)) {
+            const matched = agendaList.find(ag => ag.id === a.agendaItemId);
+            if (matched) {
+                matched.hasAction = true;
+                if (!a.agendaItemTitle && matched.title) a.agendaItemTitle = matched.title;
+            }
+            return;
+        }
+        // Geriye dönük uyumluluk: Daha önce oluşturulmuş ve henüz agendaItemId atanmamış aksiyonu en uygun gündem maddesine bağla
+        const actWords = normalizeTR(a.title || '')
+            .split(/\s+/)
+            .filter(w => w.length >= 3);
+        let bestAg = null;
+        let bestScore = -1;
+        agendaList.forEach(ag => {
+            const agText = normalizeTR(`${ag.title || ''} ${ag.explanation || ''}`);
+            let score = 0;
+            actWords.forEach(w => {
+                if (agText.includes(w)) score += 1;
+            });
+            if (score > bestScore) {
+                bestScore = score;
+                bestAg = ag;
+            }
+        });
+        const targetAg = (bestScore > 0 && bestAg) ? bestAg : agendaList[agendaList.length - 1];
+        if (targetAg) {
+            a.agendaItemId = targetAg.id;
+            a.agendaItemTitle = targetAg.title || '';
+            targetAg.hasAction = true;
+        }
+    });
+}
+
 function parseAgendaItemsFromMeeting(m) {
+    let result = [];
     if (m && Array.isArray(m.agendaItems) && m.agendaItems.length > 0) {
-        return m.agendaItems.map((it, idx) => ({
+        result = m.agendaItems.map((it, idx) => ({
             id: it.id || ('agd-' + idx + '-' + Date.now()),
             title: String(it.title || '').trim(),
             discussed: Boolean(it.discussed),
             explanation: String(it.explanation || '').trim(),
+            hasAction: Boolean(it.hasAction),
+            draftActions: Array.isArray(it.draftActions) ? it.draftActions : [],
             transferredToMeetingId: String(it.transferredToMeetingId || '').trim()
         }));
+        ensureMeetingActionsLinkedToAgenda(m, result);
+        return result;
     }
 
     const rawNotes = (m && m.notes) ? String(m.notes).trim() : '';
@@ -5473,11 +5565,14 @@ function parseAgendaItemsFromMeeting(m) {
                 title: cleanLine,
                 discussed,
                 explanation: '',
+                hasAction: false,
+                draftActions: [],
                 transferredToMeetingId: ''
             });
         }
     });
 
+    ensureMeetingActionsLinkedToAgenda(m, parsed);
     return parsed;
 }
 
@@ -5696,8 +5791,146 @@ function renderAttendanceManagementUI() {
     }).join('');
 }
 
-// --- GÜNDEM MADDELERİ (TİKLEMELİ + ALTTA AÇIKLAMA KUTUCUĞU + KONUŞULMAYANLAR LİSTESİ) ---
+// --- GÜNDEM MADDELERİ (TİKLEMELİ + ALTTA AÇIKLAMA KUTUCUĞU + MADDE ALTI AKSİYON TİKİ & KONUŞULMAYANLAR LİSTESİ) ---
+function createNewDraftActionObj(prefill = null) {
+    inlineRowSequence += 1;
+    const rowId = `iar_${Date.now()}_${inlineRowSequence}`;
+    const tomorrowIso = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+    const defaultAssignee = currentUser ? currentUser.name : (appState.users[0]?.name || 'ÖMER EREN');
+    const initialAssignees = prefill && Array.isArray(prefill.assignees) && prefill.assignees.length > 0
+        ? [...prefill.assignees]
+        : [defaultAssignee];
+    inlineRowAssigneesMap[rowId] = [...initialAssignees];
+
+    return {
+        rowId,
+        title: prefill && prefill.title ? String(prefill.title) : '',
+        priority: prefill && prefill.priority === 'Kritik' ? 'Kritik' : 'Normal',
+        dueDate: prefill && prefill.dueDate ? normalizeToISODate(prefill.dueDate) : tomorrowIso,
+        dueTime: prefill && prefill.dueTime ? String(prefill.dueTime) : '17:00',
+        assignees: [...initialAssignees],
+        controller: prefill && prefill.controller ? String(prefill.controller) : 'ÖMER EREN'
+    };
+}
+
+function syncDraftAgendaStateFromDOM() {
+    currentDraftAgendaItems.forEach(it => {
+        const titleEl = document.getElementById(`agenda-title-${it.id}`);
+        if (titleEl) it.title = titleEl.value;
+        const expEl = document.getElementById(`agenda-exp-${it.id}`);
+        if (expEl) it.explanation = expEl.value;
+
+        if (Array.isArray(it.draftActions)) {
+            it.draftActions.forEach(da => {
+                const tEl = document.getElementById(`iar-title-${da.rowId}`);
+                if (tEl) da.title = tEl.value;
+                const pEl = document.getElementById(`iar-prio-${da.rowId}`);
+                if (pEl) da.priority = pEl.value;
+                const dEl = document.getElementById(`iar-date-${da.rowId}`);
+                if (dEl) {
+                    const iso = normalizeToISODate(dEl.value);
+                    if (iso) da.dueDate = iso;
+                }
+                const tmEl = document.getElementById(`iar-time-${da.rowId}`);
+                if (tmEl && tmEl.value) da.dueTime = tmEl.value;
+                const cEl = document.getElementById(`iar-ctrl-${da.rowId}`);
+                if (cEl && cEl.value) da.controller = cEl.value;
+                if (Array.isArray(inlineRowAssigneesMap[da.rowId])) {
+                    da.assignees = [...inlineRowAssigneesMap[da.rowId]];
+                }
+            });
+        }
+    });
+}
+
+function updateAgendaDraftActionField(itemId, rowId, field, val) {
+    const item = currentDraftAgendaItems.find(it => it.id === itemId);
+    if (!item || !Array.isArray(item.draftActions)) return;
+    const da = item.draftActions.find(x => x.rowId === rowId);
+    if (!da) return;
+    if (field === 'dueDate') {
+        const iso = normalizeToISODate(val);
+        if (iso) da.dueDate = iso;
+    } else {
+        da[field] = val;
+    }
+}
+
+function toggleAgendaItemHasAction(itemId, checked) {
+    syncDraftAgendaStateFromDOM();
+    const item = currentDraftAgendaItems.find(it => it.id === itemId);
+    if (!item) return;
+
+    const meetId = document.getElementById('meeting-id')?.value || '';
+    const existingActs = meetId ? appState.actions.filter(a => a.meetingId === meetId && a.agendaItemId === itemId) : [];
+
+    if (checked) {
+        item.hasAction = true;
+        if (!Array.isArray(item.draftActions)) item.draftActions = [];
+        let focusRowId = null;
+        if (existingActs.length === 0 && item.draftActions.length === 0) {
+            const newDa = createNewDraftActionObj();
+            item.draftActions.push(newDa);
+            focusRowId = newDa.rowId;
+        }
+        renderDraftAgendaItems();
+        if (focusRowId) {
+            setTimeout(() => {
+                const el = document.getElementById(`iar-title-${focusRowId}`);
+                if (el) el.focus();
+            }, 40);
+        }
+    } else {
+        if (existingActs.length > 0) {
+            alert(`Bu gündem maddesinin altında kayıtlı ${existingActs.length} adet aksiyon bulunmaktadır. Aksiyonu kaldırmak için aksiyon satırındaki sil butonunu kullanabilirsiniz.`);
+            item.hasAction = true;
+            renderDraftAgendaItems();
+            return;
+        }
+        if (Array.isArray(item.draftActions)) {
+            item.draftActions.forEach(da => {
+                delete inlineRowAssigneesMap[da.rowId];
+            });
+        }
+        item.draftActions = [];
+        item.hasAction = false;
+        renderDraftAgendaItems();
+    }
+}
+
+function addAgendaDraftActionRow(itemId, prefill = null) {
+    syncDraftAgendaStateFromDOM();
+    const item = currentDraftAgendaItems.find(it => it.id === itemId);
+    if (!item) return;
+    item.hasAction = true;
+    if (!Array.isArray(item.draftActions)) item.draftActions = [];
+    const newDa = createNewDraftActionObj(prefill);
+    item.draftActions.push(newDa);
+    renderDraftAgendaItems();
+    setTimeout(() => {
+        const el = document.getElementById(`iar-title-${newDa.rowId}`);
+        if (el) el.focus();
+    }, 40);
+}
+
+function removeAgendaDraftActionRow(itemId, rowId) {
+    syncDraftAgendaStateFromDOM();
+    const item = currentDraftAgendaItems.find(it => it.id === itemId);
+    if (!item) return;
+    delete inlineRowAssigneesMap[rowId];
+    if (Array.isArray(item.draftActions)) {
+        item.draftActions = item.draftActions.filter(da => da.rowId !== rowId);
+    }
+    const meetId = document.getElementById('meeting-id')?.value || '';
+    const existingActs = meetId ? appState.actions.filter(a => a.meetingId === meetId && a.agendaItemId === itemId) : [];
+    if (existingActs.length === 0 && (!item.draftActions || item.draftActions.length === 0)) {
+        item.hasAction = false;
+    }
+    renderDraftAgendaItems();
+}
+
 function addAgendaItemFromQuickInput() {
+    syncDraftAgendaStateFromDOM();
     const input = document.getElementById('quick-agenda-item-input');
     if (!input) {
         addAgendaItemRow('', false, '', true);
@@ -5717,6 +5950,8 @@ function addAgendaItemFromQuickInput() {
             title: cleanTitle,
             discussed: false,
             explanation: '',
+            hasAction: false,
+            draftActions: [],
             transferredToMeetingId: ''
         });
     }
@@ -5725,18 +5960,26 @@ function addAgendaItemFromQuickInput() {
 }
 
 function addAgendaItemRow(title = '', discussed = false, explanation = '', focusNew = false) {
+    syncDraftAgendaStateFromDOM();
     const newId = 'agd-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
     currentDraftAgendaItems.push({
         id: newId,
         title: String(title || '').replace(/^\d+[\.\)\-]\s*/, '').trim(),
         discussed: Boolean(discussed),
         explanation: String(explanation || '').trim(),
+        hasAction: false,
+        draftActions: [],
         transferredToMeetingId: ''
     });
     renderDraftAgendaItems(focusNew ? newId : null);
 }
 
 function removeAgendaItemRow(itemId) {
+    syncDraftAgendaStateFromDOM();
+    const removed = currentDraftAgendaItems.find(it => it.id === itemId);
+    if (removed && Array.isArray(removed.draftActions)) {
+        removed.draftActions.forEach(da => delete inlineRowAssigneesMap[da.rowId]);
+    }
     currentDraftAgendaItems = currentDraftAgendaItems.filter(it => it.id !== itemId);
     if (currentDraftAgendaItems.length === 0) {
         addAgendaItemRow('', false, '', false);
@@ -5746,6 +5989,7 @@ function removeAgendaItemRow(itemId) {
 }
 
 function toggleAgendaItemDiscussed(itemId, checked) {
+    syncDraftAgendaStateFromDOM();
     const item = currentDraftAgendaItems.find(it => it.id === itemId);
     if (!item) return;
     item.discussed = Boolean(checked);
@@ -5788,14 +6032,136 @@ function renderDraftAgendaItems(focusItemId = null) {
             title: '',
             discussed: false,
             explanation: '',
+            hasAction: false,
+            draftActions: [],
             transferredToMeetingId: ''
         });
     }
+
+    const openMeetingId = document.getElementById('meeting-id')?.value || '';
+    const meetingSavedActions = openMeetingId
+        ? appState.actions.filter(a => a.meetingId === openMeetingId)
+        : [];
+
+    // Eğer düzenlenen toplantıda henüz bir gündem maddesine bağlanmamış aksiyon varsa otomatik bağla
+    if (openMeetingId && meetingSavedActions.length > 0) {
+        ensureMeetingActionsLinkedToAgenda({ id: openMeetingId }, currentDraftAgendaItems);
+    }
+
+    const userOptionsHtml = appState.users.map(u => `<option value="${escapeHtmlAttr(u.name)}">${u.name} (${u.dept})</option>`).join('');
 
     container.innerHTML = currentDraftAgendaItems.map((it, idx) => {
         const isDiscussed = Boolean(it.discussed);
         const safeTitle = escapeHtmlAttr(it.title || '');
         const safeExp = escapeHtmlAttr(it.explanation || '');
+
+        const itemSavedActions = meetingSavedActions.filter(a => a.agendaItemId === it.id);
+        const itemDraftActions = Array.isArray(it.draftActions) ? it.draftActions : [];
+        const hasAction = Boolean(it.hasAction || itemSavedActions.length > 0 || itemDraftActions.length > 0);
+        it.hasAction = hasAction;
+        const totalItemActionsCount = itemSavedActions.length + itemDraftActions.length;
+
+        const savedActionsHtml = itemSavedActions.map(a => {
+            const st = evaluateActionReminderStatus(a);
+            const compDisp = getActionCompletedDisplay(a);
+            return `
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; padding:0.5rem 0.65rem; border-radius:8px; background:rgba(15,23,42,0.9); border:1px solid ${a.status === 'Tamamlandı' ? 'rgba(16,185,129,0.45)' : 'rgba(56,189,248,0.38)'};">
+                    <div style="flex:1; min-width:200px;">
+                        <div style="font-weight:700; font-size:0.81rem; color:#fff;">
+                            <span style="color:var(--dizsan-light);">${a.id}:</span> ${escapeHtml(a.title)}
+                        </div>
+                        <div style="font-size:0.72rem; color:#cbd5e1; margin-top:3px; display:flex; flex-wrap:wrap; gap:0.45rem; align-items:center;">
+                            <span style="display:inline-flex; flex-wrap:wrap; gap:3px; align-items:center;"><strong style="color:#94a3b8;">Sorumlu:</strong> ${formatActionAssigneesBadges(a)}</span>
+                            <span style="display:inline-flex; align-items:center; gap:3px; padding:1px 6px; border-radius:5px; background:rgba(245,158,11,0.12); border:1px solid rgba(245,158,11,0.35); color:#fde68a;"><i class="fa-solid fa-user-shield"></i> Kontrol: <strong>${getActionControllerName(a)}</strong></span>
+                            <span><i class="fa-regular fa-clock" style="color:#fbbf24;"></i> <strong style="color:#fde68a;">${formatDateTR(a.dueDate)} ${a.dueTime || '17:00'}</strong></span>
+                            <span class="countdown-pill ${st.type}" style="font-size:0.66rem; padding:1px 6px;">${st.shortText || st.badgeText}</span>
+                            ${compDisp ? `<span style="color:#6ee7b7; font-weight:700;">✅ ${compDisp}</span>` : ''}
+                        </div>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:0.35rem;">
+                        <select class="form-control" style="padding:0.28rem 0.45rem; font-size:0.74rem; font-weight:700; width:auto;" onchange="quickChangeActionStatus('${a.id}', this.value)">
+                            <option value="Bekliyor" ${a.status === 'Bekliyor' ? 'selected' : ''}>⏳ Bekliyor</option>
+                            <option value="Devam Ediyor" ${a.status === 'Devam Ediyor' ? 'selected' : ''}>🔄 Devam Ediyor</option>
+                            <option value="Tamamlandı" ${a.status === 'Tamamlandı' ? 'selected' : ''}>✅ Tamamlandı</option>
+                        </select>
+                        <button type="button" class="btn btn-secondary btn-sm" style="padding:0.32rem 0.5rem;" onclick="openActionModal('${a.id}')" title="Aksiyonu Düzenle">
+                            <i class="fa-solid fa-pen"></i>
+                        </button>
+                        <button type="button" class="btn btn-danger btn-sm" style="padding:0.32rem 0.5rem;" onclick="deleteAction('${a.id}')" title="Aksiyonu Sil">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        const draftActionsHtml = itemDraftActions.map(da => {
+            if (!Array.isArray(inlineRowAssigneesMap[da.rowId])) {
+                inlineRowAssigneesMap[da.rowId] = Array.isArray(da.assignees) && da.assignees.length > 0
+                    ? [...da.assignees]
+                    : [currentUser ? currentUser.name : 'ÖMER EREN'];
+            }
+            const defaultCtrl = da.controller || 'ÖMER EREN';
+            const ctrlOptionsHtml = appState.users.map(u => `<option value="${escapeHtmlAttr(u.name)}" ${normalizeTR(u.name) === normalizeTR(defaultCtrl) ? 'selected' : ''}>${u.name} (${u.dept})</option>`).join('');
+
+            return `
+                <div class="inline-action-row" id="inline-action-row-${da.rowId}" data-row-id="${da.rowId}" data-agenda-id="${it.id}">
+                    <div class="inline-action-top-grid">
+                        <div>
+                            <label style="font-size:0.72rem; font-weight:700; color:#bae6fd; display:block; margin-bottom:3px;">
+                                <i class="fa-solid fa-bolt" style="color:#38bdf8;"></i> ${idx + 1}. Madde Aksiyonu / Görev Açıklaması *
+                            </label>
+                            <input type="text" id="iar-title-${da.rowId}" class="form-control inline-action-title" value="${escapeHtmlAttr(da.title || '')}" placeholder="${idx + 1}. madde için yapılacak aksiyonu veya kararı yazın..." oninput="updateAgendaDraftActionField('${it.id}', '${da.rowId}', 'title', this.value)">
+                        </div>
+                        <div>
+                            <label style="font-size:0.72rem; font-weight:700; color:#bae6fd; display:block; margin-bottom:3px;">Öncelik</label>
+                            <select id="iar-prio-${da.rowId}" class="form-control inline-action-priority" onchange="updateAgendaDraftActionField('${it.id}', '${da.rowId}', 'priority', this.value)">
+                                <option value="Normal" ${da.priority === 'Kritik' ? '' : 'selected'}>🔵 Normal</option>
+                                <option value="Kritik" ${da.priority === 'Kritik' ? 'selected' : ''}>🚨 Kritik</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="font-size:0.72rem; font-weight:700; color:#fde68a; display:block; margin-bottom:3px;">Termin Tarihi *</label>
+                            <input type="date" id="iar-date-${da.rowId}" class="form-control inline-action-duedate" value="${da.dueDate || ''}" onchange="updateAgendaDraftActionField('${it.id}', '${da.rowId}', 'dueDate', this.value)" oninput="updateAgendaDraftActionField('${it.id}', '${da.rowId}', 'dueDate', this.value)">
+                        </div>
+                        <div>
+                            <label style="font-size:0.72rem; font-weight:700; color:#fde68a; display:block; margin-bottom:3px;">Saat *</label>
+                            <input type="time" id="iar-time-${da.rowId}" class="form-control inline-action-duetime" value="${da.dueTime || '17:00'}" onchange="updateAgendaDraftActionField('${it.id}', '${da.rowId}', 'dueTime', this.value)">
+                        </div>
+                        <div style="display:flex; align-items:flex-end; padding-bottom:1px;">
+                            <button type="button" class="btn btn-danger btn-sm" style="height:36px; padding:0 0.65rem;" onclick="removeAgendaDraftActionRow('${it.id}', '${da.rowId}')" title="Bu Aksiyon Satırını Kaldır">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="inline-action-bottom-grid">
+                        <div>
+                            <label style="font-size:0.72rem; font-weight:700; color:#7dd3fc; display:flex; align-items:center; justify-content:space-between; margin-bottom:3px;">
+                                <span><i class="fa-solid fa-users" style="color:#38bdf8;"></i> Sorumlu Personeller (Birden Fazla Seçilebilir) *</span>
+                                <span style="font-size:0.66rem; color:#94a3b8; font-weight:500;">Listeden seçtikçe eklenir</span>
+                            </label>
+                            <div id="inline-assignee-chips-${da.rowId}" class="multi-assignee-chips"></div>
+                            <select class="form-control inline-action-assignee-picker" onchange="addInlineAssigneeFromSelect('${da.rowId}', this)">
+                                <option value="">+ Sorumlu Personel Seç / Ekle (Çoklu Seçim)...</option>
+                                <option value="__ALL_INVITED__">👥 Tüm Toplantı Katılımcılarını Sorumlu Ekle</option>
+                                ${userOptionsHtml}
+                            </select>
+                        </div>
+                        <div>
+                            <label style="font-size:0.72rem; font-weight:700; color:#fde68a; display:block; margin-bottom:3px;">
+                                <i class="fa-solid fa-user-shield" style="color:#f59e0b;"></i> Kontrol Edecek Kişi *
+                            </label>
+                            <select id="iar-ctrl-${da.rowId}" class="form-control inline-action-controller" onchange="updateAgendaDraftActionField('${it.id}', '${da.rowId}', 'controller', this.value)">
+                                ${ctrlOptionsHtml}
+                            </select>
+                            <div style="font-size:0.67rem; color:#94a3b8; margin-top:3px;">
+                                <i class="fa-solid fa-circle-info"></i> Aksiyonun tamamlanmasını denetleyecek ve bildirim alacak kontrol sorumlusu
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
 
         return `
             <div class="agenda-item-card ${isDiscussed ? 'discussed' : 'undiscussed'}">
@@ -5830,9 +6196,47 @@ function renderDraftAgendaItems(focusItemId = null) {
                         <i class="fa-solid fa-share"></i> <strong>${it.transferredToMeetingId}</strong> toplantısına aktarıldı
                     </div>
                 ` : '')}
+
+                <!-- HER MADDENİN ALTINDA AKSİYON TİKİ VE MADDEYE ÖZEL AKSİYON ALANI -->
+                <div style="margin-top:0.5rem; padding-top:0.5rem; border-top:1px dashed rgba(56,189,248,0.28);">
+                    <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.45rem;">
+                        <label style="display:inline-flex; align-items:center; gap:0.45rem; cursor:pointer; margin:0; padding:0.35rem 0.7rem; border-radius:8px; background:${hasAction ? 'rgba(2,132,199,0.28)' : 'rgba(15,23,42,0.75)'}; border:1.5px solid ${hasAction ? '#38bdf8' : 'rgba(148,163,184,0.28)'}; color:${hasAction ? '#ffffff' : '#cbd5e1'}; font-size:0.76rem; font-weight:700; user-select:none; transition:all 0.15s;" title="Bu gündem maddesi için aksiyon varsa işaretleyin">
+                            <input type="checkbox" class="blue-tick-checkbox" ${hasAction ? 'checked' : ''} onchange="toggleAgendaItemHasAction('${it.id}', this.checked)">
+                            <span><i class="fa-solid fa-bolt" style="color:${hasAction ? '#38bdf8' : '#94a3b8'};"></i> Aksiyon Var (${idx + 1}. Madde Aksiyonu${totalItemActionsCount > 0 ? ` • ${totalItemActionsCount}` : ''})</span>
+                        </label>
+                        ${hasAction ? `
+                            <button type="button" class="btn btn-primary btn-sm" style="padding:0.3rem 0.65rem; font-size:0.72rem;" onclick="addAgendaDraftActionRow('${it.id}')">
+                                <i class="fa-solid fa-plus"></i> Bu Maddeye Aksiyon Ekle
+                            </button>
+                        ` : `<span style="font-size:0.71rem; color:#64748b;">Aksiyon varsa tik koyun; bu maddenin altında açılır</span>`}
+                    </div>
+
+                    ${hasAction ? `
+                        <div style="margin-top:0.5rem; padding:0.6rem; border-radius:10px; background:rgba(8,13,26,0.72); border:1px solid rgba(56,189,248,0.35); display:flex; flex-direction:column; gap:0.5rem;">
+                            ${savedActionsHtml}
+                            ${draftActionsHtml}
+                        </div>
+                    ` : ''}
+                </div>
             </div>
         `;
     }).join('');
+
+    if (window.initAutoDateInputs) {
+        window.initAutoDateInputs(container);
+    }
+
+    currentDraftAgendaItems.forEach(it => {
+        if (Array.isArray(it.draftActions)) {
+            it.draftActions.forEach(da => {
+                renderInlineRowAssigneeChips(da.rowId);
+                const dateEl = document.getElementById(`iar-date-${da.rowId}`);
+                if (dateEl && da.dueDate) {
+                    setMaskedDateInputValue(dateEl, da.dueDate);
+                }
+            });
+        }
+    });
 
     renderUndiscussedAgendaSummary();
 
@@ -6225,9 +6629,10 @@ function openMeetingModal(meetingId = null) {
     const extList = document.getElementById('external-participants-list');
     const printBtn = document.getElementById('btn-modal-print-minutes');
 
-    inlineContainer.innerHTML = '';
+    if (inlineContainer) inlineContainer.innerHTML = '';
     if (extList) extList.innerHTML = '';
     currentDraftAttendance = {};
+    Object.keys(inlineRowAssigneesMap).forEach(k => delete inlineRowAssigneesMap[k]);
 
     partBox.innerHTML = appState.users.map(u => `
         <label class="participant-check">
@@ -6322,7 +6727,7 @@ function openMeetingModal(meetingId = null) {
         renderAttendanceManagementUI();
 
         currentDraftAgendaItems = [
-            { id: 'agd-' + Date.now(), title: '', discussed: false, explanation: '', transferredToMeetingId: '' }
+            { id: 'agd-' + Date.now(), title: '', discussed: false, explanation: '', hasAction: false, draftActions: [], transferredToMeetingId: '' }
         ];
         renderDraftAgendaItems();
 
@@ -6335,8 +6740,6 @@ function openMeetingModal(meetingId = null) {
         currentDraftAttachments = [];
         renderDraftAttachments();
         renderExistingMeetingActionsInModal(null);
-        // Yeni toplantı açıldığında doğrudan 1 adet boş aksiyon satırı hazır gelsin (birden fazla sorumlu + kontrol edecek kişi alanı hemen görünsün)
-        addInlineActionRow();
         const auditBox = document.getElementById('meeting-audit-info-box');
         if (auditBox) {
             auditBox.innerHTML = renderRecordAuditBadge({
@@ -6364,57 +6767,14 @@ function toggleAllParticipants(state) {
 
 function renderExistingMeetingActionsInModal(meetingId) {
     const box = document.getElementById('existing-meeting-actions-box');
-    if (!box) return;
-    if (!meetingId) {
+    if (box) {
         box.style.display = 'none';
         box.innerHTML = '';
-        return;
     }
-    const mActions = appState.actions.filter(a => a.meetingId === meetingId);
-    if (mActions.length === 0) {
-        box.style.display = 'none';
-        box.innerHTML = '';
-        return;
+    if (document.getElementById('meeting-modal')?.classList.contains('open')) {
+        syncDraftAgendaStateFromDOM();
+        renderDraftAgendaItems();
     }
-
-    box.style.display = 'block';
-    box.innerHTML = `
-        <div style="font-size:0.76rem; font-weight:700; color:#bae6fd; margin-bottom:0.4rem;">
-            <i class="fa-solid fa-list-check"></i> Mevcut Aksiyonlar (${mActions.length})
-        </div>
-        <div style="display:flex; flex-direction:column; gap:0.4rem;">
-            ${mActions.map(a => {
-                const st = evaluateActionReminderStatus(a);
-                const compDisp = getActionCompletedDisplay(a);
-                return `
-                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; padding:0.5rem 0.65rem; border-radius:8px; background:rgba(15,23,42,0.82); border:1px solid ${a.status === 'Tamamlandı' ? 'rgba(16,185,129,0.4)' : 'rgba(56,189,248,0.3)'};">
-                        <div style="flex:1; min-width:200px;">
-                            <div style="font-weight:700; font-size:0.81rem; color:#fff;">
-                                <span style="color:var(--dizsan-light);">${a.id}:</span> ${a.title}
-                            </div>
-                            <div style="font-size:0.72rem; color:#cbd5e1; margin-top:3px; display:flex; flex-wrap:wrap; gap:0.45rem; align-items:center;">
-                                <span style="display:inline-flex; flex-wrap:wrap; gap:3px; align-items:center;"><strong style="color:#94a3b8;">Sorumlu:</strong> ${formatActionAssigneesBadges(a)}</span>
-                                <span style="display:inline-flex; align-items:center; gap:3px; padding:1px 6px; border-radius:5px; background:rgba(245,158,11,0.12); border:1px solid rgba(245,158,11,0.35); color:#fde68a;"><i class="fa-solid fa-user-shield"></i> Kontrol: <strong>${getActionControllerName(a)}</strong></span>
-                                <span><i class="fa-regular fa-clock" style="color:#fbbf24;"></i> <strong style="color:#fde68a;">${formatDateTR(a.dueDate)} ${a.dueTime || '17:00'}</strong></span>
-                                <span class="countdown-pill ${st.type}" style="font-size:0.66rem; padding:1px 6px;">${st.shortText || st.badgeText}</span>
-                                ${compDisp ? `<span style="color:#6ee7b7; font-weight:700;">✅ ${compDisp}</span>` : ''}
-                            </div>
-                        </div>
-                        <div style="display:flex; align-items:center; gap:0.35rem;">
-                            <select class="form-control" style="padding:0.28rem 0.45rem; font-size:0.74rem; font-weight:700; width:auto;" onchange="quickChangeActionStatus('${a.id}', this.value)">
-                                <option value="Bekliyor" ${a.status === 'Bekliyor' ? 'selected' : ''}>⏳ Bekliyor</option>
-                                <option value="Devam Ediyor" ${a.status === 'Devam Ediyor' ? 'selected' : ''}>🔄 Devam Ediyor</option>
-                                <option value="Tamamlandı" ${a.status === 'Tamamlandı' ? 'selected' : ''}>✅ Tamamlandı</option>
-                            </select>
-                            <button type="button" class="btn btn-secondary btn-sm" style="padding:0.32rem 0.5rem;" onclick="openActionModal('${a.id}')" title="Aksiyonu Düzenle">
-                                <i class="fa-solid fa-pen"></i>
-                            </button>
-                        </div>
-                    </div>
-                `;
-            }).join('')}
-        </div>
-    `;
 }
 
 let inlineRowSequence = 0;
@@ -6456,6 +6816,10 @@ function addInlineAssigneeFromSelect(rowId, selectEl) {
             inlineRowAssigneesMap[rowId].push(val);
         }
     }
+    currentDraftAgendaItems.forEach(it => {
+        const da = (it.draftActions || []).find(x => x.rowId === rowId);
+        if (da) da.assignees = [...inlineRowAssigneesMap[rowId]];
+    });
     selectEl.value = '';
     renderInlineRowAssigneeChips(rowId);
 }
@@ -6463,6 +6827,10 @@ function addInlineAssigneeFromSelect(rowId, selectEl) {
 function removeInlineAssignee(rowId, idx) {
     if (!Array.isArray(inlineRowAssigneesMap[rowId])) return;
     inlineRowAssigneesMap[rowId].splice(idx, 1);
+    currentDraftAgendaItems.forEach(it => {
+        const da = (it.draftActions || []).find(x => x.rowId === rowId);
+        if (da) da.assignees = [...inlineRowAssigneesMap[rowId]];
+    });
     renderInlineRowAssigneeChips(rowId);
 }
 
@@ -6473,84 +6841,13 @@ function removeInlineActionRow(rowId) {
 }
 
 function addInlineActionRow(prefill = null) {
-    const container = document.getElementById('inline-actions-container');
-    if (!container) return;
-    inlineRowSequence += 1;
-    const rowId = `iar_${Date.now()}_${inlineRowSequence}`;
-    const row = document.createElement('div');
-    row.className = 'inline-action-row';
-    row.id = `inline-action-row-${rowId}`;
-    row.dataset.rowId = rowId;
-
-    const tomorrowIso = new Date(Date.now() + 86400000).toISOString().split('T')[0];
-    const defaultAssignee = currentUser ? currentUser.name : (appState.users[0]?.name || 'ÖMER EREN');
-    const initialAssignees = prefill && Array.isArray(prefill.assignees) && prefill.assignees.length > 0
-        ? [...prefill.assignees]
-        : [defaultAssignee];
-    inlineRowAssigneesMap[rowId] = initialAssignees;
-
-    const defaultController = prefill && prefill.controller ? prefill.controller : 'ÖMER EREN';
-    const userOptionsHtml = appState.users.map(u => `<option value="${escapeHtmlAttr(u.name)}">${u.name} (${u.dept})</option>`).join('');
-    const controllerOptionsHtml = appState.users.map(u => `<option value="${escapeHtmlAttr(u.name)}" ${normalizeTR(u.name) === normalizeTR(defaultController) ? 'selected' : ''}>${u.name} (${u.dept})</option>`).join('');
-
-    row.innerHTML = `
-        <div class="inline-action-top-grid">
-            <div>
-                <label style="font-size:0.72rem; font-weight:700; color:#bae6fd; display:block; margin-bottom:3px;">
-                    <i class="fa-solid fa-bolt" style="color:#38bdf8;"></i> Aksiyon / Alınan Karar &amp; Görev Açıklaması *
-                </label>
-                <input type="text" class="form-control inline-action-title" value="${prefill && prefill.title ? escapeHtmlAttr(prefill.title) : ''}" placeholder="Yapılacak aksiyonu veya alınan kararı yazın...">
-            </div>
-            <div>
-                <label style="font-size:0.72rem; font-weight:700; color:#bae6fd; display:block; margin-bottom:3px;">Öncelik</label>
-                <select class="form-control inline-action-priority">
-                    <option value="Normal" ${prefill && prefill.priority === 'Kritik' ? '' : 'selected'}>🔵 Normal</option>
-                    <option value="Kritik" ${prefill && prefill.priority === 'Kritik' ? 'selected' : ''}>🚨 Kritik</option>
-                </select>
-            </div>
-            <div>
-                <label style="font-size:0.72rem; font-weight:700; color:#fde68a; display:block; margin-bottom:3px;">Termin Tarihi *</label>
-                <input type="date" class="form-control inline-action-duedate" value="${prefill && prefill.dueDate ? prefill.dueDate : tomorrowIso}">
-            </div>
-            <div>
-                <label style="font-size:0.72rem; font-weight:700; color:#fde68a; display:block; margin-bottom:3px;">Saat *</label>
-                <input type="time" class="form-control inline-action-duetime" value="${prefill && prefill.dueTime ? prefill.dueTime : '17:00'}">
-            </div>
-            <div style="display:flex; align-items:flex-end; padding-bottom:1px;">
-                <button type="button" class="btn btn-danger btn-sm" style="height:36px; padding:0 0.65rem;" onclick="removeInlineActionRow('${rowId}')" title="Aksiyon Satırını Kaldır">
-                    <i class="fa-solid fa-trash-can"></i>
-                </button>
-            </div>
-        </div>
-        <div class="inline-action-bottom-grid">
-            <div>
-                <label style="font-size:0.72rem; font-weight:700; color:#7dd3fc; display:flex; align-items:center; justify-content:space-between; margin-bottom:3px;">
-                    <span><i class="fa-solid fa-users" style="color:#38bdf8;"></i> Sorumlu Personeller (Birden Fazla Seçilebilir) *</span>
-                    <span style="font-size:0.66rem; color:#94a3b8; font-weight:500;">Listeden seçtikçe eklenir</span>
-                </label>
-                <div id="inline-assignee-chips-${rowId}" class="multi-assignee-chips"></div>
-                <select class="form-control inline-action-assignee-picker" onchange="addInlineAssigneeFromSelect('${rowId}', this)">
-                    <option value="">+ Sorumlu Personel Seç / Ekle (Çoklu Seçim)...</option>
-                    <option value="__ALL_INVITED__">👥 Tüm Toplantı Katılımcılarını Sorumlu Ekle</option>
-                    ${userOptionsHtml}
-                </select>
-            </div>
-            <div>
-                <label style="font-size:0.72rem; font-weight:700; color:#fde68a; display:block; margin-bottom:3px;">
-                    <i class="fa-solid fa-user-shield" style="color:#f59e0b;"></i> Kontrol Edecek Kişi *
-                </label>
-                <select class="form-control inline-action-controller">
-                    ${controllerOptionsHtml}
-                </select>
-                <div style="font-size:0.67rem; color:#94a3b8; margin-top:3px;">
-                    <i class="fa-solid fa-circle-info"></i> Aksiyonun tamamlanmasını denetleyecek ve bildirim alacak kontrol sorumlusu
-                </div>
-            </div>
-        </div>
-    `;
-    container.appendChild(row);
-    renderInlineRowAssigneeChips(rowId);
-    if (window.initAutoDateInputs) window.initAutoDateInputs(row);
+    if (currentDraftAgendaItems.length === 0) {
+        addAgendaItemRow('', false, '', false);
+    }
+    const targetItem = currentDraftAgendaItems[currentDraftAgendaItems.length - 1];
+    if (targetItem) {
+        addAgendaDraftActionRow(targetItem.id, prefill);
+    }
 }
 
 function cleanNumberedText(rawText) {
@@ -6565,6 +6862,7 @@ function cleanNumberedText(rawText) {
 
 function saveMeeting(event) {
     event.preventDefault();
+    syncDraftAgendaStateFromDOM();
     const idVal = document.getElementById('meeting-id').value;
     const recordType = document.getElementById('meeting-record-type-input')?.value || 'Toplantı';
     const title = document.getElementById('meeting-title-input').value.trim();
@@ -6578,6 +6876,7 @@ function saveMeeting(event) {
     const pendingQuickAgenda = document.getElementById('quick-agenda-item-input');
     if (pendingQuickAgenda && pendingQuickAgenda.value.trim()) {
         addAgendaItemFromQuickInput();
+        syncDraftAgendaStateFromDOM();
     }
 
     const invitedParticipants = Array.from(document.querySelectorAll('input[name="meeting-participant"]:checked')).map(cb => cb.value);
@@ -6615,20 +6914,82 @@ function saveMeeting(event) {
         return;
     }
 
-    const validAgendaItems = currentDraftAgendaItems
-        .map(it => ({
+    const validAgendaSource = currentDraftAgendaItems.filter(it => it.title && String(it.title).trim());
+    if (validAgendaSource.length === 0) {
+        alert("Lütfen Gündem Maddeleri alanına en az 1 gündem maddesi yazın!");
+        return;
+    }
+
+    let targetMeetingId = idVal;
+    if (!targetMeetingId) {
+        const prefix = recordType === 'Eğitim' ? 'EGT' : 'TOP';
+        targetMeetingId = generateUniqueMeetingId(prefix);
+    }
+
+    // Her gündem maddesinin altındaki yeni aksiyon satırlarını kaydet ve o maddeye bağla
+    validAgendaSource.forEach(it => {
+        if (!it.hasAction || !Array.isArray(it.draftActions)) return;
+        it.draftActions.forEach(da => {
+            const aTitle = String(da.title || '').trim();
+            if (!aTitle) return;
+            const selectedAssignees = (da.rowId && Array.isArray(inlineRowAssigneesMap[da.rowId]) && inlineRowAssigneesMap[da.rowId].length > 0)
+                ? [...inlineRowAssigneesMap[da.rowId]]
+                : (Array.isArray(da.assignees) && da.assignees.length > 0 ? [...da.assignees] : [currentUser ? currentUser.name : 'ÖMER EREN']);
+            const aAssigneeStr = selectedAssignees.join(', ');
+            const aController = da.controller || 'ÖMER EREN';
+            const aPrio = da.priority || 'Normal';
+            const aDueIso = normalizeToISODate(da.dueDate) || new Date(Date.now() + 86400000).toISOString().split('T')[0];
+            const aDueTimeRaw = da.dueTime || '17:00';
+
+            const newActId = generateUniqueActionId();
+            const actCreatedNow = formatNowTR();
+            const todayIso = new Date().toISOString().split('T')[0];
+            const newActionObj = {
+                id: newActId,
+                meetingId: targetMeetingId,
+                meetingTitle: title,
+                agendaItemId: it.id,
+                agendaItemTitle: String(it.title || '').trim(),
+                title: aTitle,
+                assignees: selectedAssignees,
+                assignee: aAssigneeStr,
+                controller: aController,
+                manager: aController,
+                priority: aPrio,
+                dueDate: aDueIso,
+                dueTime: aDueTimeRaw,
+                status: "Bekliyor",
+                note: "",
+                completedDate: "",
+                completedTime: "",
+                completedAt: "",
+                remindOneDayBefore: true,
+                remindSameDay: true,
+                remindNextDay: true,
+                remindEveryOtherDay: true,
+                createdDate: todayIso,
+                createdBy: currentUser ? currentUser.name : "ÖMER EREN",
+                createdAt: actCreatedNow,
+                updatedBy: '',
+                updatedAt: ''
+            };
+            appState.actions.unshift(newActionObj);
+            dispatchActionAssignedPush(newActionObj);
+            addAuditLog("AKSİYON", `${newActId} kodlu aksiyon ('${it.title.trim()}' maddesi altında) Sorumlu(lar): '${aAssigneeStr}' ve Kontrol Edecek Kişi: '${aController}' olarak atandı (Tamamlama: ${formatDateTR(aDueIso)} ${aDueTimeRaw}).`);
+        });
+    });
+
+    const validAgendaItems = validAgendaSource.map(it => {
+        const hasSavedAct = appState.actions.some(a => a.meetingId === targetMeetingId && a.agendaItemId === it.id);
+        return {
             id: it.id || ('agd-' + Date.now()),
             title: String(it.title || '').trim(),
             discussed: Boolean(it.discussed),
             explanation: it.discussed ? String(it.explanation || '').trim() : '',
+            hasAction: Boolean(hasSavedAct),
             transferredToMeetingId: String(it.transferredToMeetingId || '').trim()
-        }))
-        .filter(it => it.title);
-
-    if (validAgendaItems.length === 0) {
-        alert("Lütfen Gündem Maddeleri alanına en az 1 gündem maddesi yazın!");
-        return;
-    }
+        };
+    });
 
     const validDecisionItems = currentDraftDecisionItems
         .map(d => ({
@@ -6650,8 +7011,6 @@ function saveMeeting(event) {
     }
 
     const attachments = [...currentDraftAttachments];
-
-    let targetMeetingId = idVal;
 
     if (idVal) {
         const idx = appState.meetings.findIndex(m => m.id === idVal);
@@ -6675,14 +7034,12 @@ function saveMeeting(event) {
                     updatedAt: editNow
                 };
                 addAuditLog("TOPLANTI", `${idVal} kodlu '${title}' kaydı Yönetici ÖMER EREN tarafından güncellendi (Davetli: ${invitedParticipants.length}, Gelen: ${attendedParticipants.length}, Gelmeyen: ${absentParticipants.length}).`);
-                // Düzenleme yapıldığında tekrar bildirim veya ses verme
                 const myNorm = normalizeTR(editorName);
                 try {
                     localStorage.setItem(`alert_invite_${idVal}_${myNorm}`, '1');
                     localStorage.setItem(`alert_invite_${idVal}_${myNorm}_${date}_${time}`, '1');
                 } catch (e) {}
             } else {
-                // Mevcut toplantı personel tarafından değiştirildiğinde Yönetici Ömer Eren onay kuyruğuna düşer (bildirimsiz)
                 if (!Array.isArray(appState.approvalRequests)) appState.approvalRequests = [];
                 appState.approvalRequests.unshift({
                     id: 'ONAY-' + Date.now(),
@@ -6708,8 +7065,6 @@ function saveMeeting(event) {
             }
         }
     } else {
-        const prefix = recordType === 'Eğitim' ? 'EGT' : 'TOP';
-        targetMeetingId = generateUniqueMeetingId(prefix);
         const approvalStatus = isOmerEren(currentUser) ? 'Onaylandı' : 'Yönetici Onayı Bekliyor';
         const nowStr = formatNowTR();
         const newMeeting = {
@@ -6733,53 +7088,6 @@ function saveMeeting(event) {
         addAuditLog("TOPLANTI", `${targetMeetingId} kodlu yeni ${recordType.toLowerCase()} ('${title}') oluşturuldu (${approvalStatus}). Davetli: ${invitedParticipants.length}, Gelen: ${attendedParticipants.length}, Gelmeyen: ${absentParticipants.length}.`);
         playMeetingCallSound('APPROVAL', `Dikkat! ${title} başlıklı yeni ${recordType.toLowerCase()} kaydedildi.`);
     }
-
-    const inlineRows = document.querySelectorAll('#inline-actions-container > div');
-    inlineRows.forEach(r => {
-        const aTitle = r.querySelector('.inline-action-title')?.value.trim();
-        const rowId = r.dataset.rowId;
-        const selectedAssignees = (rowId && Array.isArray(inlineRowAssigneesMap[rowId]) && inlineRowAssigneesMap[rowId].length > 0)
-            ? [...inlineRowAssigneesMap[rowId]]
-            : [currentUser ? currentUser.name : 'ÖMER EREN'];
-        const aAssigneeStr = selectedAssignees.join(', ');
-        const aController = r.querySelector('.inline-action-controller')?.value || 'ÖMER EREN';
-        const aPrio = r.querySelector('.inline-action-priority')?.value || 'Normal';
-        const aDueRaw = r.querySelector('.inline-action-duedate')?.value;
-        const aDueTimeRaw = r.querySelector('.inline-action-duetime')?.value || '17:00';
-        if (aTitle) {
-            const newActId = generateUniqueActionId();
-            const actCreatedNow = formatNowTR();
-            const todayIso = new Date().toISOString().split('T')[0];
-            appState.actions.unshift({
-                id: newActId,
-                meetingId: targetMeetingId,
-                meetingTitle: title,
-                title: aTitle,
-                assignees: selectedAssignees,
-                assignee: aAssigneeStr,
-                controller: aController,
-                manager: aController,
-                priority: aPrio,
-                dueDate: normalizeToISODate(aDueRaw),
-                dueTime: aDueTimeRaw,
-                status: "Bekliyor",
-                note: "",
-                completedDate: "",
-                completedTime: "",
-                completedAt: "",
-                remindOneDayBefore: true,
-                remindSameDay: true,
-                remindNextDay: true,
-                remindEveryOtherDay: true,
-                createdDate: todayIso,
-                createdBy: currentUser ? currentUser.name : "ÖMER EREN",
-                createdAt: actCreatedNow,
-                updatedBy: '',
-                updatedAt: ''
-            });
-            addAuditLog("AKSİYON", `${newActId} kodlu aksiyon Sorumlu(lar): '${aAssigneeStr}' ve Kontrol Edecek Kişi: '${aController}' olarak atandı (Tamamlama: ${formatDateTR(aDueRaw)} ${aDueTimeRaw}).`);
-        }
-    });
 
     syncToServer();
     closeMeetingModal();
@@ -6897,15 +7205,54 @@ function removeActionModalAssignee(idx) {
     renderActionModalAssigneeChips();
 }
 
+function populateActionModalAgendaSelect(meetingId, selectedAgendaId = '') {
+    const agSelect = document.getElementById('action-agenda-select');
+    if (!agSelect) return;
+    if (!meetingId || meetingId === 'GENEL') {
+        agSelect.innerHTML = `<option value="">Genel (Maddesiz Aksiyon)</option>`;
+        agSelect.value = '';
+        return;
+    }
+    const openMeetId = document.getElementById('meeting-id')?.value || '';
+    let agendaList = [];
+    if (document.getElementById('meeting-modal')?.classList.contains('open') && openMeetId === meetingId) {
+        syncDraftAgendaStateFromDOM();
+        agendaList = currentDraftAgendaItems.filter(it => it.title && it.title.trim());
+    } else {
+        const m = appState.meetings.find(x => x.id === meetingId);
+        if (m) agendaList = parseAgendaItemsFromMeeting(m).filter(it => it.title && it.title.trim());
+    }
+
+    if (agendaList.length === 0) {
+        agSelect.innerHTML = `<option value="">Genel (Maddesiz Aksiyon)</option>`;
+        agSelect.value = '';
+        return;
+    }
+
+    agSelect.innerHTML = agendaList.map((ag, idx) =>
+        `<option value="${escapeHtmlAttr(ag.id)}">${idx + 1}. Madde: ${escapeHtml(ag.title)}</option>`
+    ).join('') + `<option value="">Genel (Maddesiz Aksiyon)</option>`;
+
+    if (selectedAgendaId && agendaList.some(ag => ag.id === selectedAgendaId)) {
+        agSelect.value = selectedAgendaId;
+    } else {
+        agSelect.value = agendaList[0].id;
+    }
+}
+
 function openActionModal(actionId = null) {
     populateSelectFilters();
     const modal = document.getElementById('action-modal');
     const compDateEl = document.getElementById('action-completed-date-input');
     const compTimeEl = document.getElementById('action-completed-time-input');
     const aSelect = document.getElementById('action-assignee-select');
+    const mgrSelect = document.getElementById('action-manager-select');
     if (aSelect) {
         aSelect.innerHTML = `<option value="">+ Sorumlu Personel Seç / Ekle (Çoklu Seçim)...</option><option value="__ALL_USERS__">👥 Tüm Personelleri Sorumlu Ekle</option>` +
             appState.users.map(u => `<option value="${escapeHtmlAttr(u.name)}">${u.name} (${u.dept})</option>`).join('');
+    }
+    if (mgrSelect) {
+        mgrSelect.innerHTML = appState.users.map(u => `<option value="${escapeHtmlAttr(u.name)}">${u.name} (${u.dept})</option>`).join('');
     }
 
     if (actionId) {
@@ -6913,7 +7260,9 @@ function openActionModal(actionId = null) {
         if (!a) return;
         document.getElementById('action-modal-title').innerHTML = `<i class="fa-solid fa-pen" style="color:#fbbf24;"></i> Aksiyon Kaydını Düzenle (${a.id})`;
         document.getElementById('action-id').value = a.id;
-        document.getElementById('action-meeting-select').value = a.meetingId || 'GENEL';
+        const mId = a.meetingId || 'GENEL';
+        document.getElementById('action-meeting-select').value = mId;
+        populateActionModalAgendaSelect(mId, a.agendaItemId || '');
         document.getElementById('action-title-input').value = a.title;
         currentActionModalAssignees = getActionAssigneesList(a);
         if (currentActionModalAssignees.length === 0 && a.assignee) {
@@ -6921,7 +7270,7 @@ function openActionModal(actionId = null) {
         }
         renderActionModalAssigneeChips();
         if (aSelect) aSelect.value = '';
-        document.getElementById('action-manager-select').value = getActionControllerName(a);
+        if (mgrSelect) mgrSelect.value = getActionControllerName(a);
         document.getElementById('action-priority-select').value = a.priority || 'Normal';
         setMaskedDateInputValue(document.getElementById('action-duedate-input'), a.dueDate);
         document.getElementById('action-duetime-input').value = a.dueTime || '17:00';
@@ -6941,11 +7290,13 @@ function openActionModal(actionId = null) {
     } else {
         document.getElementById('action-modal-title').innerHTML = `<i class="fa-solid fa-stopwatch" style="color:#fbbf24;"></i> Yeni Aksiyon &amp; Ertesi Gün / Gün Aşırı Hatırlatıcı Tanımla`;
         document.getElementById('action-id').value = '';
+        const defaultMId = document.getElementById('action-meeting-select')?.value || 'GENEL';
+        populateActionModalAgendaSelect(defaultMId, '');
         document.getElementById('action-title-input').value = '';
         currentActionModalAssignees = [currentUser ? currentUser.name : (appState.users[0]?.name || 'ÖMER EREN')];
         renderActionModalAssigneeChips();
         if (aSelect) aSelect.value = '';
-        document.getElementById('action-manager-select').value = 'ÖMER EREN';
+        if (mgrSelect) mgrSelect.value = 'ÖMER EREN';
         document.getElementById('action-priority-select').value = 'Normal';
         const tomorrowIso = new Date(Date.now() + 86400000).toISOString().split('T')[0];
         setMaskedDateInputValue(document.getElementById('action-duedate-input'), tomorrowIso);
@@ -6980,6 +7331,27 @@ function saveAction(event) {
     const meetingId = document.getElementById('action-meeting-select').value;
     const matchedMeeting = appState.meetings.find(m => m.id === meetingId);
     const meetingTitle = matchedMeeting ? matchedMeeting.title : "Genel Operasyon Görevi";
+    const agendaItemId = document.getElementById('action-agenda-select')?.value || '';
+    let agendaItemTitle = '';
+    if (agendaItemId) {
+        const openMeetId = document.getElementById('meeting-id')?.value || '';
+        if (document.getElementById('meeting-modal')?.classList.contains('open') && openMeetId === meetingId) {
+            const draftAg = currentDraftAgendaItems.find(x => x.id === agendaItemId);
+            if (draftAg) {
+                agendaItemTitle = draftAg.title || '';
+                draftAg.hasAction = true;
+            }
+        }
+        if (!agendaItemTitle && matchedMeeting) {
+            const agList = parseAgendaItemsFromMeeting(matchedMeeting);
+            const foundAg = agList.find(x => x.id === agendaItemId);
+            if (foundAg) {
+                agendaItemTitle = foundAg.title || '';
+                foundAg.hasAction = true;
+                matchedMeeting.agendaItems = agList;
+            }
+        }
+    }
 
     const title = document.getElementById('action-title-input').value.trim();
     const pendingSelectVal = document.getElementById('action-assignee-select')?.value || '';
@@ -7019,7 +7391,10 @@ function saveAction(event) {
             const existing = appState.actions[idx];
             appState.actions[idx] = {
                 ...existing,
-                meetingId, meetingTitle, title, assignees, assignee, controller, manager, priority, dueDate, dueTime, status, note,
+                meetingId, meetingTitle,
+                agendaItemId: agendaItemId || existing.agendaItemId || '',
+                agendaItemTitle: agendaItemTitle || existing.agendaItemTitle || '',
+                title, assignees, assignee, controller, manager, priority, dueDate, dueTime, status, note,
                 completedDate, completedTime, completedAt,
                 remindOneDayBefore: true,
                 remindSameDay: true,
@@ -7039,7 +7414,9 @@ function saveAction(event) {
         const todayIso = new Date().toISOString().split('T')[0];
         appState.actions.unshift({
             id: newId,
-            meetingId, meetingTitle, title, assignees, assignee, controller, manager, priority, dueDate, dueTime, status, note,
+            meetingId, meetingTitle,
+            agendaItemId, agendaItemTitle,
+            title, assignees, assignee, controller, manager, priority, dueDate, dueTime, status, note,
             completedDate, completedTime, completedAt,
             remindOneDayBefore: true,
             remindSameDay: true,
@@ -7065,8 +7442,10 @@ function saveAction(event) {
 
     syncToServer();
     closeActionModal();
-    const openMeetId = document.getElementById('meeting-id')?.value;
-    if (openMeetId) renderExistingMeetingActionsInModal(openMeetId);
+    if (document.getElementById('meeting-modal')?.classList.contains('open')) {
+        syncDraftAgendaStateFromDOM();
+        renderDraftAgendaItems();
+    }
     renderAll();
 }
 
@@ -7098,8 +7477,10 @@ function quickChangeActionStatus(actionId, newStatus) {
     addAuditLog("AKSİYON", `${a.id} (${a.assignee}) aksiyon durumu '${oldStatus}' -> '${newStatus}'${a.completedAt ? ` (Tamamlanma: ${a.completedAt})` : ''} olarak ${a.updatedBy} tarafından güncellendi.`);
     dispatchActionProgressPush(a, oldStatus, newStatus);
     syncToServer();
-    const openMeetId = document.getElementById('meeting-id')?.value;
-    if (openMeetId) renderExistingMeetingActionsInModal(openMeetId);
+    if (document.getElementById('meeting-modal')?.classList.contains('open')) {
+        syncDraftAgendaStateFromDOM();
+        renderDraftAgendaItems();
+    }
     renderAll();
 }
 
@@ -7141,7 +7522,20 @@ function deleteAction(actionId) {
 
     if (!confirm(`'${a.title}' aksiyonunu silmek istediğinize emin misiniz?`)) return;
     registerDeletedRecordId(actionId);
+    const deletedAgendaId = a.agendaItemId;
+    const deletedMeetId = a.meetingId;
     appState.actions = appState.actions.filter(x => x.id !== actionId);
+    if (deletedAgendaId && document.getElementById('meeting-modal')?.classList.contains('open')) {
+        syncDraftAgendaStateFromDOM();
+        const agItem = currentDraftAgendaItems.find(it => it.id === deletedAgendaId);
+        if (agItem) {
+            const rem = appState.actions.filter(x => x.meetingId === deletedMeetId && x.agendaItemId === deletedAgendaId);
+            if (rem.length === 0 && (!agItem.draftActions || agItem.draftActions.length === 0)) {
+                agItem.hasAction = false;
+            }
+        }
+        renderDraftAgendaItems();
+    }
     addAuditLog("AKSİYON", `${actionId} kodlu aksiyon Yönetici ÖMER EREN tarafından silindi.`);
     syncToServer();
     renderAll();
@@ -7355,22 +7749,42 @@ function printMeetingMinutes(meetingId) {
             </div>` : ''}
 
             <div style="margin-bottom:14px; font-size:12px;">
-                <strong>${isTraining ? 'Eğitim Konu Başlıkları ve Açıklamaları:' : 'Gündem Maddeleri (Konuşulanlar ✅ ve Konuşulmayanlar ⏳):'}</strong>
+                <strong>${isTraining ? 'Eğitim Konu Başlıkları ve Açıklamaları:' : 'Gündem Maddeleri ve Madde Altı Aksiyonları (Konuşulanlar ✅ ve Konuşulmayanlar ⏳):'}</strong>
                 <div style="margin-top:5px; padding:10px; border:1px solid #cbd5e1; border-radius:4px;">
                     ${agendaList.length > 0 ? `
                         <div style="margin-bottom:8px;">
                             <div style="font-weight:bold; color:#065f46; margin-bottom:4px;">✅ Konuşulan Gündem Maddeleri (${discussedList.length} Adet):</div>
-                            ${discussedList.length > 0 ? discussedList.map((ag, idx) => `
+                            ${discussedList.length > 0 ? discussedList.map((ag, idx) => {
+                                const agActs = mActions.filter(act => act.agendaItemId === ag.id);
+                                return `
                                 <div style="margin-bottom:6px; padding:6px 8px; background:#f0fdf4; border-left:3px solid #10b981;">
                                     <div><strong>${idx + 1}. ${ag.title}</strong></div>
                                     ${ag.explanation ? `<div style="margin-top:3px; color:#334155; font-size:11.5px; white-space:pre-line;">💬 Açıklama: ${ag.explanation}</div>` : ''}
+                                    ${agActs.length > 0 ? `
+                                        <div style="margin-top:5px; padding:5px 8px; background:#e0f2fe; border-left:3px solid #0284c7; font-size:11px; color:#0f172a;">
+                                            <div style="font-weight:bold; color:#0369a1; margin-bottom:2px;">⚡ Bu Maddenin Aksiyonları (${agActs.length}):</div>
+                                            ${agActs.map(act => `
+                                                <div style="margin-top:2px;">
+                                                    • <strong>[${act.id}] ${act.title}</strong> — Sorumlu: <strong>${getActionAssigneesList(act).join(', ')}</strong> | Kontrol: <strong>${getActionControllerName(act)}</strong> | Termin: <strong>${formatDateTR(act.dueDate)} ${act.dueTime || ''}</strong> (${act.status})
+                                                </div>
+                                            `).join('')}
+                                        </div>
+                                    ` : ''}
                                 </div>
-                            `).join('') : '<div style="color:#64748b;">Konuşulan gündem maddesi işaretlenmedi.</div>'}
+                                `;
+                            }).join('') : '<div style="color:#64748b;">Konuşulan gündem maddesi işaretlenmedi.</div>'}
                         </div>
                         ${undiscussedList.length > 0 ? `
                             <div style="margin-top:8px; padding-top:8px; border-top:1px dashed #cbd5e1;">
                                 <div style="font-weight:bold; color:#b45309; margin-bottom:4px;">⏳ Konuşulmayan / Başka Toplantıya Aktarılacak Gündem Maddeleri (${undiscussedList.length} Adet):</div>
-                                ${undiscussedList.map((ag, idx) => `<div style="padding:3px 0; color:#78350f;">☐ ${idx + 1}. ${ag.title}</div>`).join('')}
+                                ${undiscussedList.map((ag, idx) => {
+                                    const agActs = mActions.filter(act => act.agendaItemId === ag.id);
+                                    return `
+                                    <div style="padding:3px 0; color:#78350f;">
+                                        ☐ ${idx + 1}. ${ag.title}
+                                        ${agActs.length > 0 ? agActs.map(act => `<div style="margin-left:14px; font-size:11px; color:#0369a1;">⚡ [${act.id}] ${act.title} (Sorumlu: ${getActionAssigneesList(act).join(', ')})</div>`).join('') : ''}
+                                    </div>`;
+                                }).join('')}
                             </div>
                         ` : ''}
                     ` : `<div style="white-space:pre-line;">${m.notes || '-'}</div>`}
@@ -7438,7 +7852,10 @@ function printMeetingMinutes(meetingId) {
                         return `
                         <tr>
                             <td style="border:1px solid #94a3b8; padding:6px;">${a.id}</td>
-                            <td style="border:1px solid #94a3b8; padding:6px;">${a.title}</td>
+                            <td style="border:1px solid #94a3b8; padding:6px;">
+                                <div><strong>${a.title}</strong></div>
+                                ${a.agendaItemTitle ? `<div style="font-size:10px; color:#0369a1; margin-top:2px;">Madde: ${a.agendaItemTitle}</div>` : ''}
+                            </td>
                             <td style="border:1px solid #94a3b8; padding:6px; font-weight:bold;">${getActionAssigneesList(a).join(', ')}</td>
                             <td style="border:1px solid #94a3b8; padding:6px; font-weight:bold;">${getActionControllerName(a)}</td>
                             <td style="border:1px solid #94a3b8; padding:6px;">${formatDateTR(a.dueDate)} ${a.dueTime || ''}</td>
@@ -7958,7 +8375,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 12000);
 
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('sw.js?v=4.9.3').then(reg => {
+        navigator.serviceWorker.register('sw.js?v=4.9.4').then(reg => {
             try { reg.update(); } catch (e) {}
             syncUserAndStateToServiceWorker();
         }).catch(() => {});

@@ -1,9 +1,9 @@
 {
   "appId": "toplanti",
   "appName": "Dizsan Toplantı & Aksiyon",
-  "version": "4.9.3",
-  "build": 493,
+  "version": "4.9.4",
+  "build": 494,
   "releasedAt": "28.10.2026",
-  "releaseNotes": "Gündem maddeleri Konuşuldu/Konuşulmadı yan yana tik seçimi, Toplantı Aksiyonlarında birden fazla sorumlu personel ve Kontrol Edecek Kişi alanı eklendi, tekrar eden karar alanı sadeleştirildi.",
+  "releaseNotes": "Her gündem maddesinin altına 'Aksiyon Var' tiki eklendi; aksiyonu olan maddelerin hem kayıtlı aksiyonları hem de yeni aksiyon giriş formları doğrudan ilgili gündem maddesinin altında bütünleşik olarak gösterilecek şekilde düzenlendi.",
   "author": "Ömer Eren & DİZSAN"
 }
