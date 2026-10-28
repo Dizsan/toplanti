@@ -1,7 +1,6 @@
 {
-  "app": "Dizsan Toplantı, Eğitim & Aksiyon Yönetim Sistemi",
-  "version": "5.0.1",
-  "build": 501,
-  "releasedAt": "2026-10-29T00:27:00+03:00",
-  "notes": "Her alt maddenin (1.1, 1.2) aksiyon alanı doğrudan kendi satırının hemen altına alındı (v5.0.1)."
+  "version": "5.0.2",
+  "build": 502,
+  "updatedAt": "29.10.2026 00:45",
+  "notes": "v5.0.2: Alt madde aksiyonları 3 kademeli numaralandırma sistemine (2.1.1. Aksiyon, 2.1.2. Aksiyon) geçirildi; Enter veya + Yeni Aksiyon ile alt satıra geçildiğinde otomatik ardışık alt aksiyon kodu üretimi sağlandı."
 }

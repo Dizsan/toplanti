@@ -10,8 +10,8 @@
  * ==========================================================================
  */
 
-const INITIAL_APP_VERSION = "v5.0.1";
-const CURRENT_APP_VERSION = "5.0.1";
+const INITIAL_APP_VERSION = "v5.0.2";
+const CURRENT_APP_VERSION = "5.0.2";
 const VAPID_PUBLIC_KEY = "BJIJfCBiDwya3clZOWS08EDxfuN18xtfJGTX0n_apWBTEW7-kO_FGKNy5VDRvUsMgc46IP5oxLlIHqgrDo-JTkE";
 const STORAGE_KEY_STATE = "dizsan_toplanti_shared_state_v2";
 const STORAGE_KEY_SESSION = "dizsan_toplanti_active_user";
@@ -144,7 +144,7 @@ const OFFICIAL_PERSONNEL_LIST = OFFICIAL_PERSONNEL_RAW.map(u => ({ ...u, email: 
 
 const INITIAL_CHANGELOG = [
     {
-        version: "v5.0.1",
+        version: "v5.0.2",
         date: "28.10.2026 23:51",
         author: "Sistem Güncellemesi (ÖMER EREN)",
         notes: "Her alt gündem maddesinin (1.1, 1.2, 1.3, 1.4 vb.) sonuna bağımsız Aksiyon tiki eklendi; örneğin 1.1'de aksiyon yokken 1.2'de Aksiyon tiki işaretlendiğinde altta doğrudan 1.2 koduyla başlayan aksiyon metin alanı açılması sağlandı."
@@ -5539,25 +5539,34 @@ function ensureAgendaSubItems(it, agNum = 1) {
             hasAction: false
         });
     }
+    const openMeetIdForSub = document.getElementById('meeting-id')?.value || '';
     it.subItems.forEach((sub, sIdx) => {
         if (!sub.id) sub.id = `${it.id}_sub_${sIdx + 1}_${Date.now()}`;
         const newCode = `${agNum}.${sIdx + 1}`;
         const oldCode = sub.code || newCode;
         sub.code = newCode;
-        sub.text = String(sub.text || '').replace(/^\s*\d+(?:\.\d+)?[\.\)\-]?\s*/, '');
+        sub.text = String(sub.text || '').replace(/^\s*\d+(?:\.\d+)*[\.\)\-]?\s*/, '');
         sub.hasAction = Boolean(sub.hasAction);
+        const savedSubCount = (openMeetIdForSub && Array.isArray(appState.actions))
+            ? appState.actions.filter(a => a.meetingId === openMeetIdForSub && a.agendaItemId === it.id && (a.subItemId === sub.id || a.subItemCode === oldCode || a.subItemCode === newCode)).length
+            : 0;
         if (Array.isArray(it.draftActions)) {
+            let subDraftIdx = 0;
             it.draftActions.forEach(da => {
                 const matched = da.subItemId
                     ? (da.subItemId === sub.id)
-                    : Boolean(oldCode && da.subItemCode === oldCode);
+                    : Boolean(oldCode && (da.subItemCode === oldCode || String(da.subItemCode || '').startsWith(oldCode + '.')));
                 if (matched) {
+                    subDraftIdx++;
+                    const actSeq = savedSubCount + subDraftIdx;
+                    const actCodeDot = `${newCode}.${actSeq}.`;
                     da.subItemId = sub.id;
                     da.subItemCode = newCode;
-                    if (da.title && /^\s*\d+\.\d+\s*$/.test(da.title)) {
-                        da.title = `${newCode} `;
-                    } else if (da.title && oldCode !== newCode && da.title.startsWith(oldCode + ' ')) {
-                        da.title = newCode + ' ' + da.title.slice(oldCode.length + 1);
+                    da.actionCode = actCodeDot;
+                    if (!da.title || /^\s*\d+\.\d+(?:\.\d+)?\.?\s*$/.test(da.title)) {
+                        da.title = `${actCodeDot} `;
+                    } else if (/^\s*\d+\.\d+(?:\.\d+)?\.?\s+/.test(da.title)) {
+                        da.title = da.title.replace(/^\s*\d+\.\d+(?:\.\d+)?\.?\s+/, `${actCodeDot} `);
                     }
                 }
             });
@@ -6024,8 +6033,9 @@ function toggleAgendaItemHasAction(itemId, checked) {
             const newDa = createNewDraftActionObj({
                 subItemId: firstSub ? firstSub.id : '',
                 subItemCode: defaultCode,
-                title: `${defaultCode} `
+                title: `${defaultCode}.1. `
             });
+            newDa.actionCode = `${defaultCode}.1.`;
             item.draftActions.push(newDa);
             focusRowId = newDa.rowId;
         }
@@ -6084,11 +6094,13 @@ function toggleAgendaSubItemHasAction(itemId, subId, checked) {
         let existingDraftForSub = item.draftActions.find(da => da.subItemId === sub.id || da.subItemCode === sub.code);
         let focusRowId = existingDraftForSub ? existingDraftForSub.rowId : null;
         if (!existingDraftForSub && existingSubActs.length === 0) {
+            const actCodeDot = `${sub.code}.1.`;
             const newDa = createNewDraftActionObj({
                 subItemId: sub.id,
                 subItemCode: sub.code,
-                title: `${sub.code} `
+                title: `${actCodeDot} `
             });
+            newDa.actionCode = actCodeDot;
             item.draftActions.push(newDa);
             focusRowId = newDa.rowId;
         }
@@ -6132,23 +6144,38 @@ function addAgendaDraftActionRow(itemId, prefill = null) {
     if (itemIdx === -1) return;
     const item = currentDraftAgendaItems[itemIdx];
     const agNum = itemIdx + 1;
+    ensureAgendaSubItems(item, agNum);
     item.hasAction = true;
     if (!Array.isArray(item.draftActions)) item.draftActions = [];
 
     let finalPrefill = prefill ? { ...prefill } : {};
+    if (finalPrefill.subItemCode) {
+        const twoLevelMatch = String(finalPrefill.subItemCode).trim().match(/^(\d+\.\d+)/);
+        if (twoLevelMatch) finalPrefill.subItemCode = twoLevelMatch[1];
+    }
     if (!finalPrefill.subItemCode) {
         const activeSub = (Array.isArray(item.subItems) ? item.subItems.filter(s => s.hasAction) : []).slice(-1)[0];
         if (activeSub) {
             finalPrefill.subItemId = activeSub.id;
             finalPrefill.subItemCode = activeSub.code;
-            if (finalPrefill.title === undefined) finalPrefill.title = `${activeSub.code} `;
         } else {
-            const nextCode = `${agNum}.${item.draftActions.length + 1}`;
-            finalPrefill.subItemCode = nextCode;
-            if (finalPrefill.title === undefined) finalPrefill.title = `${nextCode} `;
+            finalPrefill.subItemCode = `${agNum}.1`;
         }
-    } else if (finalPrefill.title === undefined) {
-        finalPrefill.title = `${finalPrefill.subItemCode} `;
+    }
+
+    const meetId = document.getElementById('meeting-id')?.value || '';
+    const existingSubSavedCount = meetId
+        ? appState.actions.filter(a => a.meetingId === meetId && a.agendaItemId === itemId && (a.subItemId === finalPrefill.subItemId || a.subItemCode === finalPrefill.subItemCode)).length
+        : 0;
+    const existingSubDraftCount = item.draftActions.filter(da =>
+        (finalPrefill.subItemId && da.subItemId === finalPrefill.subItemId) ||
+        (!finalPrefill.subItemId && da.subItemCode === finalPrefill.subItemCode)
+    ).length;
+    const nextActSeq = existingSubSavedCount + existingSubDraftCount + 1;
+    const actionCodeDot = `${finalPrefill.subItemCode}.${nextActSeq}.`;
+
+    if (finalPrefill.title === undefined || /^\s*\d+\.\d+(?:\.\d+)?\.?\s*$/.test(String(finalPrefill.title))) {
+        finalPrefill.title = `${actionCodeDot} `;
     }
 
     if (finalPrefill.subItemId && Array.isArray(item.subItems)) {
@@ -6157,7 +6184,9 @@ function addAgendaDraftActionRow(itemId, prefill = null) {
     }
 
     const newDa = createNewDraftActionObj(finalPrefill);
+    newDa.actionCode = actionCodeDot;
     item.draftActions.push(newDa);
+    ensureAgendaSubItems(item, agNum);
     renderDraftAgendaItems();
     setTimeout(() => {
         const el = document.getElementById(`iar-title-${newDa.rowId}`);
@@ -6194,6 +6223,8 @@ function removeAgendaDraftActionRow(itemId, rowId) {
     if (existingActs.length === 0 && (!item.draftActions || item.draftActions.length === 0) && !anySubHasAction) {
         item.hasAction = false;
     }
+    const agNum = currentDraftAgendaItems.indexOf(item) + 1;
+    ensureAgendaSubItems(item, agNum);
     renderDraftAgendaItems();
 }
 
@@ -6543,8 +6574,7 @@ function handleInlineActionTitleKeydown(event, itemId, subItemId = '', subItemCo
         if (subItemId || subItemCode) {
             addAgendaDraftActionRow(itemId, {
                 subItemId: subItemId || '',
-                subItemCode: subItemCode || '',
-                title: subItemCode ? `${subItemCode} ` : ''
+                subItemCode: subItemCode || ''
             });
         } else {
             addAgendaDraftActionRow(itemId);
@@ -6593,10 +6623,11 @@ function renderDraftAgendaItems(focusItemId = null) {
         const hasAction = Boolean(it.hasAction || anySubChecked || itemSavedActions.length > 0 || itemDraftActions.length > 0);
         it.hasAction = hasAction;
 
-        const renderSavedActionRow = (a) => {
+        const renderSavedActionRow = (a, subActSeq = null) => {
             const st = evaluateActionReminderStatus(a);
             const compDisp = getActionCompletedDisplay(a);
-            const actCodeBadge = a.subItemCode ? `<span style="background:#0284c7; color:#fff; padding:1px 6px; border-radius:5px; font-size:0.72rem; font-weight:800; margin-right:4px;">${escapeHtml(a.subItemCode)}</span>` : '';
+            const savedBadgeCode = a.actionCode || (a.subItemCode ? (subActSeq ? `${a.subItemCode}.${subActSeq}.` : `${a.subItemCode}.1.`) : '');
+            const actCodeBadge = savedBadgeCode ? `<span style="background:#0284c7; color:#fff; padding:1px 6px; border-radius:5px; font-size:0.72rem; font-weight:800; margin-right:4px;">${escapeHtml(savedBadgeCode)} Aksiyon</span>` : '';
             return `
                 <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; padding:0.5rem 0.65rem; border-radius:8px; background:rgba(15,23,42,0.9); border:1px solid ${a.status === 'Tamamlandı' ? 'rgba(16,185,129,0.45)' : 'rgba(56,189,248,0.38)'};">
                     <div style="flex:1; min-width:200px;">
@@ -6628,7 +6659,7 @@ function renderDraftAgendaItems(focusItemId = null) {
             `;
         };
 
-        const renderDraftActionRow = (da, actIdx) => {
+        const renderDraftActionRow = (da, actIdx, subActSeq = null) => {
             if (!Array.isArray(inlineRowAssigneesMap[da.rowId])) {
                 inlineRowAssigneesMap[da.rowId] = Array.isArray(da.assignees) && da.assignees.length > 0
                     ? [...da.assignees]
@@ -6640,9 +6671,11 @@ function renderDraftAgendaItems(focusItemId = null) {
             const targetSubObj = da.subItemId
                 ? subItems.find(s => s.id === da.subItemId)
                 : (da.subItemCode ? subItems.find(s => s.code === da.subItemCode) : null);
-            const targetCode = da.subItemCode || (targetSubObj ? targetSubObj.code : `${agNum}.${actionOrderNum}`);
-            const targetSubSummary = targetSubObj && targetSubObj.text ? targetSubObj.text.trim() : '';
-            const safeSubCodeJs = escapeHtmlAttr(targetCode);
+            const parentSubCode = da.subItemCode || (targetSubObj ? targetSubObj.code : `${agNum}.1`);
+            const seqNum = subActSeq || actionOrderNum;
+            const actionCodeDot = da.actionCode || `${parentSubCode}.${seqNum}.`;
+            da.actionCode = actionCodeDot;
+            const safeSubCodeJs = escapeHtmlAttr(parentSubCode);
             const safeSubIdJs = escapeHtmlAttr(da.subItemId || (targetSubObj ? targetSubObj.id : ''));
 
             return `
@@ -6650,11 +6683,10 @@ function renderDraftAgendaItems(focusItemId = null) {
                     <div class="inline-action-top-grid">
                         <div style="display:flex; align-items:center; justify-content:space-between; gap:0.5rem; flex-wrap:wrap;">
                             <div style="display:inline-flex; align-items:center; gap:0.45rem; min-width:0;">
-                                <span style="background:#0284c7; color:#fff; padding:2px 8px; border-radius:5px; font-weight:700; font-size:0.73rem; white-space:nowrap;">${targetCode} Aksiyonu</span>
-                                ${targetSubSummary ? `<span style="color:#94a3b8; font-size:0.73rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:360px;">${escapeHtml(targetSubSummary)}</span>` : ''}
+                                <span style="background:#0284c7; color:#fff; padding:2px 8px; border-radius:5px; font-weight:700; font-size:0.73rem; white-space:nowrap;">${actionCodeDot} Aksiyon</span>
                             </div>
                             <div style="display:inline-flex; align-items:center; gap:0.35rem;">
-                                <button type="button" class="btn btn-secondary btn-sm" style="padding:0.22rem 0.55rem; font-size:0.71rem; border-color:rgba(56,189,248,0.35); color:#bae6fd;" onclick="addAgendaDraftActionRow('${it.id}', { subItemId: '${safeSubIdJs}', subItemCode: '${safeSubCodeJs}', title: '${safeSubCodeJs} ' })" title="Aynı Konuya Yeni Aksiyon Ekle">
+                                <button type="button" class="btn btn-secondary btn-sm" style="padding:0.22rem 0.55rem; font-size:0.71rem; border-color:rgba(56,189,248,0.35); color:#bae6fd;" onclick="addAgendaDraftActionRow('${it.id}', { subItemId: '${safeSubIdJs}', subItemCode: '${safeSubCodeJs}' })" title="Aynı Konuya Yeni Aksiyon Ekle">
                                     <i class="fa-solid fa-plus"></i> Yeni Aksiyon
                                 </button>
                                 <button type="button" class="btn btn-danger btn-sm" style="padding:0.22rem 0.48rem; font-size:0.71rem;" onclick="removeAgendaDraftActionRow('${it.id}', '${da.rowId}')" title="Aksiyonu Kaldır">
@@ -6662,7 +6694,7 @@ function renderDraftAgendaItems(focusItemId = null) {
                                 </button>
                             </div>
                         </div>
-                        <input type="text" id="iar-title-${da.rowId}" class="form-control inline-action-title" style="width:100% !important; font-size:0.84rem !important; font-weight:600; padding:0.48rem 0.65rem !important;" value="${escapeHtmlAttr(da.title || `${targetCode} `)}" placeholder="${targetCode} yapılacak aksiyonu yazın..." oninput="updateAgendaDraftActionField('${it.id}', '${da.rowId}', 'title', this.value)" onkeydown="handleInlineActionTitleKeydown(event, '${it.id}', '${safeSubIdJs}', '${safeSubCodeJs}')">
+                        <input type="text" id="iar-title-${da.rowId}" class="form-control inline-action-title" style="width:100% !important; font-size:0.84rem !important; font-weight:600; padding:0.48rem 0.65rem !important;" value="${escapeHtmlAttr(da.title || `${actionCodeDot} `)}" placeholder="${actionCodeDot} yapılacak aksiyonu yazın..." oninput="updateAgendaDraftActionField('${it.id}', '${da.rowId}', 'title', this.value)" onkeydown="handleInlineActionTitleKeydown(event, '${it.id}', '${safeSubIdJs}', '${safeSubCodeJs}')">
                     </div>
                     <div class="inline-action-meta-grid">
                         <div>
@@ -6723,8 +6755,8 @@ function renderDraftAgendaItems(focusItemId = null) {
             const subHasAction = Boolean(sub.hasAction || subTotalActs > 0);
             sub.hasAction = subHasAction;
 
-            const subSavedHtml = subSavedActions.map(a => renderSavedActionRow(a)).join('');
-            const subDraftHtml = subDraftActions.map(da => renderDraftActionRow(da, itemDraftActions.indexOf(da))).join('');
+            const subSavedHtml = subSavedActions.map((a, aIdx) => renderSavedActionRow(a, aIdx + 1)).join('');
+            const subDraftHtml = subDraftActions.map((da, dIdx) => renderDraftActionRow(da, itemDraftActions.indexOf(da), subSavedActions.length + dIdx + 1)).join('');
 
             return `
                 <div class="agenda-sub-item-block" style="display:flex; flex-direction:column; gap:0.38rem;">
@@ -7524,11 +7556,13 @@ function saveMeeting(event) {
         if (!it.hasAction || !Array.isArray(it.draftActions)) return;
         it.draftActions.forEach(da => {
             const rawTitle = String(da.title || '').trim();
-            const strippedTitle = rawTitle.replace(/^\s*\d+\.\d+\s*$/, '').trim();
+            const strippedTitle = rawTitle.replace(/^\s*\d+\.\d+(?:\.\d+)?\.?\s*$/, '').trim();
             if (!strippedTitle) return;
             const subItemCode = da.subItemCode || '';
-            const aTitle = (subItemCode && !rawTitle.startsWith(subItemCode))
-                ? `${subItemCode} ${rawTitle}`
+            const actionCode = da.actionCode || (subItemCode ? `${subItemCode}.1.` : '');
+            const prefixToUse = actionCode || subItemCode;
+            const aTitle = (prefixToUse && !rawTitle.startsWith(prefixToUse))
+                ? `${prefixToUse} ${rawTitle.replace(/^\d+\.\d+(?:\.\d+)?\.?\s*/, '')}`
                 : rawTitle;
             const selectedAssignees = (da.rowId && Array.isArray(inlineRowAssigneesMap[da.rowId]) && inlineRowAssigneesMap[da.rowId].length > 0)
                 ? [...inlineRowAssigneesMap[da.rowId]]
@@ -7550,6 +7584,7 @@ function saveMeeting(event) {
                 agendaItemTitle: String(it.title || '').trim(),
                 subItemId: da.subItemId || '',
                 subItemCode: subItemCode,
+                actionCode: actionCode,
                 title: aTitle,
                 assignees: selectedAssignees,
                 assignee: aAssigneeStr,
@@ -9001,7 +9036,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 12000);
 
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('sw.js?v=5.0.1').then(reg => {
+        navigator.serviceWorker.register('sw.js?v=5.0.2').then(reg => {
             try { reg.update(); } catch (e) {}
             syncUserAndStateToServiceWorker();
         }).catch(() => {});
