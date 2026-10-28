@@ -1,6 +1,6 @@
 {
   "version": "v4.9.4",
-  "updatedAt": "2026-10-28T18:45:00.000Z",
+  "updatedAt": "2026-10-28T19:20:42.120Z",
   "users": [
     {
       "order": 0,
@@ -221,98 +221,6 @@
     }
   ],
   "meetings": [
-    {
-      "id": "TOP-2026-003",
-      "recordType": "Toplantı",
-      "title": "Stok Bilgilendirme ve Yeni Stok Hazırlıkları",
-      "dept": "SSH & Servis",
-      "date": "2026-10-28",
-      "time": "17:30",
-      "location": "Dizsan Toplantı Salonu",
-      "participants": [
-        "ÖMER EREN",
-        "FATİH KIROĞLU",
-        "RAFET CANBEK",
-        "GÖKHAN ÖZBULUT",
-        "MURAT KARAOĞLU",
-        "MURAT SALMAN",
-        "MUSTAFA İLGEN"
-      ],
-      "invitedParticipants": [
-        "ÖMER EREN",
-        "FATİH KIROĞLU",
-        "RAFET CANBEK",
-        "GÖKHAN ÖZBULUT",
-        "MURAT KARAOĞLU",
-        "MURAT SALMAN",
-        "MUSTAFA İLGEN"
-      ],
-      "attendedParticipants": [
-        "ÖMER EREN",
-        "FATİH KIROĞLU",
-        "RAFET CANBEK",
-        "GÖKHAN ÖZBULUT",
-        "MURAT KARAOĞLU",
-        "MURAT SALMAN",
-        "MUSTAFA İLGEN"
-      ],
-      "absentParticipants": [],
-      "externalParticipants": [],
-      "agendaItems": [
-        {
-          "id": "agd-1793207067768",
-          "title": "Genel Stok Durumu",
-          "discussed": true,
-          "explanation": "Genel Stok Durumu aktarıldı ölü ve hareketsiz stoklar rapor halinde arkadaşlara aktarıldı",
-          "transferredToMeetingId": "",
-          "hasAction": false
-        },
-        {
-          "id": "agd-1793207149528-456",
-          "title": "Stok Planlama",
-          "discussed": true,
-          "explanation": "Yeni Stok güncellemesi yapıldı gelecekte yok denmemsi adına detaylandırlıcak bir excel listesi oluşturuldu",
-          "transferredToMeetingId": "",
-          "hasAction": false
-        },
-        {
-          "id": "agd-1793207156626-761",
-          "title": "Gelecek Stok Hazırlıkları",
-          "discussed": true,
-          "explanation": "Kaba liste oluşturuldu detaylarını Fatih Usta ve Rafet Bey ayarlayacak atölye ile planlama yapılıp Yönetim onayına sunulacak",
-          "transferredToMeetingId": "",
-          "hasAction": false
-        },
-        {
-          "id": "agd-1793207395727-357",
-          "title": "Temel Stok Eklenecek Çıkartılacaklar Listeden kontrol edildi",
-          "discussed": true,
-          "explanation": "Temel Stok için Doğuş ve Dizsan Temel Stok Listesi Güncellenecek",
-          "transferredToMeetingId": "",
-          "hasAction": true
-        }
-      ],
-      "decisionItems": [
-        {
-          "id": "dec-1793207067768",
-          "text": "Temel Stok Güncellemesi",
-          "responsible": "FATİH KIROĞLU",
-          "dueDate": "2026-10-28",
-          "status": "Bekliyor"
-        }
-      ],
-      "notes": "1. Genel Stok Durumu [Konuşuldu]\n   ↳ Açıklama: Genel Stok Durumu aktarıldı ölü ve hareketsiz stoklar rapor halinde arkadaşlara aktarıldı\n2. Stok Planlama [Konuşuldu]\n   ↳ Açıklama: Yeni Stok güncellemesi yapıldı gelecekte yok denmemsi adına detaylandırlıcak bir excel listesi oluşturuldu\n3. Gelecek Stok Hazırlıkları [Konuşuldu]\n   ↳ Açıklama: Kaba liste oluşturuldu detaylarını Fatih Usta ve Rafet Bey ayarlayacak atölye ile planlama yapılıp Yönetim onayına sunulacak\n4. Temel Stok Eklenecek Çıkartılacaklar Listeden kontrol edildi [Konuşuldu]\n   ↳ Açıklama: Temel Stok için Doğuş ve Dizsan Temel Stok Listesi Güncellenecek",
-      "decisions": "1. Temel Stok Güncellemesi (Sorumlu: FATİH KIROĞLU | Termin: 28.10.2026)",
-      "attachments": [],
-      "approvalStatus": "Onaylandı",
-      "omerApprovedStamp": true,
-      "approvedBy": "ÖMER EREN",
-      "approvedAt": "28.10.2026 20:16:21",
-      "createdBy": "ÖMER EREN",
-      "createdAt": "28.10.2026 20:16:21",
-      "updatedBy": "",
-      "updatedAt": ""
-    },
     {
       "id": "TOP-2026-002",
       "recordType": "Toplantı",
@@ -554,6 +462,14 @@
     }
   ],
   "logs": [
+    {
+      "id": "LOG-1793215242115",
+      "timestamp": "28.10.2026 22:20:42",
+      "user": "ÖMER EREN",
+      "category": "TOPLANTI",
+      "detail": "TOP-2026-003 kodlu 'Stok Bilgilendirme ve Yeni Stok Hazırlıkları' kaydı Yönetici ÖMER EREN tarafından silindi.",
+      "platform": "macOS / Masaüstü"
+    },
     {
       "id": "LOG-1793207781079",
       "timestamp": "28.10.2026 20:16:21",
@@ -1357,6 +1273,18 @@
   ],
   "changelog": [
     {
+      "version": "v4.9.4",
+      "date": "28.10.2026",
+      "author": "ÖMER EREN",
+      "notes": "Her gündem maddesinin altına 'Aksiyon Var' tiki eklendi; aksiyonu olan maddelerin hem kayıtlı aksiyonları hem de yeni aksiyon giriş formları doğrudan ilgili gündem maddesinin altında bütünleşik olarak gösterilecek şekilde düzenlendi."
+    },
+    {
+      "version": "v4.9.3",
+      "date": "28.10.2026",
+      "author": "ÖMER EREN",
+      "notes": "Gündem maddeleri Konuşuldu/Konuşulmadı yan yana tik seçimi, Toplantı Aksiyonlarında birden fazla sorumlu personel ve Kontrol Edecek Kişi alanı eklendi, tekrar eden karar alanı sadeleştirildi."
+    },
+    {
       "version": "v1.8.5",
       "date": "25.10.2026",
       "author": "ÖMER EREN",
@@ -1487,7 +1415,7 @@
       "resolvedBy": "ÖMER EREN"
     }
   ],
-  "stateRevision": 171,
+  "stateRevision": 173,
   "pushSubscriptions": [
     {
       "id": "SUB-1793029403205-553",
@@ -2202,7 +2130,9 @@
   },
   "versionUpdatedAt": "28.10.2026",
   "versionReleaseNotes": "Her gündem maddesinin altına 'Aksiyon Var' tiki eklendi; aksiyonu olan maddelerin hem kayıtlı aksiyonları hem de yeni aksiyon giriş formları doğrudan ilgili gündem maddesinin altında bütünleşik olarak gösterilecek şekilde düzenlendi.",
-  "deletedIds": [],
+  "deletedIds": [
+    "TOP-2026-003"
+  ],
   "usedResetTokens": [],
   "updatedAtMs": 1793213100000
 }
