@@ -1,6 +1,6 @@
 {
   "version": "v4.9.2",
-  "updatedAt": "26.10.2026 22:51:22",
+  "updatedAt": "2026-10-28T17:16:21.082Z",
   "users": [
     {
       "order": 0,
@@ -222,6 +222,94 @@
   ],
   "meetings": [
     {
+      "id": "TOP-2026-003",
+      "recordType": "Toplantı",
+      "title": "Stok Bilgilendirme ve Yeni Stok Hazırlıkları",
+      "dept": "SSH & Servis",
+      "date": "2026-10-28",
+      "time": "17:30",
+      "location": "Dizsan Toplantı Salonu",
+      "participants": [
+        "ÖMER EREN",
+        "FATİH KIROĞLU",
+        "RAFET CANBEK",
+        "GÖKHAN ÖZBULUT",
+        "MURAT KARAOĞLU",
+        "MURAT SALMAN",
+        "MUSTAFA İLGEN"
+      ],
+      "invitedParticipants": [
+        "ÖMER EREN",
+        "FATİH KIROĞLU",
+        "RAFET CANBEK",
+        "GÖKHAN ÖZBULUT",
+        "MURAT KARAOĞLU",
+        "MURAT SALMAN",
+        "MUSTAFA İLGEN"
+      ],
+      "attendedParticipants": [
+        "ÖMER EREN",
+        "FATİH KIROĞLU",
+        "RAFET CANBEK",
+        "GÖKHAN ÖZBULUT",
+        "MURAT KARAOĞLU",
+        "MURAT SALMAN",
+        "MUSTAFA İLGEN"
+      ],
+      "absentParticipants": [],
+      "externalParticipants": [],
+      "agendaItems": [
+        {
+          "id": "agd-1793207067768",
+          "title": "Genel Stok Durumu",
+          "discussed": true,
+          "explanation": "Genel Stok Durumu aktarıldı ölü ve hareketsiz stoklar rapor halinde arkadaşlara aktarıldı",
+          "transferredToMeetingId": ""
+        },
+        {
+          "id": "agd-1793207149528-456",
+          "title": "Stok Planlama",
+          "discussed": true,
+          "explanation": "Yeni Stok güncellemesi yapıldı gelecekte yok denmemsi adına detaylandırlıcak bir excel listesi oluşturuldu",
+          "transferredToMeetingId": ""
+        },
+        {
+          "id": "agd-1793207156626-761",
+          "title": "Gelecek Stok Hazırlıkları",
+          "discussed": true,
+          "explanation": "Kaba liste oluşturuldu detaylarını Fatih Usta ve Rafet Bey ayarlayacak atölye ile planlama yapılıp Yönetim onayına sunulacak",
+          "transferredToMeetingId": ""
+        },
+        {
+          "id": "agd-1793207395727-357",
+          "title": "Temel Stok Eklenecek Çıkartılacaklar Listeden kontrol edildi",
+          "discussed": true,
+          "explanation": "Temel Stok için Doğuş ve Dizsan Temel Stok Listesi Güncellenecek",
+          "transferredToMeetingId": ""
+        }
+      ],
+      "decisionItems": [
+        {
+          "id": "dec-1793207067768",
+          "text": "Temel Stok Güncellemesi",
+          "responsible": "FATİH KIROĞLU",
+          "dueDate": "2026-10-28",
+          "status": "Bekliyor"
+        }
+      ],
+      "notes": "1. Genel Stok Durumu [Konuşuldu]\n   ↳ Açıklama: Genel Stok Durumu aktarıldı ölü ve hareketsiz stoklar rapor halinde arkadaşlara aktarıldı\n2. Stok Planlama [Konuşuldu]\n   ↳ Açıklama: Yeni Stok güncellemesi yapıldı gelecekte yok denmemsi adına detaylandırlıcak bir excel listesi oluşturuldu\n3. Gelecek Stok Hazırlıkları [Konuşuldu]\n   ↳ Açıklama: Kaba liste oluşturuldu detaylarını Fatih Usta ve Rafet Bey ayarlayacak atölye ile planlama yapılıp Yönetim onayına sunulacak\n4. Temel Stok Eklenecek Çıkartılacaklar Listeden kontrol edildi [Konuşuldu]\n   ↳ Açıklama: Temel Stok için Doğuş ve Dizsan Temel Stok Listesi Güncellenecek",
+      "decisions": "1. Temel Stok Güncellemesi (Sorumlu: FATİH KIROĞLU | Termin: 28.10.2026)",
+      "attachments": [],
+      "approvalStatus": "Onaylandı",
+      "omerApprovedStamp": true,
+      "approvedBy": "ÖMER EREN",
+      "approvedAt": "28.10.2026 20:16:21",
+      "createdBy": "ÖMER EREN",
+      "createdAt": "28.10.2026 20:16:21",
+      "updatedBy": "",
+      "updatedAt": ""
+    },
+    {
       "id": "TOP-2026-002",
       "recordType": "Toplantı",
       "title": "Finans ve Ödeme Toplantısı Planlama",
@@ -398,6 +486,31 @@
   ],
   "actions": [
     {
+      "id": "AKS-103",
+      "meetingId": "TOP-2026-003",
+      "meetingTitle": "Stok Bilgilendirme ve Yeni Stok Hazırlıkları",
+      "title": "Temel Stok Güncellemesi",
+      "assignee": "ÖMER EREN",
+      "manager": "ÖMER EREN",
+      "priority": "Normal",
+      "dueDate": "2026-10-29",
+      "dueTime": "17:00",
+      "status": "Bekliyor",
+      "note": "",
+      "completedDate": "",
+      "completedTime": "",
+      "completedAt": "",
+      "remindOneDayBefore": true,
+      "remindSameDay": true,
+      "remindNextDay": true,
+      "remindEveryOtherDay": true,
+      "createdDate": "2026-10-28",
+      "createdBy": "ÖMER EREN",
+      "createdAt": "28.10.2026 20:16:21",
+      "updatedBy": "",
+      "updatedAt": ""
+    },
+    {
       "id": "AKS-102",
       "meetingId": "TOP-2026-002",
       "meetingTitle": "Finans ve Ödeme Toplantısı Planlama",
@@ -424,6 +537,22 @@
     }
   ],
   "logs": [
+    {
+      "id": "LOG-1793207781079",
+      "timestamp": "28.10.2026 20:16:21",
+      "user": "ÖMER EREN",
+      "category": "AKSİYON",
+      "detail": "AKS-103 kodlu aksiyon 'ÖMER EREN' personeline ve Yönetici ÖMER EREN'e ertesi gün ve gün aşırı hatırlatıcılı olarak atandı (Tamamlama: 29.10.2026 17:00).",
+      "platform": "macOS / Masaüstü"
+    },
+    {
+      "id": "LOG-1793207781059",
+      "timestamp": "28.10.2026 20:16:21",
+      "user": "ÖMER EREN",
+      "category": "TOPLANTI",
+      "detail": "TOP-2026-003 kodlu yeni toplantı ('Stok Bilgilendirme ve Yeni Stok Hazırlıkları') oluşturuldu (Onaylandı). Davetli: 7, Gelen: 7, Gelmeyen: 0.",
+      "platform": "macOS / Masaüstü"
+    },
     {
       "id": "LOG-1793044230610",
       "timestamp": "26.10.2026 22:50:30",
@@ -1341,7 +1470,7 @@
       "resolvedBy": "ÖMER EREN"
     }
   ],
-  "stateRevision": 167,
+  "stateRevision": 170,
   "pushSubscriptions": [
     {
       "id": "SUB-1793029403205-553",
