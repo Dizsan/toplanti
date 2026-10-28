@@ -1,7 +1,7 @@
 {
   "app": "Dizsan Toplantı, Eğitim & Aksiyon Yönetim Sistemi",
-  "version": "5.0.0",
-  "build": 500,
-  "releasedAt": "2026-10-28T23:51:00+03:00",
-  "notes": "Gündem & aksiyon ekranı sadeleştirildi; uygulama açılışında dit-dit bildirim sesi ve autoplay kurtarma motoru eklendi (v5.0.0)."
+  "version": "5.0.1",
+  "build": 501,
+  "releasedAt": "2026-10-29T00:27:00+03:00",
+  "notes": "Her alt maddenin (1.1, 1.2) aksiyon alanı doğrudan kendi satırının hemen altına alındı (v5.0.1)."
 }

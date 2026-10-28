@@ -10,8 +10,8 @@
  * ==========================================================================
  */
 
-const INITIAL_APP_VERSION = "v5.0.0";
-const CURRENT_APP_VERSION = "5.0.0";
+const INITIAL_APP_VERSION = "v5.0.1";
+const CURRENT_APP_VERSION = "5.0.1";
 const VAPID_PUBLIC_KEY = "BJIJfCBiDwya3clZOWS08EDxfuN18xtfJGTX0n_apWBTEW7-kO_FGKNy5VDRvUsMgc46IP5oxLlIHqgrDo-JTkE";
 const STORAGE_KEY_STATE = "dizsan_toplanti_shared_state_v2";
 const STORAGE_KEY_SESSION = "dizsan_toplanti_active_user";
@@ -144,7 +144,7 @@ const OFFICIAL_PERSONNEL_LIST = OFFICIAL_PERSONNEL_RAW.map(u => ({ ...u, email: 
 
 const INITIAL_CHANGELOG = [
     {
-        version: "v5.0.0",
+        version: "v5.0.1",
         date: "28.10.2026 23:51",
         author: "Sistem Güncellemesi (ÖMER EREN)",
         notes: "Her alt gündem maddesinin (1.1, 1.2, 1.3, 1.4 vb.) sonuna bağımsız Aksiyon tiki eklendi; örneğin 1.1'de aksiyon yokken 1.2'de Aksiyon tiki işaretlendiğinde altta doğrudan 1.2 koduyla başlayan aksiyon metin alanı açılması sağlandı."
@@ -5548,7 +5548,10 @@ function ensureAgendaSubItems(it, agNum = 1) {
         sub.hasAction = Boolean(sub.hasAction);
         if (Array.isArray(it.draftActions)) {
             it.draftActions.forEach(da => {
-                if (da.subItemId === sub.id || (oldCode && da.subItemCode === oldCode)) {
+                const matched = da.subItemId
+                    ? (da.subItemId === sub.id)
+                    : Boolean(oldCode && da.subItemCode === oldCode);
+                if (matched) {
                     da.subItemId = sub.id;
                     da.subItemCode = newCode;
                     if (da.title && /^\s*\d+\.\d+\s*$/.test(da.title)) {
@@ -6534,10 +6537,18 @@ function handleAgendaTitleKeydown(event, itemId) {
     }
 }
 
-function handleInlineActionTitleKeydown(event, itemId) {
+function handleInlineActionTitleKeydown(event, itemId, subItemId = '', subItemCode = '') {
     if (event.key === 'Enter') {
         event.preventDefault();
-        addAgendaDraftActionRow(itemId);
+        if (subItemId || subItemCode) {
+            addAgendaDraftActionRow(itemId, {
+                subItemId: subItemId || '',
+                subItemCode: subItemCode || '',
+                title: subItemCode ? `${subItemCode} ` : ''
+            });
+        } else {
+            addAgendaDraftActionRow(itemId);
+        }
     }
 }
 
@@ -6581,9 +6592,8 @@ function renderDraftAgendaItems(focusItemId = null) {
         const anySubChecked = subItems.some(s => s.hasAction);
         const hasAction = Boolean(it.hasAction || anySubChecked || itemSavedActions.length > 0 || itemDraftActions.length > 0);
         it.hasAction = hasAction;
-        const totalItemActionsCount = itemSavedActions.length + itemDraftActions.length;
 
-        const savedActionsHtml = itemSavedActions.map(a => {
+        const renderSavedActionRow = (a) => {
             const st = evaluateActionReminderStatus(a);
             const compDisp = getActionCompletedDisplay(a);
             const actCodeBadge = a.subItemCode ? `<span style="background:#0284c7; color:#fff; padding:1px 6px; border-radius:5px; font-size:0.72rem; font-weight:800; margin-right:4px;">${escapeHtml(a.subItemCode)}</span>` : '';
@@ -6616,9 +6626,9 @@ function renderDraftAgendaItems(focusItemId = null) {
                     </div>
                 </div>
             `;
-        }).join('');
+        };
 
-        const draftActionsHtml = itemDraftActions.map((da, actIdx) => {
+        const renderDraftActionRow = (da, actIdx) => {
             if (!Array.isArray(inlineRowAssigneesMap[da.rowId])) {
                 inlineRowAssigneesMap[da.rowId] = Array.isArray(da.assignees) && da.assignees.length > 0
                     ? [...da.assignees]
@@ -6652,7 +6662,7 @@ function renderDraftAgendaItems(focusItemId = null) {
                                 </button>
                             </div>
                         </div>
-                        <input type="text" id="iar-title-${da.rowId}" class="form-control inline-action-title" style="width:100% !important; font-size:0.84rem !important; font-weight:600; padding:0.48rem 0.65rem !important;" value="${escapeHtmlAttr(da.title || `${targetCode} `)}" placeholder="${targetCode} yapılacak aksiyonu yazın..." oninput="updateAgendaDraftActionField('${it.id}', '${da.rowId}', 'title', this.value)" onkeydown="handleInlineActionTitleKeydown(event, '${it.id}')">
+                        <input type="text" id="iar-title-${da.rowId}" class="form-control inline-action-title" style="width:100% !important; font-size:0.84rem !important; font-weight:600; padding:0.48rem 0.65rem !important;" value="${escapeHtmlAttr(da.title || `${targetCode} `)}" placeholder="${targetCode} yapılacak aksiyonu yazın..." oninput="updateAgendaDraftActionField('${it.id}', '${da.rowId}', 'title', this.value)" onkeydown="handleInlineActionTitleKeydown(event, '${it.id}', '${safeSubIdJs}', '${safeSubCodeJs}')">
                     </div>
                     <div class="inline-action-meta-grid">
                         <div>
@@ -6690,34 +6700,69 @@ function renderDraftAgendaItems(focusItemId = null) {
                     </div>
                 </div>
             `;
-        }).join('');
+        };
+
+        const matchesSubItem = (act, sub) => {
+            if (act.subItemId && subItems.some(s => s.id === act.subItemId)) {
+                return act.subItemId === sub.id;
+            }
+            return Boolean(act.subItemCode && act.subItemCode === sub.code);
+        };
+
+        const matchedSavedIds = new Set();
+        const matchedDraftRowIds = new Set();
 
         const subItemsRowsHtml = subItems.map((sub, sIdx) => {
-            const subSavedCount = itemSavedActions.filter(a => a.subItemId === sub.id || a.subItemCode === sub.code).length;
-            const subDraftCount = itemDraftActions.filter(da => da.subItemId === sub.id || da.subItemCode === sub.code).length;
-            const subTotalActs = subSavedCount + subDraftCount;
+            const subSavedActions = itemSavedActions.filter(a => matchesSubItem(a, sub));
+            const subDraftActions = itemDraftActions.filter(da => matchesSubItem(da, sub));
+            if (isDiscussed) {
+                subSavedActions.forEach(a => matchedSavedIds.add(a.id));
+                subDraftActions.forEach(da => matchedDraftRowIds.add(da.rowId));
+            }
+            const subTotalActs = subSavedActions.length + subDraftActions.length;
             const subHasAction = Boolean(sub.hasAction || subTotalActs > 0);
             sub.hasAction = subHasAction;
 
+            const subSavedHtml = subSavedActions.map(a => renderSavedActionRow(a)).join('');
+            const subDraftHtml = subDraftActions.map(da => renderDraftActionRow(da, itemDraftActions.indexOf(da))).join('');
+
             return `
-                <div style="display:flex; align-items:center; gap:0.45rem; flex-wrap:wrap;">
-                    <span style="font-weight:700; color:${subHasAction ? '#fff' : '#bae6fd'}; background:${subHasAction ? '#0284c7' : 'rgba(56,189,248,0.12)'}; border:1px solid ${subHasAction ? '#38bdf8' : 'rgba(56,189,248,0.28)'}; padding:0.28rem 0.5rem; border-radius:6px; font-size:0.75rem; min-width:34px; text-align:center; flex-shrink:0;">
-                        ${sub.code}
-                    </span>
+                <div class="agenda-sub-item-block" style="display:flex; flex-direction:column; gap:0.38rem;">
+                    <div style="display:flex; align-items:center; gap:0.45rem; flex-wrap:wrap;">
+                        <span style="font-weight:700; color:${subHasAction ? '#fff' : '#bae6fd'}; background:${subHasAction ? '#0284c7' : 'rgba(56,189,248,0.12)'}; border:1px solid ${subHasAction ? '#38bdf8' : 'rgba(56,189,248,0.28)'}; padding:0.28rem 0.5rem; border-radius:6px; font-size:0.75rem; min-width:34px; text-align:center; flex-shrink:0;">
+                            ${sub.code}
+                        </span>
 
-                    <input type="text" id="agenda-sub-input-${sub.id}" class="form-control" style="flex:1 1 200px; min-width:0; padding:0.4rem 0.65rem !important; font-size:0.82rem !important; font-weight:500; background:rgba(15,23,42,0.85);" placeholder="${sub.code} alt madde detayı..." value="${escapeHtmlAttr(sub.text || '')}" oninput="updateAgendaSubItemText('${it.id}', '${sub.id}', this.value)" onkeydown="handleAgendaSubItemKeydown(event, '${it.id}', '${sub.id}')">
+                        <input type="text" id="agenda-sub-input-${sub.id}" class="form-control" style="flex:1 1 200px; min-width:0; padding:0.4rem 0.65rem !important; font-size:0.82rem !important; font-weight:500; background:rgba(15,23,42,0.85);" placeholder="${sub.code} alt madde detayı..." value="${escapeHtmlAttr(sub.text || '')}" oninput="updateAgendaSubItemText('${it.id}', '${sub.id}', this.value)" onkeydown="handleAgendaSubItemKeydown(event, '${it.id}', '${sub.id}')">
 
-                    <label style="display:inline-flex; align-items:center; gap:0.38rem; cursor:pointer; margin:0; padding:0.34rem 0.6rem; border-radius:6px; background:${subHasAction ? 'rgba(2,132,199,0.25)' : 'rgba(255,255,255,0.03)'}; border:1px solid ${subHasAction ? '#38bdf8' : 'rgba(148,163,184,0.24)'}; color:${subHasAction ? '#ffffff' : '#cbd5e1'}; font-size:0.74rem; font-weight:600; user-select:none; white-space:nowrap; flex-shrink:0; transition:all 0.15s;" title="${sub.code} için aksiyon ekle">
-                        <input type="checkbox" class="blue-tick-checkbox" ${subHasAction ? 'checked' : ''} onchange="toggleAgendaSubItemHasAction('${it.id}', '${sub.id}', this.checked)">
-                        <span>Aksiyon${subTotalActs > 1 ? ` (${subTotalActs})` : ''}</span>
-                    </label>
+                        <label style="display:inline-flex; align-items:center; gap:0.38rem; cursor:pointer; margin:0; padding:0.34rem 0.6rem; border-radius:6px; background:${subHasAction ? 'rgba(2,132,199,0.25)' : 'rgba(255,255,255,0.03)'}; border:1px solid ${subHasAction ? '#38bdf8' : 'rgba(148,163,184,0.24)'}; color:${subHasAction ? '#ffffff' : '#cbd5e1'}; font-size:0.74rem; font-weight:600; user-select:none; white-space:nowrap; flex-shrink:0; transition:all 0.15s;" title="${sub.code} için aksiyon ekle">
+                            <input type="checkbox" class="blue-tick-checkbox" ${subHasAction ? 'checked' : ''} onchange="toggleAgendaSubItemHasAction('${it.id}', '${sub.id}', this.checked)">
+                            <span>Aksiyon${subTotalActs > 1 ? ` (${subTotalActs})` : ''}</span>
+                        </label>
 
-                    <button type="button" class="btn btn-secondary btn-sm" style="padding:0.32rem 0.48rem; flex-shrink:0; color:#94a3b8; border-color:rgba(148,163,184,0.2);" onclick="removeAgendaSubItemRow('${it.id}', '${sub.id}')" title="Alt Maddeyi Sil">
-                        <i class="fa-solid fa-xmark"></i>
-                    </button>
+                        <button type="button" class="btn btn-secondary btn-sm" style="padding:0.32rem 0.48rem; flex-shrink:0; color:#94a3b8; border-color:rgba(148,163,184,0.2);" onclick="removeAgendaSubItemRow('${it.id}', '${sub.id}')" title="Alt Maddeyi Sil">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+                    ${(subSavedHtml || subDraftHtml) ? `
+                        <div style="margin-left:1.35rem; padding-left:0.65rem; border-left:2px solid rgba(56,189,248,0.35); display:flex; flex-direction:column; gap:0.4rem;">
+                            ${subSavedHtml}
+                            ${subDraftHtml}
+                        </div>
+                    ` : ''}
                 </div>
             `;
         }).join('');
+
+        const orphanSavedActions = isDiscussed
+            ? itemSavedActions.filter(a => !matchedSavedIds.has(a.id))
+            : itemSavedActions;
+        const orphanDraftActions = isDiscussed
+            ? itemDraftActions.filter(da => !matchedDraftRowIds.has(da.rowId))
+            : itemDraftActions;
+
+        const orphanSavedHtml = orphanSavedActions.map(a => renderSavedActionRow(a)).join('');
+        const orphanDraftHtml = orphanDraftActions.map(da => renderDraftActionRow(da, itemDraftActions.indexOf(da))).join('');
 
         return `
             <div class="agenda-item-card ${isDiscussed ? 'discussed' : (isUndiscussed ? 'undiscussed' : '')}">
@@ -6758,7 +6803,7 @@ function renderDraftAgendaItems(focusItemId = null) {
                                 <i class="fa-solid fa-plus"></i> Alt Madde Ekle
                             </button>
                         </div>
-                        <div style="display:flex; flex-direction:column; gap:0.35rem;">
+                        <div style="display:flex; flex-direction:column; gap:0.48rem;">
                             ${subItemsRowsHtml}
                         </div>
                     </div>
@@ -6768,10 +6813,10 @@ function renderDraftAgendaItems(focusItemId = null) {
                     </div>
                 ` : '')}
 
-                ${hasAction ? `
+                ${(orphanSavedHtml || orphanDraftHtml) ? `
                     <div style="margin-top:0.55rem; padding-top:0.55rem; border-top:1px solid rgba(148,163,184,0.14); display:flex; flex-direction:column; gap:0.45rem;">
-                        ${savedActionsHtml}
-                        ${draftActionsHtml}
+                        ${orphanSavedHtml}
+                        ${orphanDraftHtml}
                     </div>
                 ` : ''}
             </div>
@@ -8956,7 +9001,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 12000);
 
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('sw.js?v=5.0.0').then(reg => {
+        navigator.serviceWorker.register('sw.js?v=5.0.1').then(reg => {
             try { reg.update(); } catch (e) {}
             syncUserAndStateToServiceWorker();
         }).catch(() => {});
