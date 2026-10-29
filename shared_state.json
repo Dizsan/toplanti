@@ -256,7 +256,10 @@
     }
   ],
   "actions": [],
-  "deletedIds": [],
+  "deletedIds": [
+    "AKS-103",
+    "TOP-2026-003"
+  ],
   "usedResetTokens": [],
   "announcements": [
     {
@@ -341,6 +344,19 @@
     }
   ],
   "pushSubscriptions": [
+    {
+      "id": "SUB-1793273218597-416",
+      "username": "ömer",
+      "userFullName": "ÖMER EREN",
+      "endpoint": "https://fcm.googleapis.com/fcm/send/fIeXN3F5GQo:APA91bEf9SZqx5YtvgbaBCrZ3PQD5xTmy02R8oVFUTJwy9Q0eJm35QgJip5XDqTXFkvKz2YdSESy7gnn8HJB-DmV0ShPv5eDHuxQIEwNrkvmIEXrXnHjRCWSP3hQ8TvRSh12jiUOW8Xh",
+      "p256dh": "BHatiVPkOjVoYV8hNyZWeaPugkG3LvqAuJJlolRAJfeQ5Aj2XNRWSvlnL_tYmbUQ-cLgRyZORbpgyfw02f9XSTo",
+      "auth": "mFa8ah1uHurtgpsCHv49gQ",
+      "browser": "Samsung Internet",
+      "platform": "Android",
+      "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/30.0 Chrome/143.0.0.0 Mobile Safari/537.36",
+      "isActive": true,
+      "updatedAt": "29.10.2026 14:26:58"
+    },
     {
       "id": "SUB-1793029403205-553",
       "username": "necati.demirci",
@@ -443,7 +459,7 @@
       "platform": "Android",
       "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/30.0 Chrome/143.0.0.0 Mobile Safari/537.36",
       "isActive": true,
-      "updatedAt": "25.10.2026 23:18:30"
+      "updatedAt": "28.10.2026 21:51:57"
     },
     {
       "id": "SUB-1792129863940-504",
@@ -1624,6 +1640,6 @@
       "notes": "Beni hatırla, e-posta doğrulama kodlu şifremi unuttum sistemi, güncel 24 kişilik resmi personel listesi, kurumsal raporlama kokpiti, 1 gün önce ve aynı gün (personel + yönetici) hatırlatıcı motoru, sadece Ömer Eren'e özel versiyon güncelleme yetkisi ve DizGün çift yönlü veri alışveriş köprüsü eklendi. Tüm örnek kayıtlar silinerek kullanıma hazır temiz başlangıç yapıldı."
     }
   ],
-  "updatedAt": "2026-10-29T05:38:31.709Z",
-  "stateRevision": 1
+  "updatedAt": "2026-10-29T11:26:58.598Z",
+  "stateRevision": 2
 }
