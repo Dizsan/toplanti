@@ -106,8 +106,66 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             unset($m);
         }
+        $existing = [];
+        if (file_exists($dataFile)) {
+            $rawEx = @file_get_contents($dataFile);
+            if ($rawEx) {
+                $parsedEx = json_decode($rawEx, true);
+                if (is_array($parsedEx)) {
+                    $existing = $parsedEx;
+                }
+            }
+        }
+        $delIds = array_values(array_unique(array_merge(
+            isset($decoded['deletedIds']) && is_array($decoded['deletedIds']) ? $decoded['deletedIds'] : [],
+            isset($existing['deletedIds']) && is_array($existing['deletedIds']) ? $existing['deletedIds'] : []
+        )));
+        $delFlip = array_flip(array_map('strval', $delIds));
+
+        $mergeById = function($exList, $inList, $respectDeleted = true, $isMeeting = false) use ($delFlip) {
+            $map = [];
+            $order = [];
+            foreach ((is_array($inList) ? $inList : []) as $item) {
+                if (!is_array($item) || empty($item['id'])) continue;
+                $id = (string)$item['id'];
+                if ($respectDeleted && isset($delFlip[$id])) continue;
+                if (!isset($map[$id])) $order[] = $id;
+                $map[$id] = $item;
+            }
+            foreach ((is_array($exList) ? $exList : []) as $item) {
+                if (!is_array($item) || empty($item['id'])) continue;
+                $id = (string)$item['id'];
+                if ($respectDeleted && isset($delFlip[$id])) continue;
+                if (!isset($map[$id])) {
+                    $order[] = $id;
+                    $map[$id] = $item;
+                } elseif ($isMeeting) {
+                    $exAg = isset($item['agendaItems']) && is_array($item['agendaItems']) ? count($item['agendaItems']) : 0;
+                    $inAg = isset($map[$id]['agendaItems']) && is_array($map[$id]['agendaItems']) ? count($map[$id]['agendaItems']) : 0;
+                    if ($exAg > 0 && $inAg === 0) {
+                        $map[$id] = array_merge($map[$id], $item);
+                    }
+                }
+            }
+            $out = [];
+            foreach ($order as $k) {
+                if (isset($map[$k])) $out[] = $map[$k];
+            }
+            return $out;
+        };
+
+        $decoded['deletedIds'] = array_slice($delIds, 0, 500);
+        $decoded['meetings'] = $mergeById(isset($existing['meetings']) ? $existing['meetings'] : [], isset($decoded['meetings']) ? $decoded['meetings'] : [], true, true);
+        $decoded['actions'] = $mergeById(isset($existing['actions']) ? $existing['actions'] : [], isset($decoded['actions']) ? $decoded['actions'] : [], true, false);
+        $decoded['announcements'] = $mergeById(isset($existing['announcements']) ? $existing['announcements'] : [], isset($decoded['announcements']) ? $decoded['announcements'] : [], true, false);
+        $decoded['approvalRequests'] = $mergeById(isset($existing['approvalRequests']) ? $existing['approvalRequests'] : [], isset($decoded['approvalRequests']) ? $decoded['approvalRequests'] : [], false, false);
+        $decoded['logs'] = array_slice($mergeById(isset($existing['logs']) ? $existing['logs'] : [], isset($decoded['logs']) ? $decoded['logs'] : [], false, false), 0, 500);
+        $exRev = isset($existing['stateRevision']) ? (int)$existing['stateRevision'] : 0;
+        $inRev = isset($decoded['stateRevision']) ? (int)$decoded['stateRevision'] : 0;
+        $decoded['stateRevision'] = max($exRev, $inRev) + ($inRev <= $exRev ? 1 : 0);
+
         file_put_contents($dataFile, json_encode($decoded, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE), LOCK_EX);
-        echo json_encode(['status' => 'ok', 'updated_at' => date('c')]);
+        echo json_encode(['status' => 'ok', 'updated_at' => date('c'), 'stateRevision' => $decoded['stateRevision']]);
     } else {
         http_response_code(400);
         echo json_encode(['status' => 'error', 'message' => 'Geçersiz JSON verisi']);

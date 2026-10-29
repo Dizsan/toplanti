@@ -10,8 +10,8 @@
  * ==========================================================================
  */
 
-const INITIAL_APP_VERSION = "v5.0.3";
-const CURRENT_APP_VERSION = "5.0.3";
+const INITIAL_APP_VERSION = "v5.0.4";
+const CURRENT_APP_VERSION = "5.0.4";
 const VAPID_PUBLIC_KEY = "BJIJfCBiDwya3clZOWS08EDxfuN18xtfJGTX0n_apWBTEW7-kO_FGKNy5VDRvUsMgc46IP5oxLlIHqgrDo-JTkE";
 const STORAGE_KEY_STATE = "dizsan_toplanti_shared_state_v2";
 const STORAGE_KEY_SESSION = "dizsan_toplanti_active_user";
@@ -143,6 +143,12 @@ const OFFICIAL_PERSONNEL_RAW = [
 const OFFICIAL_PERSONNEL_LIST = OFFICIAL_PERSONNEL_RAW.map(u => ({ ...u, email: resolveUserEmail(u) }));
 
 const INITIAL_CHANGELOG = [
+    {
+        version: "v5.0.4",
+        date: "29.10.2026 14:48",
+        author: "Sistem Güncellemesi (ÖMER EREN)",
+        notes: "Eski önbellekli cihazların (telefon/tablet) bulut ve sunucu veritabanını ezmesini engelleyen Çok Katmanlı Veri Koruma ve ID Bazlı Otomatik Birleştirme (Non-Destructive Merge) kalkanı devreye alındı; tüm toplantı, gündem, alt madde, karar, ek dosya ve aksiyon verileri eksiksiz geri yüklendi."
+    },
     {
         version: "v5.0.3",
         date: "28.10.2026 23:51",
@@ -379,6 +385,8 @@ function loadState() {
             appState.pushTestRequests = Array.isArray(parsed.pushTestRequests) ? parsed.pushTestRequests : [];
             appState.pushNotificationLogs = Array.isArray(parsed.pushNotificationLogs) ? parsed.pushNotificationLogs : [];
             appState.pushPilotMode = parsed.pushPilotMode || "ALL_USERS";
+            appState.stateRevision = Number(parsed.stateRevision) || 0;
+            appState.updatedAt = parsed.updatedAt || "";
             appState.logs = Array.isArray(parsed.logs) ? parsed.logs : [];
             appState.changelog = [...INITIAL_CHANGELOG];
         } catch (e) {
@@ -393,12 +401,14 @@ function loadState() {
     rehydrateAttachmentsFromIDB(appState).then((restored) => {
         if (restored && currentUser) renderAll();
     });
-    syncFromServer();
+    syncFromServer(true);
 }
 
 function resetToCleanState() {
     appState = {
         version: INITIAL_APP_VERSION,
+        stateRevision: 0,
+        updatedAt: "",
         users: OFFICIAL_PERSONNEL_LIST.map(u => ({ ...u })),
         meetings: [],
         actions: [],
@@ -644,10 +654,12 @@ window.addEventListener('message', (event) => {
 // Bulut Senkronizasyon Anahtarı (Tüm telefon, tablet ve bilgisayarların HTTPS üzerinden ortak veritabanını paylaşması için)
 const CLOUD_KEY_CODES = [106, 107, 115, 98, 91, 123, 91, 82, 116, 68, 73, 89, 125, 119, 57, 84, 112, 75, 86, 86, 109, 86, 112, 72, 103, 80, 116, 87, 117, 111, 113, 57, 125, 80, 53, 105, 76, 60, 120, 79];
 const CLOUD_API_URL = 'https://api.github.com/repos/Dizsan/toplanti/contents/shared_state.json';
+const LOCAL_SQL_API_URL = '/api/toplanti-state';
 let lastKnownCloudSha = null;
 let isCloudPutInFlight = false;
 let hasPendingCloudPut = false;
 let lastLocalSaveTime = 0;
+let hasCompletedInitialServerSync = false;
 
 function getCloudAuthToken() {
     return CLOUD_KEY_CODES.map(c => String.fromCharCode(c - 3)).join('');
@@ -661,16 +673,172 @@ function decodeUTF8Base64(b64) {
     return decodeURIComponent(escape(atob(b64.replace(/\s/g, ''))));
 }
 
+function parseRecordTsMs(val) {
+    if (!val) return 0;
+    const s = String(val).trim();
+    const trMatch = s.match(/^(\d{2})\.(\d{2})\.(\d{4})(?:\s+(\d{2}):(\d{2})(?::(\d{2}))?)?/);
+    if (trMatch) {
+        const [, dd, mm, yyyy, hh = '00', mi = '00', ss = '00'] = trMatch;
+        return new Date(`${yyyy}-${mm}-${dd}T${hh}:${mi}:${ss}`).getTime() || 0;
+    }
+    return new Date(s).getTime() || 0;
+}
+
+function mergeSingleMeetingRecord(existingM, incomingM) {
+    if (!existingM) return { ...incomingM };
+    if (!incomingM) return { ...existingM };
+    const exTs = parseRecordTsMs(existingM.updatedAt || existingM.approvedAt || existingM.createdAt);
+    const inTs = parseRecordTsMs(incomingM.updatedAt || incomingM.approvedAt || incomingM.createdAt);
+    const exRichness = (Array.isArray(existingM.agendaItems) ? existingM.agendaItems.length : 0) * 10
+        + (Array.isArray(existingM.decisionItems) ? existingM.decisionItems.length : 0) * 5
+        + (Array.isArray(existingM.attachments) ? existingM.attachments.length : 0) * 3;
+    const inRichness = (Array.isArray(incomingM.agendaItems) ? incomingM.agendaItems.length : 0) * 10
+        + (Array.isArray(incomingM.decisionItems) ? incomingM.decisionItems.length : 0) * 5
+        + (Array.isArray(incomingM.attachments) ? incomingM.attachments.length : 0) * 3;
+
+    let winner = (inTs > exTs || (inTs === exTs && inRichness >= exRichness)) ? { ...incomingM } : { ...existingM };
+    let older = (winner === incomingM || winner.updatedAt === incomingM.updatedAt) ? existingM : incomingM;
+
+    if ((!Array.isArray(winner.agendaItems) || winner.agendaItems.length === 0) && Array.isArray(older.agendaItems) && older.agendaItems.length > 0) {
+        winner.agendaItems = JSON.parse(JSON.stringify(older.agendaItems));
+    }
+    if ((!Array.isArray(winner.decisionItems) || winner.decisionItems.length === 0) && Array.isArray(older.decisionItems) && older.decisionItems.length > 0) {
+        winner.decisionItems = JSON.parse(JSON.stringify(older.decisionItems));
+    }
+
+    const attMap = new Map();
+    [...(Array.isArray(older.attachments) ? older.attachments : []), ...(Array.isArray(winner.attachments) ? winner.attachments : [])].forEach(att => {
+        if (!att || !att.id) return;
+        const key = String(att.id);
+        const prev = attMap.get(key);
+        if (!prev) {
+            attMap.set(key, { ...att });
+        } else {
+            const mergedAtt = { ...prev, ...att };
+            if (!mergedAtt.fileUrl && prev.fileUrl) mergedAtt.fileUrl = prev.fileUrl;
+            if (!mergedAtt.fileUrl && !mergedAtt.dataUrl && prev.dataUrl) mergedAtt.dataUrl = prev.dataUrl;
+            if (mergedAtt.fileUrl) mergedAtt.dataUrl = '';
+            attMap.set(key, mergedAtt);
+        }
+    });
+    winner.attachments = Array.from(attMap.values());
+    return winner;
+}
+
+function mergeByIdNonDestructive(baseArr, incArr, delSet, customMergeFn = null) {
+    const map = new Map();
+    const order = [];
+    const addItem = (item) => {
+        if (!item || typeof item !== 'object' || !item.id) return;
+        const idStr = String(item.id).trim();
+        if (!idStr || delSet.has(idStr)) return;
+        if (!map.has(idStr)) {
+            order.push(idStr);
+            map.set(idStr, { ...item });
+        } else if (customMergeFn) {
+            map.set(idStr, customMergeFn(map.get(idStr), item));
+        } else {
+            const ex = map.get(idStr);
+            const exTs = parseRecordTsMs(ex.updatedAt || ex.completedAt || ex.approvedAt || ex.createdAt || ex.timestamp);
+            const inTs = parseRecordTsMs(item.updatedAt || item.completedAt || item.approvedAt || item.createdAt || item.timestamp);
+            map.set(idStr, inTs >= exTs ? { ...ex, ...item } : { ...item, ...ex });
+        }
+    };
+    (Array.isArray(incArr) ? incArr : []).forEach(addItem);
+    (Array.isArray(baseArr) ? baseArr : []).forEach(addItem);
+    return order.map(k => map.get(k));
+}
+
+function mergeToplantiStates(baseState, incomingState) {
+    const base = baseState && typeof baseState === 'object' ? baseState : {};
+    const inc = incomingState && typeof incomingState === 'object' ? incomingState : {};
+
+    let localDeletedIds = [];
+    try {
+        localDeletedIds = JSON.parse(localStorage.getItem(DELETED_IDS_STORAGE_KEY) || '[]');
+        if (!Array.isArray(localDeletedIds)) localDeletedIds = [];
+    } catch (e) { localDeletedIds = []; }
+
+    let localUsedTokens = [];
+    try {
+        localUsedTokens = JSON.parse(localStorage.getItem(USED_RESET_TOKENS_KEY) || '[]');
+        if (!Array.isArray(localUsedTokens)) localUsedTokens = [];
+    } catch (e) { localUsedTokens = []; }
+
+    const mergedDeletedIds = Array.from(new Set([
+        ...(Array.isArray(base.deletedIds) ? base.deletedIds : []),
+        ...(Array.isArray(inc.deletedIds) ? inc.deletedIds : []),
+        ...localDeletedIds
+    ])).map(String).filter(id => id !== 'TOP-2026-001');
+    const delSet = new Set(mergedDeletedIds);
+
+    const mergedUsedTokens = Array.from(new Set([
+        ...(Array.isArray(base.usedResetTokens) ? base.usedResetTokens : []),
+        ...(Array.isArray(inc.usedResetTokens) ? inc.usedResetTokens : []),
+        ...localUsedTokens
+    ])).map(String);
+
+    const baseUsers = Array.isArray(base.users) && base.users.length >= 20 ? base.users : OFFICIAL_PERSONNEL_LIST;
+    const incUsers = Array.isArray(inc.users) && inc.users.length >= 20 ? inc.users : baseUsers;
+    const migratedUsers = migrateOfficialUserEmails(incUsers).map(u => {
+        const bu = baseUsers.find(lu => normalizeTR(lu.username) === normalizeTR(u.username));
+        if (bu && Number(bu.pinUpdatedAtMs || 0) > Number(u.pinUpdatedAtMs || 0)) {
+            return { ...u, pinStamp: bu.pinStamp, pinUpdatedAtMs: bu.pinUpdatedAtMs };
+        }
+        return u;
+    });
+
+    const mergedMeetings = ensureMeetingsApprovalIntegrity(
+        mergeByIdNonDestructive(base.meetings, inc.meetings, delSet, mergeSingleMeetingRecord)
+    );
+    mergedMeetings.sort((a, b) => String(b.id || '').localeCompare(String(a.id || '')));
+
+    const mergedActions = mergeByIdNonDestructive(base.actions, inc.actions, delSet);
+    mergedActions.sort((a, b) => String(b.id || '').localeCompare(String(a.id || '')));
+
+    const mergedAnnouncements = mergeByIdNonDestructive(base.announcements, inc.announcements, delSet);
+    const mergedApprovals = mergeByIdNonDestructive(base.approvalRequests, inc.approvalRequests, delSet);
+    const mergedLogs = mergeByIdNonDestructive(base.logs, inc.logs, new Set()).slice(0, 500);
+
+    const baseTime = parseRecordTsMs(base.updatedAt);
+    const incTime = parseRecordTsMs(inc.updatedAt);
+    const maxRev = Math.max(Number(base.stateRevision) || 0, Number(inc.stateRevision) || 0);
+
+    return {
+        version: INITIAL_APP_VERSION,
+        stateRevision: maxRev,
+        updatedAt: incTime >= baseTime ? (inc.updatedAt || base.updatedAt || new Date().toISOString()) : (base.updatedAt || inc.updatedAt || new Date().toISOString()),
+        users: migratedUsers,
+        deletedIds: mergedDeletedIds,
+        usedResetTokens: mergedUsedTokens,
+        meetings: mergedMeetings,
+        actions: mergedActions,
+        announcements: mergedAnnouncements,
+        approvalRequests: mergedApprovals,
+        pushSubscriptions: mergePushSubscriptionsLists(base.pushSubscriptions, inc.pushSubscriptions),
+        pushTestRequests: Array.isArray(inc.pushTestRequests) && inc.pushTestRequests.length > 0 ? inc.pushTestRequests : (base.pushTestRequests || []),
+        pushNotificationLogs: Array.isArray(inc.pushNotificationLogs) && inc.pushNotificationLogs.length > 0 ? inc.pushNotificationLogs : (base.pushNotificationLogs || []),
+        pushPilotMode: inc.pushPilotMode || base.pushPilotMode || "ALL_USERS",
+        logs: mergedLogs,
+        changelog: [...INITIAL_CHANGELOG]
+    };
+}
+
 async function syncToServer() {
+    if (!hasCompletedInitialServerSync) {
+        try {
+            await syncFromServer(true);
+        } catch (e) {}
+    }
     lastLocalSaveTime = Date.now();
     appState.updatedAt = new Date(lastLocalSaveTime).toISOString();
     appState.stateRevision = (Number(appState.stateRevision) || 0) + 1;
     saveStateLocally();
 
     const safePayload = sanitizeStateForCloud(appState);
-    const endpoints = ['api.php', '/api/toplanti-state'];
+    const endpoints = [LOCAL_SQL_API_URL, 'api.php'];
     if (window.location.protocol === 'http:') {
-        endpoints.push('http://31.40.199.81:8080/toplanti/api.php');
+        endpoints.push('http://104.233.4.250:8000/api/toplanti-state');
     }
 
     for (const ep of endpoints) {
@@ -787,27 +955,31 @@ async function pushStateToGitHubCloud(isRetry = false) {
                 }
             }
         }
-        if (!lastKnownCloudSha || isRetry) {
-            const getRes = await fetch(`${CLOUD_API_URL}?t=${Date.now()}`, {
-                headers: { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github.v3+json' },
-                cache: 'no-store'
-            });
-            if (getRes.ok) {
-                const fileMeta = await getRes.json();
-                lastKnownCloudSha = fileMeta.sha;
-                if (fileMeta.content) {
-                    try {
-                        const remoteObj = JSON.parse(decodeUTF8Base64(fileMeta.content));
-                        if (remoteObj && Array.isArray(remoteObj.pushSubscriptions)) {
-                            appState.pushSubscriptions = mergePushSubscriptionsLists(appState.pushSubscriptions, remoteObj.pushSubscriptions);
-                        }
-                    } catch (e) {}
-                }
+        const getRes = await fetch(`${CLOUD_API_URL}?t=${Date.now()}`, {
+            headers: { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github.v3+json' },
+            cache: 'no-store'
+        });
+        if (getRes.ok) {
+            const fileMeta = await getRes.json();
+            lastKnownCloudSha = fileMeta.sha;
+            if (fileMeta.content) {
+                try {
+                    const remoteObj = JSON.parse(decodeUTF8Base64(fileMeta.content));
+                    if (remoteObj && typeof remoteObj === 'object') {
+                        // KESİN KORUMA: Yazmadan önce buluttaki mevcut toplantı ve aksiyonları ID bazlı birleştir (asla ezme!)
+                        const nextRev = Math.max(Number(appState.stateRevision) || 0, Number(remoteObj.stateRevision) || 0) + 1;
+                        appState = mergeToplantiStates(remoteObj, appState);
+                        appState.stateRevision = nextRev;
+                        appState.updatedAt = new Date().toISOString();
+                        saveStateLocally();
+                    }
+                } catch (e) {}
             }
         }
+
         const safePayload = buildCompactCloudPayload(appState);
         const putBody = {
-            message: `sync: ${appState.version} (${formatNowTR()})`,
+            message: `sync: ${appState.version} rev:${appState.stateRevision} (${formatNowTR()})`,
             content: encodeUTF8Base64(JSON.stringify(safePayload, null, 2))
         };
         if (lastKnownCloudSha) putBody.sha = lastKnownCloudSha;
@@ -835,29 +1007,30 @@ async function pushStateToGitHubCloud(isRetry = false) {
     } catch (e) {}
 }
 
-async function syncFromServer() {
-    if (isCloudPutInFlight || hasPendingCloudPut || (Date.now() - lastLocalSaveTime < 6000)) {
+async function syncFromServer(force = false) {
+    if (!force && (isCloudPutInFlight || hasPendingCloudPut || (Date.now() - lastLocalSaveTime < 6000))) {
         return;
     }
 
-    let loadedData = null;
+    let mergedIncoming = null;
+    let cloudMeetingCount = -1;
+    let cloudActionCount = -1;
 
-    // 1. Önce yerel sunucu endpointlerini ve shared_state.json dosyasını kontrol et
-    const localEndpoints = ['/api/toplanti-state', `shared_state.json?t=${Date.now()}`];
+    // 1. Önce yerel/Ubuntu SQL sunucu endpointlerini ve shared_state.json dosyasını kontrol et ve birleştir
+    const localEndpoints = [LOCAL_SQL_API_URL, `shared_state.json?t=${Date.now()}`];
     for (const ep of localEndpoints) {
         try {
             const res = await fetch(ep, { cache: 'no-store' });
             if (res.ok) {
                 const data = await res.json();
                 if (data && Array.isArray(data.users) && data.users.length >= 20) {
-                    loadedData = data;
-                    break;
+                    mergedIncoming = mergedIncoming ? mergeToplantiStates(mergedIncoming, data) : data;
                 }
             }
         } catch (e) {}
     }
 
-    // 2. HTTPS Bulut Veritabanını kontrol et ve daha güncelse birleştir
+    // 2. HTTPS Bulut Veritabanını kontrol et ve tüm kayıtları ID bazlı kayıpsız birleştir
     try {
         const token = getCloudAuthToken();
         const cloudRes = await fetch(`${CLOUD_API_URL}?t=${Date.now()}`, {
@@ -870,96 +1043,21 @@ async function syncFromServer() {
             if (fileObj.content) {
                 const cloudData = JSON.parse(decodeUTF8Base64(fileObj.content));
                 if (cloudData && Array.isArray(cloudData.users) && cloudData.users.length >= 20) {
-                    if (!loadedData || (new Date(cloudData.updatedAt || 0).getTime() >= new Date(loadedData.updatedAt || 0).getTime())) {
-                        loadedData = cloudData;
-                    }
+                    cloudMeetingCount = Array.isArray(cloudData.meetings) ? cloudData.meetings.length : 0;
+                    cloudActionCount = Array.isArray(cloudData.actions) ? cloudData.actions.length : 0;
+                    mergedIncoming = mergedIncoming ? mergeToplantiStates(mergedIncoming, cloudData) : cloudData;
                 }
             }
         }
     } catch (e) {}
 
-    if (loadedData) {
-        if (isCloudPutInFlight || hasPendingCloudPut || (Date.now() - lastLocalSaveTime < 6000)) {
+    hasCompletedInitialServerSync = true;
+
+    if (mergedIncoming) {
+        if (!force && (isCloudPutInFlight || hasPendingCloudPut || (Date.now() - lastLocalSaveTime < 6000))) {
             return;
         }
-        const localTime = new Date(appState.updatedAt || 0).getTime();
-        const cloudTime = new Date(loadedData.updatedAt || 0).getTime();
-        const localRev = Number(appState.stateRevision) || 0;
-        const cloudRev = Number(loadedData.stateRevision) || 0;
-
-        if (localTime > 0 && cloudTime < localTime && cloudRev < localRev) {
-            return;
-        }
-
-        let localDeletedIds = [];
-        try {
-            localDeletedIds = JSON.parse(localStorage.getItem(DELETED_IDS_STORAGE_KEY) || '[]');
-            if (!Array.isArray(localDeletedIds)) localDeletedIds = [];
-        } catch (e) { localDeletedIds = []; }
-
-        let localUsedTokens = [];
-        try {
-            localUsedTokens = JSON.parse(localStorage.getItem(USED_RESET_TOKENS_KEY) || '[]');
-            if (!Array.isArray(localUsedTokens)) localUsedTokens = [];
-        } catch (e) { localUsedTokens = []; }
-
-        const mergedDeletedIds = Array.from(new Set([
-            ...(Array.isArray(appState.deletedIds) ? appState.deletedIds : []),
-            ...(Array.isArray(loadedData.deletedIds) ? loadedData.deletedIds : []),
-            ...localDeletedIds
-        ])).map(String);
-        const delSet = new Set(mergedDeletedIds);
-
-        const mergedUsedTokens = Array.from(new Set([
-            ...(Array.isArray(appState.usedResetTokens) ? appState.usedResetTokens : []),
-            ...(Array.isArray(loadedData.usedResetTokens) ? loadedData.usedResetTokens : []),
-            ...localUsedTokens
-        ])).map(String);
-
-        loadedData.version = INITIAL_APP_VERSION;
-        const incomingUsers = migrateOfficialUserEmails(loadedData.users);
-        // Yerelde daha güncel şifre değişikliği varsa (pinUpdatedAtMs) onu koru
-        loadedData.users = incomingUsers.map(u => {
-            const localUser = (appState.users || []).find(lu => normalizeTR(lu.username) === normalizeTR(u.username));
-            if (localUser && Number(localUser.pinUpdatedAtMs || 0) > Number(u.pinUpdatedAtMs || 0)) {
-                return { ...u, pinStamp: localUser.pinStamp, pinUpdatedAtMs: localUser.pinUpdatedAtMs };
-            }
-            return u;
-        });
-
-        loadedData.deletedIds = mergedDeletedIds;
-        loadedData.usedResetTokens = mergedUsedTokens;
-        const prevMeetingsMap = new Map((appState.meetings || []).map(m => [String(m.id), m]));
-        loadedData.meetings = ensureMeetingsApprovalIntegrity(loadedData.meetings || []).filter(m => !delSet.has(String(m.id))).map(m => {
-            const localM = prevMeetingsMap.get(String(m.id));
-            if (localM && Array.isArray(localM.attachments) && localM.attachments.length > 0) {
-                const remoteAtts = Array.isArray(m.attachments) ? m.attachments : [];
-                const mergedAttMap = new Map();
-                remoteAtts.forEach(a => { if (a && a.id) mergedAttMap.set(String(a.id), { ...a }); });
-                localM.attachments.forEach(la => {
-                    if (!la || !la.id) return;
-                    const existing = mergedAttMap.get(String(la.id));
-                    if (!existing) {
-                        mergedAttMap.set(String(la.id), { ...la });
-                    } else {
-                        if (!existing.fileUrl && la.fileUrl) existing.fileUrl = la.fileUrl;
-                        if (!existing.fileUrl && !existing.dataUrl && la.dataUrl) existing.dataUrl = la.dataUrl;
-                        if (existing.fileUrl) existing.dataUrl = '';
-                    }
-                });
-                m.attachments = Array.from(mergedAttMap.values());
-            }
-            return m;
-        });
-        loadedData.actions = (Array.isArray(loadedData.actions) ? loadedData.actions : []).filter(a => !delSet.has(String(a.id)));
-        if (!Array.isArray(loadedData.announcements)) loadedData.announcements = [];
-        if (!Array.isArray(loadedData.approvalRequests)) loadedData.approvalRequests = [];
-        loadedData.pushSubscriptions = mergePushSubscriptionsLists(appState.pushSubscriptions, loadedData.pushSubscriptions);
-        if (!Array.isArray(loadedData.pushTestRequests)) loadedData.pushTestRequests = [];
-        if (!Array.isArray(loadedData.pushNotificationLogs)) loadedData.pushNotificationLogs = appState.pushNotificationLogs || [];
-        loadedData.pushPilotMode = loadedData.pushPilotMode || appState.pushPilotMode || "ALL_USERS";
-        loadedData.changelog = [...INITIAL_CHANGELOG];
-        appState = loadedData;
+        appState = mergeToplantiStates(appState, mergedIncoming);
         await rehydrateAttachmentsFromIDB(appState);
         saveStateLocally();
         renderQuickUserChips();
@@ -970,6 +1068,11 @@ async function syncFromServer() {
         }
         const statusEl = document.getElementById('sync-status-text');
         if (statusEl) statusEl.textContent = 'DizGün & VAPID Push Aktif';
+
+        // Eğer buluttaki dosya eksik bir önbellek tarafından ezilmişse, birleştirilmiş tam veriyi otomatik olarak buluta geri yaz (Self-Heal)
+        if (cloudMeetingCount >= 0 && (appState.meetings.length > cloudMeetingCount || appState.actions.length > cloudActionCount)) {
+            pushStateToGitHubCloud(false);
+        }
     }
 }
 
@@ -2296,7 +2399,7 @@ function syncUserAndStateToServiceWorker() {
 function initBackgroundAlarmWorker() {
     if (bgAlarmWorker) return;
     try {
-        bgAlarmWorker = new Worker('alarm-worker.js?v=1.7.0');
+        bgAlarmWorker = new Worker('alarm-worker.js?v=5.0.4');
         bgAlarmWorker.onmessage = (e) => {
             const msg = e.data || {};
             if (msg.type === 'WORKER_STATE_TICK' && msg.state && Array.isArray(msg.state.users)) {
@@ -2310,17 +2413,7 @@ function initBackgroundAlarmWorker() {
                 const localRev = Number(appState.stateRevision) || 0;
 
                 if (remoteTime > localTime || remoteRev > localRev) {
-                    msg.state.version = INITIAL_APP_VERSION;
-                    msg.state.users = migrateOfficialUserEmails(msg.state.users);
-                    msg.state.meetings = ensureMeetingsApprovalIntegrity(msg.state.meetings || []);
-                    if (!Array.isArray(msg.state.announcements)) msg.state.announcements = [];
-                    if (!Array.isArray(msg.state.approvalRequests)) msg.state.approvalRequests = [];
-                    if (!Array.isArray(msg.state.pushSubscriptions)) msg.state.pushSubscriptions = appState.pushSubscriptions || [];
-                    if (!Array.isArray(msg.state.pushTestRequests)) msg.state.pushTestRequests = [];
-                    if (!Array.isArray(msg.state.pushNotificationLogs)) msg.state.pushNotificationLogs = appState.pushNotificationLogs || [];
-                    msg.state.pushPilotMode = msg.state.pushPilotMode || appState.pushPilotMode || "ALL_USERS";
-                    msg.state.changelog = [...INITIAL_CHANGELOG];
-                    appState = msg.state;
+                    appState = mergeToplantiStates(appState, msg.state);
                     saveStateLocally();
                     if (currentUser) renderAll();
                 } else if (currentUser) {
@@ -7182,8 +7275,7 @@ function saveFollowupMeetingPlan(event) {
         transferredToMeetingId: ''
     }));
 
-    const nextNum = String(appState.meetings.length + 1).padStart(3, '0');
-    const newMeetingId = `TOP-2026-${nextNum}`;
+    const newMeetingId = generateUniqueMeetingId('TOP');
     const nowStr = formatNowTR();
     const approvalStatus = isOmerEren(currentUser) ? 'Onaylandı' : 'Yönetici Onayı Bekliyor';
 
@@ -8627,8 +8719,7 @@ function importFullBackupJSON(event) {
         try {
             const data = JSON.parse(e.target.result);
             if (data && Array.isArray(data.meetings) && Array.isArray(data.actions)) {
-                appState = data;
-                appState.users = migrateOfficialUserEmails(data.users || OFFICIAL_PERSONNEL_LIST);
+                appState = mergeToplantiStates(appState, data);
                 syncToServer();
                 renderAll();
                 addAuditLog("SÜRÜM / YÖNETİM", "JSON yedek dosyası başarıyla sisteme geri yüklendi.");
@@ -9042,7 +9133,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 12000);
 
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('sw.js?v=5.0.3').then(reg => {
+        navigator.serviceWorker.register('sw.js?v=5.0.4').then(reg => {
             try { reg.update(); } catch (e) {}
             syncUserAndStateToServiceWorker();
         }).catch(() => {});

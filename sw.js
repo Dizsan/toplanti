@@ -1,4 +1,4 @@
-const CACHE_NAME = 'dizsan-toplanti-v5.0.3';
+const CACHE_NAME = 'dizsan-toplanti-v5.0.4';
 const ASSETS = [
   './',
   './index.html',
@@ -161,6 +161,14 @@ async function showSystemNotification(title, body, tag, alertType = 'INVITE', ur
 }
 
 async function fetchRealTimeCloudState() {
+  try {
+    const localRes = await fetch(`/api/toplanti-state?t=${Date.now()}`, { cache: 'no-store' });
+    if (localRes.ok) {
+      const localObj = await localRes.json();
+      if (localObj && Array.isArray(localObj.users)) return localObj;
+    }
+  } catch (e) {}
+
   try {
     const token = getCloudAuthToken();
     const res = await fetch(`${CLOUD_API_URL}?t=${Date.now()}`, {
