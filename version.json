@@ -1,6 +1,6 @@
 {
-  "version": "5.0.4",
-  "build": 504,
-  "updatedAt": "29.10.2026 14:48",
-  "notes": "v5.0.4: Eski önbellekli cihazların bulut/sunucu verisini ezmesini önleyen Çok Katmanlı Veri Koruma ve ID Bazlı Otomatik Birleştirme (Non-Destructive Merge) kalkanı devreye alındı; tüm toplantı, gündem, alt madde, karar, ek dosya ve aksiyon verileri eksiksiz geri yüklendi."
+  "version": "5.0.5",
+  "build": 505,
+  "updatedAt": "29.10.2026 21:15",
+  "notes": "v5.0.5: Mobil Sıfır Kesilme (Zero-Truncation) &  Eski önbellekli cihazların bulut/sunucu verisini ezmesini önleyen Çok Katmanlı Veri Koruma ve ID Bazlı Otomatik Birleştirme (Non-Destructive Merge) kalkanı devreye alındı; tüm toplantı, gündem, alt madde, karar, ek dosya ve aksiyon verileri eksiksiz geri yüklendi."
 }

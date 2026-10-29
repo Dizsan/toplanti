@@ -10,8 +10,8 @@
  * ==========================================================================
  */
 
-const INITIAL_APP_VERSION = "v5.0.4";
-const CURRENT_APP_VERSION = "5.0.4";
+const INITIAL_APP_VERSION = "v5.0.5";
+const CURRENT_APP_VERSION = "5.0.5";
 const VAPID_PUBLIC_KEY = "BJIJfCBiDwya3clZOWS08EDxfuN18xtfJGTX0n_apWBTEW7-kO_FGKNy5VDRvUsMgc46IP5oxLlIHqgrDo-JTkE";
 const STORAGE_KEY_STATE = "dizsan_toplanti_shared_state_v2";
 const STORAGE_KEY_SESSION = "dizsan_toplanti_active_user";
@@ -144,7 +144,7 @@ const OFFICIAL_PERSONNEL_LIST = OFFICIAL_PERSONNEL_RAW.map(u => ({ ...u, email: 
 
 const INITIAL_CHANGELOG = [
     {
-        version: "v5.0.4",
+        version: "v5.0.5",
         date: "29.10.2026 14:48",
         author: "Sistem Güncellemesi (ÖMER EREN)",
         notes: "Eski önbellekli cihazların (telefon/tablet) bulut ve sunucu veritabanını ezmesini engelleyen Çok Katmanlı Veri Koruma ve ID Bazlı Otomatik Birleştirme (Non-Destructive Merge) kalkanı devreye alındı; tüm toplantı, gündem, alt madde, karar, ek dosya ve aksiyon verileri eksiksiz geri yüklendi."
@@ -2399,7 +2399,7 @@ function syncUserAndStateToServiceWorker() {
 function initBackgroundAlarmWorker() {
     if (bgAlarmWorker) return;
     try {
-        bgAlarmWorker = new Worker('alarm-worker.js?v=5.0.4');
+        bgAlarmWorker = new Worker('alarm-worker.js?v=5.0.5');
         bgAlarmWorker.onmessage = (e) => {
             const msg = e.data || {};
             if (msg.type === 'WORKER_STATE_TICK' && msg.state && Array.isArray(msg.state.users)) {
@@ -4632,7 +4632,7 @@ function renderMeetings() {
                                 return `
                                     <button type="button" onclick="event.stopPropagation(); openAttachmentPreviewModal('${m.id}', '${att.id}')" style="display:inline-flex; align-items:center; gap:0.4rem; background:rgba(15,23,42,0.75); border:1px solid ${isPdf ? 'rgba(248,113,113,0.45)' : 'rgba(52,211,153,0.35)'}; color:#e2e8f0; padding:4px 8px; border-radius:6px; font-size:0.74rem; cursor:pointer;" title="Belgeyi Aç / Önizle">
                                         ${isImg && imgSrc ? `<img src="${imgSrc}" style="width:24px; height:24px; object-fit:cover; border-radius:4px;">` : `<i class="fa-solid ${att.kind === 'NOTE' ? 'fa-note-sticky' : (isPdf ? 'fa-file-pdf' : 'fa-file-lines')}" style="color:${isPdf ? '#f87171' : '#34d399'};"></i>`}
-                                        <span style="max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${att.name || att.note || 'Ek Belge'}</span>
+                                        <span style="max-width:160px; overflow:hidden; text-overflow: clip; white-space: normal; overflow-wrap: anywhere; word-break: break-word; ">${att.name || att.note || 'Ek Belge'}</span>
                                     </button>
                                 `;
                             }).join('')}
@@ -4730,7 +4730,7 @@ function renderActions() {
             <tr>
                 <td>
                     <div style="font-weight:700; color:var(--dizsan-light);">${a.id}</div>
-                    <div style="font-size:0.74rem; color:var(--text-sec); max-width:150px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${meetingLabel}">${a.meetingId}</div>
+                    <div style="font-size:0.74rem; color:var(--text-sec); max-width:150px; text-overflow: clip; white-space: normal; overflow-wrap: anywhere; word-break: break-word;" title="${meetingLabel}">${a.meetingId}</div>
                 </td>
                 <td>
                     <div style="font-weight:600; color:#fff; margin-bottom:3px;">${a.title}</div>
@@ -5387,8 +5387,8 @@ function renderDraftAttachments() {
                             : `<div style="width:42px; height:42px; border-radius:6px; background:rgba(16,185,129,0.15); display:flex; align-items:center; justify-content:center; color:${isPdf ? '#f87171' : '#34d399'}; font-size:1.1rem;"><i class="fa-solid ${att.kind === 'NOTE' ? 'fa-note-sticky' : (isPdf ? 'fa-file-pdf' : 'fa-file-lines')}"></i></div>`
                         }
                         <div style="flex:1; min-width:0;">
-                            <div style="font-size:0.75rem; font-weight:700; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${escapeHtml(att.name || '')}">${escapeHtml(att.name || 'Ek Belge')}</div>
-                            <div style="font-size:0.68rem; color:#6ee7b7; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${escapeHtml(att.note || '')}">${escapeHtml(att.note || 'Önizlemek için tıklayın')}</div>
+                            <div style="font-size:0.75rem; font-weight:700; color:#fff; text-overflow: clip; white-space: normal; overflow-wrap: anywhere; word-break: break-word;" title="${escapeHtml(att.name || '')}">${escapeHtml(att.name || 'Ek Belge')}</div>
+                            <div style="font-size:0.68rem; color:#6ee7b7; text-overflow: clip; white-space: normal; overflow-wrap: anywhere; word-break: break-word;" title="${escapeHtml(att.note || '')}">${escapeHtml(att.note || 'Önizlemek için tıklayın')}</div>
                         </div>
                     </div>
                     <button type="button" class="btn btn-danger btn-sm" style="padding:3px 6px; font-size:0.7rem;" onclick="removeDraftAttachment('${att.id}')" title="Eki Sil">
@@ -5995,7 +5995,7 @@ function renderAttendanceManagementUI() {
             <div class="attendance-row ${isAbsent ? 'status-absent' : 'status-attended'}">
                 <div style="display:flex; justify-content:space-between; align-items:center; gap:0.4rem;">
                     <div style="min-width:0;">
-                        <strong style="font-size:0.8rem; color:#fff; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${name}</strong>
+                        <strong style="font-size:0.8rem; color:#fff; display:block; text-overflow: clip; white-space: normal; overflow-wrap: anywhere; word-break: break-word;">${name}</strong>
                         <span style="font-size:0.68rem; color:var(--text-sec);">${deptStr}</span>
                     </div>
                     <div style="display:flex; gap:0.3rem; flex-shrink:0;">
@@ -9133,7 +9133,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 12000);
 
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('sw.js?v=5.0.4').then(reg => {
+        navigator.serviceWorker.register('sw.js?v=5.0.5').then(reg => {
             try { reg.update(); } catch (e) {}
             syncUserAndStateToServiceWorker();
         }).catch(() => {});
